@@ -8,9 +8,9 @@ solution of the ray system above the required lower bounds
 prefix of that length gives a hole: comparisons between rays carry no admitted pair
 (`ray_prefix_hole`), comparisons of a ray with a fixed word are comparisons of original words
 (`comparison_of_pumpFactor`), and admitted targets lie at or before the first rejected cut.
-The new hole has the same endpoint mortality, the same mortal words and the same first rejected
-cuts, and the rejected tails of its immortal coordinates are covered by few designated runs, that
-is, pieces of bounded period, up to `uncoveredLengthBound` letters (`exists_hole_with_run_cover`).
+The resulting hole has the same first rejected cuts, and the rejected tails of its immortal
+coordinates are covered by few designated runs, that is, pieces of bounded period, up to
+`uncoveredLengthBound` letters (`exists_hole_with_run_cover`).
 
 ## Main declarations
 
@@ -192,16 +192,13 @@ section Assembly
 
 variable [Fintype α] [DecidableEq α] [Fintype S] [DecidableEq S]
 
-/-- Every hole has a hole with the same endpoint mortality, the same mortal words and the same
-first rejected cuts, whose immortal rejected tails are covered by `pieceCountBase + 3` designated
-runs per word, of period at most `D = periodBound (levelCount k)` and length at least `2D`, up to
-`uncoveredLengthBound C` positions. -/
+/-- Every hole has a hole whose immortal rejected tails are covered by `pieceCountBase + 3`
+designated runs per word, of period at most `D = periodBound (levelCount k)` and length at least
+`2D`, up to `uncoveredLengthBound C` positions. -/
 theorem exists_hole_with_run_cover (C : LevelBounds (Fintype.card α) k (Fintype.card S))
     {M : StructuralReader α S k}
     {W : Fin k → List α} (hW : M.IsHole W) :
-    ∃ W', M.IsHole W' ∧ M.SameEndpointMortality W' W ∧
-        (∀ j, ¬ M.Immortal (M.endState W j) → W' j = W j) ∧
-      (∀ i, M.firstRejection W' i = M.firstRejection W i) ∧
+    ∃ W', M.IsHole W' ∧
       HasScaledRunCover M W' (C.pieceCountBase + 3) (C.periodBound (levelCount k))
           (uncoveredLengthBound C) := by
   classical
@@ -292,12 +289,7 @@ theorem exists_hole_with_run_cover (C : LevelBounds (Fintype.card α) k (Fintype
   have hhole : M.IsHole W' := ⟨helig, hchan⟩
   have hend : ∀ i, i ∉ F.rays → M.endState W' i = M.endState W i :=
     fun i h => Table.endState_congr (hWf i h)
-  have htypes : M.SameEndpointMortality W' W := by
-    intro i
-    by_cases h : i ∈ F.rays
-    · exact ⟨fun _ => F.immortal_endState i h, fun _ => (hray i h).2.1⟩
-    · rw [hend i h]
-  refine ⟨W', hhole, htypes, fun j hj => hWf j (fun h => hj (F.immortal_endState j h)), hJ, ?_⟩
+  refine ⟨W', hhole, ?_⟩
   -- the run cover
   apply hasBoundedRunCover_of_covers M W'
     (T := C.uncoveredBound (levelCount k) + (C.pieceCountBase + 3) * (3 * C.escapeLengthBound

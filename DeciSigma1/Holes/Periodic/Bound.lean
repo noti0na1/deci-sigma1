@@ -171,10 +171,6 @@ theorem admissible_deletionCounts (hs : (shiftSystem W ρ N).Sat z)
     intro P hp
     by_contra hnot
     simp [deletionCounts, hnot] at hp
-  short := by
-    intro P hP hshort
-    rw [deletionCounts_val (⟨P, hP⟩ : {P // P ∈ piecesOf W ρ})]
-    exact (floor_edit (hf ⟨P, hP⟩) (hz0 ⟨P, hP⟩)).2.1 hshort
   long := by
     intro P hP hmove
     rw [deletionCounts_val (⟨P, hP⟩ : {P // P ∈ piecesOf W ρ})] at hmove ⊢

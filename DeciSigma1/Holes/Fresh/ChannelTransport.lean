@@ -25,7 +25,7 @@ edited texts is a comparison of original texts read at the corresponding cuts.
 
 namespace DeciSigma1.Holes.Fresh
 
-open DeciSigma1.Readers
+open DeciSigma1.Readers DeciSigma1.Words
 open Finset
 
 /-! ## Deletion sites, junctions and windows -/
@@ -52,42 +52,28 @@ theorem minDepth_le_endDepth :
         m.edge.endDepth := by have := m.minDepth_lt_maxDepth; have := m.maxDepth_lt_endDepth;
                               omega
 
-theorem upperCutLength_spec (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ}
-    (ho : o ∈ upperOccurrences W t)
+theorem upperCutLength_spec {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     (hth : m.edge.TraversedBy o) :
     depthCut W t o m.minDepth + m.upperCutLength = o.2.2 ∧ depthCut W t o m.maxDepth +
         m.deletionLength +
         m.upperCutLength = o.2.2 ∧
       0 < m.upperCutLength := by
-  have h1 := m.edge.depthCut_through hne ho hth m.minDepth_le_endDepth
-  have h2 := m.site_spec hne ho hth
+  have h1 := m.edge.depthCut_through ho hth m.minDepth_le_endDepth
+  have h2 := m.site_spec ho hth
   refine ⟨h1, by unfold upperCutLength; omega, by unfold upperCutLength; omega⟩
 
-theorem mem_siteList {l : Fin k} {c : ℕ} : c ∈ m.siteList l ↔ c ∈ m.sites l := by
-  simp [siteList]
-
-theorem site_occ {l : Fin k} {c : ℕ} (hc : c ∈ m.siteList l) :
+theorem site_occ {l : Fin k} {c : ℕ} (hc : c ∈ m.sites l) :
     ∃ o ∈ upperOccurrences W t, o.1 = l ∧ m.edge.TraversedBy o ∧ depthCut W t o m.maxDepth = c :=
-  m.mem_sites.mp ((m.mem_siteList).mp hc)
+  m.mem_sites.mp hc
 
-theorem strictly_separated_sites (hne : ∀ i, W i ≠ []) (l : Fin k) :
-    StrictlySeparated m.deletionLength (m.siteList l) := by
-  unfold StrictlySeparated siteList
-  rw [List.pairwise_reverse]
-  have hs := (pairwise_sort (m.sites l) (· ≤ ·)).and (sort_nodup (m.sites l) (· ≤ ·))
-  refine hs.imp_of_mem ?_
-  intro a b ha hb hab
-  rw [mem_sort] at ha hb
-  exact m.sites_separated hne ha hb (lt_of_le_of_ne hab.1 hab.2)
-
-theorem site_text (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c ∈ m.siteList l) :
+theorem site_text {l : Fin k} {c : ℕ} (hc : c ∈ m.sites l) :
     c + m.deletionLength < (W l).length ∧ ((W l).drop c).take m.deletionLength = m.deletedText := by
-  refine ⟨(m.site_valid hne hc).2.1, ?_⟩
+  refine ⟨(m.site_valid hc).2.1, ?_⟩
   obtain ⟨o, ho, rfl, hth, rfl⟩ := m.site_occ hc
-  have hsp := m.site_spec hne ho hth
+  have hsp := m.site_spec ho hth
   have hbn := (m.edge.through_iff.mp hth)
   have hjn : m.maxDepth ≤ lowerBlockCount W t o := by have := m.maxDepth_lt_endDepth; omega
-  have ht := text_depthCut hne ho m.minDepth_lt_maxDepth.le hjn
+  have ht := text_depthCut ho m.minDepth_lt_maxDepth.le hjn
   rw [show depthCut W t o m.minDepth - depthCut W t o m.maxDepth = m.deletionLength
       by omega] at ht
   rw [ht, deletedText]
@@ -99,49 +85,48 @@ theorem site_text (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c ∈ m.
 
 /-- Of two sites of one word, the upper block of the earlier one ends before that of the later one
 starts. -/
-theorem site_order (hne : ∀ i, W i ≠ []) {o o' : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
+theorem site_order {o o' : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     (ho' : o' ∈ upperOccurrences W t) (hth : m.edge.TraversedBy o) (hth' : m.edge.TraversedBy o')
         (hl : o.1 = o'.1)
     (hlt : depthCut W t o m.maxDepth < depthCut W t o' m.maxDepth) : o.2.2 ≤ o'.2.1 := by
-  have s1 := m.site_spec hne ho hth
-  have s2 := m.site_spec hne ho' hth'
+  have s1 := m.site_spec ho hth
+  have s2 := m.site_spec ho' hth'
   rcases lt_trichotomy o.2.2 o'.2.2 with h | h | h
   · exact upperOccurrences_le_start ho ho' hl h
   · have := upperOcc_ext ho ho' hl h; subst this; omega
   · have := upperOccurrences_le_start ho' ho hl.symm h; omega
 
 /-- A word with an upper occurrence that traverses the edge is active at level `t + 1`. -/
-theorem active_of_through (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
+theorem active_of_through {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     (hth : m.edge.TraversedBy o) : o.1 ∈ active W (t + 1) := by
   have hbn := (m.edge.through_iff.mp hth).1
   have h2 : 1 <
       lowerBlockCount W t o := by have := m.maxDepth_lt_endDepth; have := m.one_le_minDepth;
                                   have := m.minDepth_lt_maxDepth; omega
-  obtain ⟨hall, -⟩ := depthCut_spec hne ho
+  obtain ⟨hall, -⟩ := depthCut_spec ho
   obtain ⟨hA, -, -, -⟩ := hall 1 h2
-  have hlt : depthCut W t o 1 < depthCut W t o 0 := depthCut_lt hne ho (d := 0) (by omega)
-  have hE := (upperOcc_spec hne ho).2.1
+  have hlt : depthCut W t o 1 < depthCut W t o 0 := depthCut_lt ho (d := 0) (by omega)
+  have hE := (upperOcc_spec ho).2.1
   have hd0 : depthCut W t o 0 = o.2.2 := rfl
   rcases t with _ | t
-  · exact mem_univ _
+  · exact (mem_active_one W).mpr (ne_nil_of_mem_upperOccurrences ho)
   · by_cases hact : o.1 ∈ active W (t + 1)
     · exact (mem_active_succ_succ W).mpr ⟨hact, _, hA, by omega⟩
     · exfalso
       rcases t with _ | t
-      · exact hact (mem_univ _)
-      · have hsing := anchors_eq_singleton hne (t := t + 1) (by omega) hact
-        have := anchors_succ_subset hne (t + 1) o.1 hA
+      · exact hact ((mem_active_one W).mpr (ne_nil_of_mem_upperOccurrences ho))
+      · have hsing := anchors_eq_singleton (t := t + 1) (by omega) hact
+        have := anchors_succ_subset (t + 1) o.1 hA
         rw [hsing, mem_singleton] at this
         omega
 
-theorem active_t_of_through (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ}
-    (ho : o ∈ upperOccurrences W t)
+theorem active_t_of_through {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     (hth : m.edge.TraversedBy o) : o.1 ∈ active W t :=
-  active_succ_subset W t (m.active_of_through hne ho hth)
+  active_succ_subset W t (m.active_of_through ho hth)
 
 /-- A set that contains the cuts at depths `0, …, D` of an upper occurrence has at least `D + 1`
 elements. -/
-theorem card_depthCuts (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
+theorem card_depthCuts {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     {D : ℕ} (hD : D ≤ lowerBlockCount W t o) {X : Finset ℕ} (hX : ∀ d ≤ D, depthCut W t o d ∈ X) :
     D + 1 ≤ X.card := by
   have hinj : Set.InjOn (depthCut W t o) (range (D + 1)) := by
@@ -149,20 +134,20 @@ theorem card_depthCuts (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho :
     simp only [coe_range, Set.mem_Iio] at hd hd'
     by_contra hne'
     rcases Nat.lt_or_gt_of_ne hne' with h | h
-    · exact absurd he (depthCut_lt_of_lt hne ho h (by omega)).ne'
-    · exact absurd he (depthCut_lt_of_lt hne ho h (by omega)).ne
+    · exact absurd he (depthCut_lt_of_lt ho h (by omega)).ne'
+    · exact absurd he (depthCut_lt_of_lt ho h (by omega)).ne
   calc D + 1 = ((range (D + 1)).image (depthCut W t o)).card := by
         rw [card_image_of_injOn hinj, card_range]
     _ ≤ X.card := card_le_card (fun p hp => by
         obtain ⟨d, hd, rfl⟩ := mem_image.mp hp
         exact hX d (by simp at hd; omega))
 
-theorem depthCut_anti (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
+theorem depthCut_anti {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     {d d' : ℕ} (h : d ≤ d') (hd' : d' ≤ lowerBlockCount W t o) : depthCut W t o d' ≤
         depthCut W t o d := by
   rcases Nat.eq_or_lt_of_le h with h | h
   · rw [h]
-  · exact (depthCut_lt_of_lt hne ho h hd').le
+  · exact (depthCut_lt_of_lt ho h hd').le
 
 theorem deletionMargin_gt
     (hlt : m.edge.startDepth + deletionMargin k (Fintype.card S) ≤ m.minDepth) :
@@ -171,30 +156,30 @@ theorem deletionMargin_gt
 
 /-- The marker of level `t + 1` that ends a traversing occurrence lies within its last
 `minDepth` lower blocks, by the bound on anchors inside a marker and the deletion margin. -/
-theorem endMarker [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ [])
+theorem endMarker [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) (hth : m.edge.TraversedBy o) :
     ∃ g ∈ active W (t + 1), marker W (t + 1) g <:+ (W o.1).take o.2.2 ∧
       (marker W (t + 1) g).length ≤ m.upperCutLength := by
-  have hact := m.active_of_through hne ho hth
-  have hE := (mem_upperOcc.mp ho).1
-  rw [anchors_eq_contextAnchors hne hact] at hE
+  have hact := m.active_of_through ho hth
+  have hE := (mem_upperOcc.mp ho).2.1
+  rw [anchors_eq_contextAnchors hact] at hE
   obtain ⟨-, g, hg, hs⟩ := (mem_contextAnchors_succ W).mp hE
   refine ⟨g, hg, hs, Nat.le_of_not_lt fun hlong => ?_⟩
-  have hEl := (upperOcc_spec hne ho).2.1
+  have hEl := (upperOcc_spec ho).2.1
   obtain ⟨hl1, hocc⟩ := (suffix_take_iff hEl).mp hs
-  have hsp := card_anchors_Ioc_marker_le hfr hne t hg (W o.1) hocc
-  have hnt := m.upperCutLength_spec hne ho hth
+  have hsp := card_anchors_Ioc_marker_le hfr t hg (W o.1) hocc
+  have hnt := m.upperCutLength_spec ho hth
   have hbn := (m.edge.through_iff.mp hth).1
   have hin : m.minDepth ≤ lowerBlockCount W t o := by have := m.minDepth_le_endDepth; omega
-  have hctx := anchors_eq_contextAnchors hne (m.active_t_of_through hne ho hth)
-  have := card_depthCuts hne ho hin (X := (contextAnchors W t (W o.1)).filter
+  have hctx := anchors_eq_contextAnchors (m.active_t_of_through ho hth)
+  have := card_depthCuts ho hin (X := (contextAnchors W t (W o.1)).filter
     (fun p => o.2.2 - (marker W (t + 1) g).length < p ∧
       p ≤ o.2.2 - (marker W (t + 1) g).length + (marker W (t + 1) g).length)) (by
     intro d hd
     rw [mem_filter, ← hctx]
-    have h1 := depthCut_anti hne ho hd hin
-    have h2 := depthCut_anti hne ho (Nat.zero_le d) (hd.trans hin)
-    obtain ⟨hall, -⟩ := depthCut_spec hne ho
+    have h1 := depthCut_anti ho hd hin
+    have h2 := depthCut_anti ho (Nat.zero_le d) (hd.trans hin)
+    obtain ⟨hall, -⟩ := depthCut_spec ho
     have := m.minDepth_lt_maxDepth; have := m.maxDepth_lt_endDepth
     exact ⟨(hall d (by omega)).1, by rw [show depthCut W t o 0 = o.2.2 from rfl] at h2; omega,
       by rw [show depthCut W t o 0 = o.2.2 from rfl] at h2; omega⟩)
@@ -202,38 +187,35 @@ theorem endMarker [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i �
   omega
 
 /-- Upper anchors are not cuts of a site: sites lie strictly inside upper blocks. -/
-theorem anchor_ne_site (hne : ∀ i, W i ≠ []) {l : Fin k} {p c : ℕ}
-    (hp : p ∈ anchors W (t + 1) l) (hc : c ∈ m.siteList l) : p ≠ c ∧ p ≠ c + m.deletionLength := by
+theorem anchor_ne_site {l : Fin k} {p c : ℕ}
+    (hp : p ∈ anchors W (t + 1) l) (hc : c ∈ m.sites l) : p ≠ c ∧ p ≠ c + m.deletionLength := by
   obtain ⟨o, ho, rfl, hth, rfl⟩ := m.site_occ hc
-  have hsp := m.site_spec hne ho hth
-  have hno := (upperOcc_spec hne ho).2.2.2.2 p hp
+  have hsp := m.site_spec ho hth
+  have hno := (upperOcc_spec ho).2.2.2.2 p hp
   constructor <;> rintro rfl <;> exact hno ⟨by omega, by omega⟩
 
-/-- At the junction `J` of a site `c`, the right preimage is `c + δ`, the next `upperCutLength`
-letters are original text up to the end of the upper block, and no other junction of the word lies
-in `(J, J + upperCutLength)`. -/
-theorem junction_window (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c ∈ m.siteList l) :
-    leftOriginalCut m.deletionLength (m.siteList l)
-        (retainedCut m.deletionLength (m.siteList l) c) = c ∧
-    rightOriginalCut m.deletionLength (m.siteList l)
-        (retainedCut m.deletionLength (m.siteList l) c) = c + m.deletionLength ∧
-    (∀ J',
-        IsJunction m.deletionLength (m.siteList l) J' → J' ≤
-            retainedCut m.deletionLength (m.siteList l) c ∨
-      retainedCut m.deletionLength (m.siteList l) c + m.upperCutLength ≤ J') ∧
-    retainedCut m.deletionLength (m.siteList l) c + m.upperCutLength ≤ (m.apply l).length ∧
-    ((m.apply l).drop (retainedCut m.deletionLength (m.siteList l) c)).take m.upperCutLength =
+/-- At the junction `J` of a site `c`, the greatest preimage is `c + δ`, the next
+`upperCutLength` letters are original text up to the end of the upper block, and no other
+junction of the word lies in `(J, J + upperCutLength)`. -/
+theorem junction_window {l : Fin k} {c : ℕ} (hc : c ∈ m.sites l) :
+    greatestPreimage (sitePositions m.deletionLength (m.sites l))
+        (retainedCount (sitePositions m.deletionLength (m.sites l)) c) = c + m.deletionLength ∧
+    (∀ J', IsJunction m.deletionLength (m.sites l) J' →
+      J' ≤ retainedCount (sitePositions m.deletionLength (m.sites l)) c ∨
+        retainedCount (sitePositions m.deletionLength (m.sites l)) c + m.upperCutLength ≤ J') ∧
+    retainedCount (sitePositions m.deletionLength (m.sites l)) c + m.upperCutLength ≤
+      (m.apply l).length ∧
+    ((m.apply l).drop (retainedCount (sitePositions m.deletionLength (m.sites l)) c)).take
+        m.upperCutLength =
       ((W l).drop (c + m.deletionLength)).take m.upperCutLength := by
-  have hδ := m.delta_pos hne
-  have hs := m.strictly_separated_sites hne l
-  set cs := m.siteList l with hcs
+  have hδ := m.delta_pos
+  have hs := m.strictlySeparated l
+  set cs := m.sites l with hcs
   obtain ⟨o, ho, hol, hth, hoc⟩ := m.site_occ hc
-  have hnt := m.upperCutLength_spec hne ho hth
+  have hnt := m.upperCutLength_spec ho hth
   rw [hoc] at hnt
-  have hEl := (upperOcc_spec hne ho).2.1
+  have hEl := (upperOcc_spec ho).2.1
   rw [hol] at hEl
-  have hlen : ∀ c' ∈ cs, c' + m.deletionLength ≤ (W l).length :=
-    fun c' hc' => (m.site_text hne hc').1.le
   -- every other site is left of `c` or right of the end of its upper block
   have hother : ∀ c' ∈ cs, c' < c ∨ c' = c ∨ o.2.2 < c' := by
     intro c' hc'
@@ -242,8 +224,8 @@ theorem junction_window (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c 
     · exact Or.inr (Or.inl h)
     · right; right
       obtain ⟨o', ho', hol', hth', hoc'⟩ := m.site_occ hc'
-      have := m.site_order hne ho ho' hth hth' (hol.trans hol'.symm) (by rw [hoc, hoc']; exact h)
-      have := m.site_spec hne ho' hth'
+      have := m.site_order ho ho' hth hth' (hol.trans hol'.symm) (by rw [hoc, hoc']; exact h)
+      have := m.site_spec ho' hth'
       omega
   have hretE : Retained m.deletionLength cs o.2.2 := by
     intro c' hc' ⟨h1, h2⟩
@@ -257,27 +239,25 @@ theorem junction_window (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c 
     · have := hs.lt hc' hc h; omega
     · omega
     · omega
-  have hkE : retainedCut m.deletionLength cs o.2.2 = retainedCut m.deletionLength cs c +
-      m.upperCutLength := by
-    rw [retainedCut_dist hs hretc' (q := o.2.2) (by omega) (fun c' hc' ⟨h1, h2⟩ => by
-      rcases hother c' hc' with h | h | h <;> omega), retainedCut_right hs hc]
+  have hkE : retainedCount (sitePositions m.deletionLength cs) o.2.2 =
+      retainedCount (sitePositions m.deletionLength cs) c + m.upperCutLength := by
+    rw [retainedCount_dist hretc' (q := o.2.2) (by omega) (fun c' hc' ⟨h1, h2⟩ => by
+      rcases hother c' hc' with h | h | h <;> omega), retainedCount_site_right hc]
     congr 1; omega
-  obtain ⟨j1, j2⟩ := originalCuts_at_junction hδ hs hc
-  have hsep : ∀ J', IsJunction m.deletionLength cs J' → J' ≤ retainedCut m.deletionLength cs c ∨
-      retainedCut m.deletionLength cs c + m.upperCutLength ≤ J' := by
+  have j2 := greatestPreimage_site hs hc
+  have hsep : ∀ J', IsJunction m.deletionLength cs J' →
+      J' ≤ retainedCount (sitePositions m.deletionLength cs) c ∨
+        retainedCount (sitePositions m.deletionLength cs) c + m.upperCutLength ≤ J' := by
     rintro J' ⟨c', hc', rfl⟩
     rcases hother c' hc' with h | h | h
-    · exact Or.inl
-        (retainedCut_mono hs (retained_of_mem_sites hs hc') (retained_of_mem_sites hs hc) h.le)
+    · exact Or.inl (retainedCount_mono h.le)
     · exact Or.inl (by rw [h])
-    · exact Or.inr (hkE ▸ retainedCut_mono hs hretE (retained_of_mem_sites hs hc') h.le)
-  refine ⟨j1, j2, hsep, ?_, ?_⟩
-  · rw [← hkE,
-      show (m.apply l).length = (deleteIntervals m.deletionLength (W l) cs).length from rfl,
-      ← retainedCut_length hδ hs hlen]
-    exact retainedCut_mono hs hretE (ret_length hlen) hEl
+    · exact Or.inr (hkE ▸ retainedCount_mono h.le)
+  refine ⟨j2, hsep, ?_, ?_⟩
+  · rw [← hkE, BlockDeletion.apply, length_deletePositions]
+    exact retainedCount_mono hEl
   · rw [← j2]
-    refine take_drop_deleteIntervals hδ hs hlen (fun J' hJ' ⟨h1, h2⟩ => ?_)
+    refine take_drop_deleteSites _ (fun J' hJ' ⟨h1, h2⟩ => ?_)
     rcases hsep J' hJ' with h | h <;> omega
 
 /-- Let `o₁` be a traversing occurrence and `z` its last `upperCutLength` letters. If `z` also
@@ -287,23 +267,23 @@ traverses the edge too: its parse agrees with that of `o₁` on at least
 depend on the context; and the length of its common suffix with the parse of the edge is a trie
 node, hence at least `endDepth`. This is a statement about the original tuple. -/
 theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
-    (hne : ∀ i, W i ≠ [])
     {o₁ : Fin k × ℕ × ℕ} (ho₁ : o₁ ∈ upperOccurrences W t) (hth : m.edge.TraversedBy o₁)
     {l₂ : Fin k} {p₂ : ℕ} (hp₂ : p₂ ∈ anchors W (t + 1) l₂) (hn : m.upperCutLength ≤ p₂)
     (hz : ((W l₂).drop (p₂ - m.upperCutLength)).take m.upperCutLength =
       ((W o₁.1).drop (o₁.2.2 - m.upperCutLength)).take m.upperCutLength) :
     m.edge.TraversedBy (l₂, upperOccurrenceStart W t l₂ p₂, p₂) := by
-  obtain ⟨hnt1, -, hnpos⟩ := m.upperCutLength_spec hne ho₁ hth
-  have hE₁ := (upperOcc_spec hne ho₁).2.1
+  obtain ⟨hnt1, -, hnpos⟩ := m.upperCutLength_spec ho₁ hth
+  have hE₁ := (upperOcc_spec ho₁).2.1
   have hbn := (m.edge.through_iff.mp hth).1
   have hin : m.minDepth <
       lowerBlockCount W t o₁ := by have := m.minDepth_lt_maxDepth;
                                    have := m.maxDepth_lt_endDepth; omega
-  obtain ⟨hall₁, -⟩ := depthCut_spec hne ho₁
+  obtain ⟨hall₁, -⟩ := depthCut_spec ho₁
   have hs₁c : o₁.2.1 < depthCut W t o₁ m.minDepth := (hall₁ m.minDepth hin).2.1
   have hcnt : anchorCount (anchors W t o₁.1) (depthCut W t o₁ m.minDepth) o₁.2.2 = m.minDepth :=
     (hall₁ m.minDepth hin).2.2.2
-  have hp₂len : p₂ ≤ (W l₂).length := (anchors_bounds hne (anchors_succ_subset hne t l₂ hp₂)).2
+  have hp₂len : p₂ ≤ (W l₂).length := le_length_of_mem_anchors hp₂
+  have hl₂ : W l₂ ≠ [] := List.ne_nil_of_length_pos (by omega)
   have hmg := m.deletionMargin_gt m.left_margin
   set n := m.upperCutLength with hndef
   set E₁ := o₁.2.2 with hE₁def
@@ -314,11 +294,11 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
   have hzlen : z.length = n := by simp [hzdef]; omega
   set u₁ := (W o₁.1).take c₁ with hu₁def
   set u₂ := (W l₂).take (p₂ - n) with hu₂def
-  have hact₁ := m.active_t_of_through hne ho₁ hth
-  have hanc₁ := anchors_eq_contextAnchors hne hact₁
+  have hact₁ := m.active_t_of_through ho₁ hth
+  have hanc₁ := anchors_eq_contextAnchors hact₁
   set Q := contextAnchors W t z with hQ
   have hrel : ∀ u, relativeAnchors W t u z = Q ∪ crossBoundaryMarkerEnds W t u z :=
-      fun u => relativeAnchors_eq_union hne t u z
+      fun u => relativeAnchors_eq_union t u z
   have hQle : ∀ q ∈ Q, q ≤ n := fun q hq => hzlen ▸ contextAnchors_le_length hq
   have hA₁ : ∀ q, 1 ≤ q → q ≤ n →
       (c₁ + q ∈ anchors W t o₁.1 ↔ q ∈ Q ∪ crossBoundaryMarkerEnds W t u₁ z) := by
@@ -350,14 +330,14 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     omega
   have hnQ : n ∈ Q := by
     have hE : c₁ + n ∈ anchors W t o₁.1 := by
-      rw [show c₁ + n = E₁ by omega]; exact (upperOcc_spec hne ho₁).2.2.1
+      rw [show c₁ + n = E₁ by omega]; exact (upperOcc_spec ho₁).2.2.1
     rcases mem_union.mp ((hA₁ n hnpos le_rfl).mp hE) with h | h
     · exact h
     · exfalso
       have hQe : Q = ∅ := by
         rw [eq_empty_iff_forall_notMem]
         intro q hq
-        have := crossBoundaryMarkerEnds_lt_inside hne h hq
+        have := crossBoundaryMarkerEnds_lt_inside h hq
         have := hQle q hq
         omega
       rw [hQe, card_empty] at hcardQ
@@ -366,12 +346,12 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
   set qm := Q.min' hQne with hqmdef
   have hqmQ : qm ∈ Q := Q.min'_mem hQne
   have hqm_le : ∀ q ∈ Q, qm ≤ q := fun q hq => Q.min'_le q hq
-  have hqm1 : 1 ≤ qm := contextAnchors_pos hne hqmQ
+  have hqm1 : 1 ≤ qm := contextAnchors_pos hqmQ
   have hqmn : qm ≤ n := hqm_le n hnQ
   -- from the first inside anchor on, the anchors in `z` are those of `z` alone
   have hcross : ∀ u q, qm ≤ q → (q ∈ Q ∪ crossBoundaryMarkerEnds W t u z ↔ q ∈ Q) := by
     refine fun u q h1 => ⟨fun h => (mem_union.mp h).elim id fun h => ?_, mem_union_left _⟩
-    have := crossBoundaryMarkerEnds_lt_inside hne h hqmQ
+    have := crossBoundaryMarkerEnds_lt_inside h hqmQ
     omega
   have hag₁ : ∀ q, qm ≤ q → q ≤ n → (c₁ + q ∈ anchors W t o₁.1 ↔ q ∈ Q) := fun q h1 h2 => by
     rw [hA₁ q (by omega) h2, hcross _ q h1]
@@ -381,7 +361,7 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     · rw [hA₂ q (by omega) hlt, hcross _ q h1]
     · have hq : q = n := by omega
       rw [hq, Nat.sub_add_cancel hn]
-      exact ⟨fun _ => hnQ, fun _ => anchors_succ_subset hne t l₂ hp₂⟩
+      exact ⟨fun _ => hnQ, fun _ => anchors_succ_subset t l₂ hp₂⟩
   set D := anchorCount Q qm n with hDdef
   have hdc₁ : ∀ d ≤ D, depthCut W t o₁ d = c₁ + depthCutAt Q n d := by
     intro d hd
@@ -428,7 +408,7 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
         by_contra ht0
         have h0 : t = 0 := by omega
         have h1 : (marker W (t + 1) g).length = 1 := by
-          rw [h0]; exact length_marker_one hne g
+          rw [h0] at hg ⊢; exact length_marker_one hg
         omega
       have hge : ∀ q ∈ Q, d₂ ≤ q := by
         intro q hq
@@ -444,7 +424,7 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
           exact hμ.trans (List.suffix_append _ _)
         obtain ⟨-, hμo⟩ := (suffix_take_iff (by omega)).mp hμ₂
         have hin' := prefix_drop_of_occ hσo hμo (by omega) (by omega)
-        rcases (marker_occurrences_in_next_marker hne (by omega) hg).2.2 h hh _ hin' with
+        rcases (marker_occurrences_in_next_marker (by omega) hg).2.2 h hh _ hin' with
           h1 | h1 <;> omega
       have := hge qm hqmQ
       omega
@@ -458,9 +438,9 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
         exact hσz.trans (List.suffix_append _ _)
       have hanc : c₁ + d₂ ∈ anchors W (t + 1) o₁.1 :=
         mem_insert_of_mem ((mem_contextAnchors_succ W).mpr ⟨by omega, g, hg, hσ₁⟩)
-      exact (upperOcc_spec hne ho₁).2.2.2.2 _ hanc ⟨by omega, by omega⟩
+      exact (upperOcc_spec ho₁).2.2.2.2 _ hanc ⟨by omega, by omega⟩
   have ho₂ : (l₂, upperOccurrenceStart W t l₂ p₂, p₂) ∈ upperOccurrences W t :=
-      mem_upperOcc.mpr ⟨hp₂, rfl⟩
+      mem_upperOcc.mpr ⟨hl₂, hp₂, rfl⟩
   have hnlow₂ : D ≤ lowerBlockCount W t (l₂, upperOccurrenceStart W t l₂ p₂, p₂) := by
     have h1 := anchorCount_shift (A := anchors W t l₂) hag₂
     rw [Nat.sub_add_cancel hn] at h1
@@ -524,21 +504,21 @@ theorem traversedBy_of_text_eq [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
 /-- Let `u₁` be a junction of word `l₁`, and let the edited word `l₂` have the same text of
 `upperCutLength` letters from `u₂`, with no junction strictly inside. Then `u₂` is a junction of
 `l₂`. -/
-theorem transfer [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ [])
-    {l₁ l₂ : Fin k} {u₁ u₂ : ℕ} (hJ : IsJunction m.deletionLength (m.siteList l₁) u₁)
+theorem transfer [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
+    {l₁ l₂ : Fin k} {u₁ u₂ : ℕ} (hJ : IsJunction m.deletionLength (m.sites l₁) u₁)
     (htext : ((m.apply l₁).drop u₁).take m.upperCutLength =
         ((m.apply l₂).drop u₂).take m.upperCutLength)
     (hfree : ∀ J,
-        IsJunction m.deletionLength (m.siteList l₂) J → ¬ (u₂ < J ∧ J < u₂ + m.upperCutLength))
+        IsJunction m.deletionLength (m.sites l₂) J → ¬ (u₂ < J ∧ J < u₂ + m.upperCutLength))
     (hlen : u₂ + m.upperCutLength ≤ (m.apply l₂).length) :
-    IsJunction m.deletionLength (m.siteList l₂) u₂ := by
+    IsJunction m.deletionLength (m.sites l₂) u₂ := by
   obtain ⟨c₁, hc₁, rfl⟩ := hJ
   obtain ⟨o₁, ho₁, hol₁, hth₁, hoc₁⟩ := m.site_occ hc₁
-  obtain ⟨-, -, -, -, hwin₁⟩ := m.junction_window hne hc₁
-  obtain ⟨hnt1, hnt2, hnpos⟩ := m.upperCutLength_spec hne ho₁ hth₁
-  obtain ⟨g, hg, hσE, hσl⟩ := m.endMarker hfr hne ho₁ hth₁
+  obtain ⟨-, -, -, hwin₁⟩ := m.junction_window hc₁
+  obtain ⟨hnt1, hnt2, hnpos⟩ := m.upperCutLength_spec ho₁ hth₁
+  obtain ⟨g, hg, hσE, hσl⟩ := m.endMarker hfr ho₁ hth₁
   rw [hoc₁] at hnt2
-  have hE₁ := (upperOcc_spec hne ho₁).2.1
+  have hE₁ := (upperOcc_spec ho₁).2.1
   rw [hol₁] at hE₁ hσE
   have hσz : marker W (t + 1) g <:+
       ((W l₁).drop (c₁ + m.deletionLength)).take m.upperCutLength := by
@@ -554,48 +534,47 @@ theorem transfer [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i �
   have hanc : u₂ + m.upperCutLength ∈ contextAnchors W (t + 1) (m.apply l₂) :=
     (mem_contextAnchors_succ W).mpr ⟨hlen, g, hg, hσU⟩
   obtain ⟨p₂, hp₂, hret, hkp⟩ :=
-      (m.contextAnchors_apply hne (r := t + 1) (by omega) le_rfl l₂ _).mp hanc
+      (m.contextAnchors_apply (r := t + 1) (by omega) le_rfl l₂ _).mp hanc
   have hp₂A : p₂ ∈ anchors W (t + 1) l₂ := mem_insert_of_mem hp₂
-  have hs := m.strictly_separated_sites hne l₂
-  have hδ := m.delta_pos hne
-  have hki : leftOriginalCut m.deletionLength (m.siteList l₂) (u₂ + m.upperCutLength) = p₂ := by
-    rw [← hkp]; exact leftOriginalCut_retainedCut hs hret
-        (fun c hc => (m.anchor_ne_site hne hp₂A hc).2)
-  have hka := leftOriginalCut_add hδ hs hnpos hfree
-  rw [hki] at hka
-  have hlen' : ∀ c ∈ m.siteList l₂, c + m.deletionLength ≤ (W l₂).length :=
-    fun c hc => (m.site_text hne hc).1.le
+  have hs := m.strictlySeparated l₂
+  have hδ := m.delta_pos
+  have hka : greatestPreimage (sitePositions m.deletionLength (m.sites l₂)) u₂ + m.upperCutLength =
+      p₂ :=
+    greatestPreimage_add_eq hnpos hfree hret (fun c hc => (m.anchor_ne_site hp₂A hc).2) hkp
   have hwin₂ : ((m.apply l₂).drop u₂).take m.upperCutLength =
-      ((W l₂).drop (rightOriginalCut m.deletionLength (m.siteList l₂) u₂)).take m.upperCutLength :=
-    take_drop_deleteIntervals hδ hs hlen' hfree
+      ((W l₂).drop (greatestPreimage (sitePositions m.deletionLength (m.sites l₂)) u₂)).take
+        m.upperCutLength :=
+    take_drop_deleteSites _ hfree
   have hz₂ : ((W l₂).drop (p₂ - m.upperCutLength)).take m.upperCutLength =
       ((W o₁.1).drop (o₁.2.2 - m.upperCutLength)).take m.upperCutLength := by
-    rw [show p₂ - m.upperCutLength = rightOriginalCut m.deletionLength (m.siteList l₂) u₂ by omega,
+    rw [show p₂ - m.upperCutLength =
+          greatestPreimage (sitePositions m.deletionLength (m.sites l₂)) u₂ by omega,
         ← hwin₂,
         ← htext, hwin₁,
       hol₁, show o₁.2.2 - m.upperCutLength = c₁ + m.deletionLength by omega]
-  have hthr := m.traversedBy_of_text_eq hfr hne ho₁ hth₁ hp₂A (by omega) hz₂
+  have hthr := m.traversedBy_of_text_eq hfr ho₁ hth₁ hp₂A (by omega) hz₂
+  have hl₂ : W l₂ ≠ [] :=
+    List.ne_nil_of_length_pos (by have := le_length_of_mem_anchors hp₂A; omega)
   have ho₂ : (l₂, upperOccurrenceStart W t l₂ p₂, p₂) ∈ upperOccurrences W t :=
-      mem_upperOcc.mpr ⟨hp₂A, rfl⟩
-  obtain ⟨-, hn2', -⟩ := m.upperCutLength_spec hne ho₂ hthr
+      mem_upperOcc.mpr ⟨hl₂, hp₂A, rfl⟩
+  obtain ⟨-, hn2', -⟩ := m.upperCutLength_spec ho₂ hthr
   have hE2 : (l₂, upperOccurrenceStart W t l₂ p₂, p₂).2.2 = p₂ := rfl
   rw [hE2] at hn2'
-  have hc₂ : depthCut W t (l₂, upperOccurrenceStart W t l₂ p₂, p₂) m.maxDepth ∈ m.siteList l₂ :=
-    m.mem_siteList.mpr (m.mem_sites.mpr ⟨_, ho₂, rfl, hthr, rfl⟩)
+  have hc₂ : depthCut W t (l₂, upperOccurrenceStart W t l₂ p₂, p₂) m.maxDepth ∈ m.sites l₂ :=
+    m.mem_sites.mpr ⟨_, ho₂, rfl, hthr, rfl⟩
   refine ⟨_, hc₂, ?_⟩
-  rw [← retainedCut_right hs hc₂, show depthCut W t (l₂, upperOccurrenceStart W t l₂ p₂,
+  rw [← retainedCount_site_right hc₂, show depthCut W t (l₂, upperOccurrenceStart W t l₂ p₂,
       p₂) m.maxDepth + m.deletionLength =
-    rightOriginalCut m.deletionLength (m.siteList l₂) u₂ by omega]
-  exact (rightOriginalCut_spec hδ hs u₂).1
+    greatestPreimage (sitePositions m.deletionLength (m.sites l₂)) u₂ by omega]
+  exact retainedCount_greatestPreimage u₂
 
 /-- Two junctions of one word are at least `upperCutLength` apart. -/
-theorem junction_sep (hne : ∀ i, W i ≠ []) {l : Fin k} {u u' : ℕ}
-    (hu : IsJunction m.deletionLength (m.siteList l) u)
-        (hu' : IsJunction m.deletionLength (m.siteList l) u')
+theorem junction_sep {l : Fin k} {u u' : ℕ} (hu : IsJunction m.deletionLength (m.sites l) u)
+        (hu' : IsJunction m.deletionLength (m.sites l) u')
         (hlt : u < u') :
     u + m.upperCutLength ≤ u' := by
   obtain ⟨c, hc, rfl⟩ := hu
-  rcases (m.junction_window hne hc).2.2.1 u' hu' with h | h
+  rcases (m.junction_window hc).2.1 u' hu' with h | h
   · omega
   · exact h
 

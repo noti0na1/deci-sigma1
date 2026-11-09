@@ -1,40 +1,43 @@
 import DeciSigma1.Holes.Fresh.Parsing
+import DeciSigma1.Words.Deletion
 
 /-! # Block deletion
 
 A `BlockDeletion` is the shortening step of the bound on minimal fresh tuples. It consists of an
 edge `(a, b)` of the reverse trie of parses at level `t` and two depths `a + M ≤ i < j ≤ b - M`,
-with `M = deletionMargin k N`, such that in every upper occurrence that traverses the edge the
-cuts at depths `j` and `i` carry the same `label`. The label of a cut records which markers of
-levels `1, …, t` end there (`lowerLevelTypes`) and the state of the run before the longest of
-them, so equal labels give equal states at the two cuts. The deletion removes the text between
-these two cuts from every traversing occurrence (`BlockDeletion.apply`). All removed texts have
-the same length (`deletionLength`), and each starts and ends in the same state, so the edited
-runs pass through states of the original runs.
+with `M = deletionMargin k N`, such that in every upper occurrence that traverses the edge the cuts
+at depths `j` and `i` carry the same `label`. The label of a cut records which markers of levels
+`1, …, t` end there (`lowerLevelTypes`) and the state of the run before the longest of them, so
+equal labels give equal states at the two cuts. The deletion removes the text between these two cuts
+from every traversing occurrence (`BlockDeletion.apply`). All removed texts have the same length
+(`deletionLength`), and each starts and ends in the same state, so the edited runs pass through
+states of the original runs (`BlockDeletion.runPrefix_apply`). The deletion of positions, its cut
+map `retainedCount` and the greatest preimage `greatestPreimage` of a cut of the edited text are
+those of `Words.Deletion`.
 
 This module proves the properties of a block deletion other than the inclusion of channels:
 the edited tuple is shorter, has the same endpoints, visits only states that the original
 visits, stays fresh, and keeps the anchors of the original words at the images of the retained
 cuts (`contextAnchors_apply`). With channel inclusion, proved in
 `Holes.Fresh.ChannelPreservation`, a block deletion is a fresh domination
-(`blockDeletionPreservesFreshDomination_of_channels`).
+(`BlockDeletion.freshDominates_of_channel`).
 
 ## Main declarations
 
 - `ValidDeletionSite`, `contextAnchors_deleteSite`: one deletion site and the anchors after it
   is removed.
-- `deleteIntervals`, `retainedCut`, `leftOriginalCut`: deletion of several sites and the maps
-  between original and edited cuts.
+- `sitePositions`, `StrictlySeparated`, `Retained`, `contextAnchors_deleteSites`: deletion of
+  several sites with `Words.deletePositions`, and the anchors of the edited text.
 - `deletionMargin`, `lowerLevelTypes`, `label`: the labels of cuts.
-- `BlockDeletion`, `BlockDeletion.apply`: block deletions and the edited tuple.
-- `BlockDeletionPreservesFreshDomination`, `BlockDeletionPreservesChannels`: the statements that
-  block deletions are fresh dominations and preserve channels.
-- `blockDeletionPreservesFreshDomination_of_channels`: the first follows from the second.
+- `BlockDeletion`, `BlockDeletion.apply`, `BlockDeletion.runPrefix_apply`: block deletions, the
+  edited tuple and its states.
+- `BlockDeletion.freshDominates_of_channel`: a block deletion with smaller channels is a fresh
+  domination.
 -/
 
 namespace DeciSigma1.Holes.Fresh
 
-open DeciSigma1.Readers
+open DeciSigma1.Readers DeciSigma1.Words
 open Finset
 
 variable {α : Type} [DecidableEq α] {k : ℕ}
@@ -56,23 +59,18 @@ omit [DecidableEq α] in
 theorem suffix_append_right {a b : List α} (h : a <:+ b) (c : List α) : a ++ c <:+ b ++ c := by
   obtain ⟨p, rfl⟩ := h; exact ⟨p, by simp⟩
 
-theorem length_marker_one {W : Fin k → List α} (hne : ∀ i, W i ≠ []) (l : Fin k) :
-    (marker W 1 l).length = 1 := by
-  have := List.length_pos_iff.mpr (hne l)
-  rw [marker_one, List.length_drop]; omega
-
-theorem marker_suffix_of_le {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {r t : ℕ} (hrt : r ≤ t)
+theorem marker_suffix_of_le {W : Fin k → List α} {r t : ℕ} (hrt : r ≤ t)
     {m : Fin k} (hm : m ∈ active W t) : marker W r m <:+ marker W t m := by
   induction t, hrt using Nat.le_induction with
   | base => exact List.suffix_refl _
   | succ t _ ih =>
-    exact (ih (active_succ_subset W t hm)).trans (marker_suffix_succ hne hm)
+    exact (ih (active_succ_subset W t hm)).trans (marker_suffix_succ hm)
 
 /-- An occurrence of a level-`r` marker (`1 ≤ r ≤ t + 1`) that strictly crosses a cut `p` at
 which a level-`t` marker `τ` ends has at most `|τ|` letters to the left of `p`: otherwise `τ`,
 or its level-`r` suffix, would occur strictly inside it, against the factor antichain
 property. -/
-theorem crossing_length_le {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t r : ℕ} (ht : 1 ≤ t)
+theorem crossing_length_le {W : Fin k → List α} {t r : ℕ} (ht : 1 ≤ t)
     (hr : r ≤ t + 1) {m m0 : Fin k} (hm : m ∈ active W r) (hm0 : m0 ∈ active W t)
     {u : List α} {p e : ℕ} (hτ : marker W t m0 <:+ u.take p) (hμ : marker W r m <:+ u.take e)
     (hpe : p < e) (he : e ≤ u.length) :
@@ -85,17 +83,17 @@ theorem crossing_length_le {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t 
   · -- r ≤ t: the level-`r` suffix of `τ` sits strictly inside the occurrence
     have hrt' : r ≤ t := by omega
     have hm0r : m0 ∈ active W r := active_anti W hrt' hm0
-    have hsuf : marker W r m0 <:+ u.take p := (marker_suffix_of_le hne hrt' hm0).trans hτ
-    have hsl := (marker_suffix_of_le hne hrt' hm0).length_le
+    have hsuf : marker W r m0 <:+ u.take p := (marker_suffix_of_le hrt' hm0).trans hτ
+    have hsl := (marker_suffix_of_le hrt' hm0).length_le
     obtain ⟨-, hro⟩ := (suffix_take_iff hpu).mp hsuf
-    obtain ⟨heq, -⟩ := marker_occurrences_eq_of_nested hne hm hm0r hμo hro (by omega) (by omega)
+    obtain ⟨heq, -⟩ := marker_occurrences_eq_of_nested hm hm0r hμo hro (by omega) (by omega)
     omega
   · -- r = t + 1: `τ` is a complete internal occurrence, against
     -- `marker_occurrences_in_next_marker`
     have hr' : r = t + 1 := by omega
     subst hr'
     have hin := prefix_drop_of_occ hμo hτo (by omega) (by omega)
-    rcases (marker_occurrences_in_next_marker hne ht hm).2.2 m0 hm0 _ hin with h | h <;> omega
+    rcases (marker_occurrences_in_next_marker ht hm).2.2 m0 hm0 _ hin with h | h <;> omega
 
 /-! ## Deleting one site -/
 
@@ -149,7 +147,7 @@ theorem length_deleteSite {x : List α} {c δ : ℕ} (h : c + δ ≤ x.length) :
 /-- After deleting a valid site, the level-`r` anchors (`1 ≤ r ≤ t + 1`) of the edited text,
 for the markers of `W`, are exactly the images of the original ones: cuts `≤ c` stay and cuts
 `≥ c + δ` move left by `δ`. -/
-theorem contextAnchors_deleteSite (hne : ∀ i, W i ≠ []) {t : ℕ} {x : List α} {c δ : ℕ}
+theorem contextAnchors_deleteSite {t : ℕ} {x : List α} {c δ : ℕ}
     (hS : ValidDeletionSite W t x c δ) {r : ℕ} (hr1 : 1 ≤ r) (hr : r ≤ t + 1) (e : ℕ) :
     e ∈ contextAnchors W r (x.take c ++ x.drop (c + δ)) ↔
       (e ≤ c ∧ e ∈ contextAnchors W r x) ∨ (c ≤ e ∧ e + δ ∈ contextAnchors W r x) := by
@@ -175,14 +173,14 @@ theorem contextAnchors_deleteSite (hne : ∀ i, W i ≠ []) {t : ℕ} {x : List 
       · rcases Nat.eq_zero_or_pos t with rfl | ht
         · have : r = 0 := by omega
           subst this
-          have : (marker W (0 + 1) m).length = 1 := length_marker_one hne m
+          have : (marker W (0 + 1) m).length = 1 := length_marker_one hm
           omega
         obtain ⟨m0, hm0, hτ⟩ := hS.anchor ht
         have hτ'' : marker W t m0 <:+ (x.take c ++ x.drop (c + δ)).take c := by
           rwa [take_deleteSite_of_le (by omega) le_rfl]
         have hs' : marker W (r + 1) m <:+ (x.take c ++ x.drop (c + δ)).take e := by
           rwa [take_deleteSite_of_ge (by omega) (by omega)]
-        have hcr := crossing_length_le hne ht hr hm hm0 hτ'' hs' (by omega) (by omega)
+        have hcr := crossing_length_le ht hr hm hm0 hτ'' hs' (by omega) (by omega)
         have h1 : marker W (r + 1) m <:+ marker W t m0 ++ R :=
           List.suffix_of_suffix_length_le hs (suffix_append_right hτ R) (by simp; omega)
         have hτ2 := ((hS.types t ht le_rfl m0 hm0).mp hτ)
@@ -211,158 +209,133 @@ theorem contextAnchors_deleteSite (hne : ∀ i, W i ≠ []) {t : ℕ} {x : List 
         · rcases Nat.eq_zero_or_pos t with rfl | ht
           · have : r = 0 := by omega
             subst this
-            have : (marker W (0 + 1) m).length = 1 := length_marker_one hne m
+            have : (marker W (0 + 1) m).length = 1 := length_marker_one hm
             omega
           obtain ⟨m0, hm0, hτ⟩ := hS.anchor ht
           have hτ2 := ((hS.types t ht le_rfl m0 hm0).mp hτ)
           have hs' : marker W (r + 1) m <:+ x.take (e + δ) := by
             rw [take_add_delta hce]; exact hs
-          have hcr := crossing_length_le hne ht hr hm hm0 hτ2 hs' (by omega) (by omega)
+          have hcr := crossing_length_le ht hr hm hm0 hτ2 hs' (by omega) (by omega)
           have h1 : marker W (r + 1) m <:+ marker W t m0 ++ R :=
             List.suffix_of_suffix_length_le hs (suffix_append_right hτ2 R) (by simp; omega)
           exact h1.trans (suffix_append_right hτ R)
 
 end OneSite
 
-/-! ## Deleting several sites, right to left -/
+/-! ## Deleting several sites -/
 
 section SeveralSites
 
 variable {W : Fin k → List α}
 
-/-- Delete the sites `[c, c + δ)` of `cs`, listed from right to left. -/
-def deleteIntervals (δ : ℕ) : List α → List ℕ → List α
-  | x, [] => x
-  | x, c :: cs => deleteIntervals δ (x.take c ++ x.drop (c + δ)) cs
+/-- The positions deleted by the sites `[c, c + δ)` with `c ∈ cs`. -/
+def sitePositions (δ : ℕ) (cs : Finset ℕ) : Finset ℕ := cs.biUnion fun c => Finset.Ico c (c + δ)
 
-/-- The cut map: a retained cut of the original text to the corresponding cut of the edited
-text. -/
-def retainedCut (δ : ℕ) : List ℕ → ℕ → ℕ
-  | [], p => p
-  | c :: cs, p => retainedCut δ cs (if p ≤ c then p else p - δ)
+/-- Sites of length `δ` with a retained position between any two of them. -/
+def StrictlySeparated (δ : ℕ) (cs : Finset ℕ) : Prop := ∀ c ∈ cs, ∀ c' ∈ cs, c < c' → c + δ < c'
 
-/-- The inverse cut map: a cut of the edited text to a cut of the original text whose left part
-agrees with it up to the deleted texts. -/
-def leftOriginalCut (δ : ℕ) : List ℕ → ℕ → ℕ
-  | [], a => a
-  | c :: cs, a =>
-      if leftOriginalCut δ cs a ≤ c then leftOriginalCut δ cs a else leftOriginalCut δ cs a + δ
+/-- An original cut that is not strictly inside a deleted interval. -/
+def Retained (δ : ℕ) (cs : Finset ℕ) (p : ℕ) : Prop := ∀ c ∈ cs, ¬ (c < p ∧ p < c + δ)
 
-/-- Sites listed from right to left, each at least `δ` left of every earlier one. -/
-def Separated (δ : ℕ) (cs : List ℕ) : Prop := cs.Pairwise (fun c c' => c' + δ ≤ c)
+variable {δ : ℕ} {cs : Finset ℕ}
 
-omit [DecidableEq α] in
-theorem take_deleteSite_eq {x : List α} {c δ p : ℕ} (hc : c ≤ x.length) (hp : p ≤ c) :
-    (x.take c ++ x.drop (c + δ)).take p = x.take p := take_deleteSite_of_le hc hp
+theorem mem_sitePositions {p : ℕ} : p ∈ sitePositions δ cs ↔ ∃ c ∈ cs, c ≤ p ∧ p < c + δ := by
+  simp [sitePositions]
+
+theorem sitePositions_insert (c : ℕ) (cs : Finset ℕ) :
+    sitePositions δ (insert c cs) = sitePositions δ cs ∪ Finset.Ico c (c + δ) := by
+  rw [sitePositions, Finset.biUnion_insert, Finset.union_comm]; rfl
 
 /-- After deleting separated valid sites, the level-`r` anchors (`1 ≤ r ≤ t + 1`) of the edited
-text, for the markers of `W`, are exactly the images under `retainedCut` of the original anchors
+text, for the markers of `W`, are exactly the images under the cut map of the original anchors
 outside the deleted open intervals. -/
-theorem contextAnchors_deleteIntervals (hne : ∀ i, W i ≠ []) {t δ : ℕ} {r : ℕ} (hr1 : 1 ≤ r)
-    (hr : r ≤ t + 1) : ∀ {cs : List ℕ} {x : List α}, Separated δ cs →
+theorem contextAnchors_deleteSites {t r : ℕ} (hr1 : 1 ≤ r)
+    (hr : r ≤ t + 1) (cs : Finset ℕ) : ∀ {x : List α}, StrictlySeparated δ cs →
     (∀ c ∈ cs, ValidDeletionSite W t x c δ) → ∀ e,
-      e ∈ contextAnchors W r (deleteIntervals δ x cs) ↔
-        ∃ p ∈ contextAnchors W r x, (∀ c ∈ cs, ¬ (c < p ∧ p < c + δ)) ∧ retainedCut δ cs p = e
-  | [], x, _, _, e => by
-    simp only
-        [deleteIntervals, retainedCut, List.not_mem_nil, false_imp_iff, implies_true, true_and]
-    exact ⟨fun h => ⟨e, h, rfl⟩, fun ⟨p, hp, hpe⟩ => hpe ▸ hp⟩
-  | c :: cs, x, hsep, hok, e => by
-    rw [Separated, List.pairwise_cons] at hsep
-    obtain ⟨hlt, hsep'⟩ := hsep
-    have hc := hok c (List.mem_cons_self ..)
+      e ∈ contextAnchors W r (deletePositions x (sitePositions δ cs)) ↔
+        ∃ p ∈ contextAnchors W r x, Retained δ cs p ∧ retainedCount (sitePositions δ cs) p = e := by
+  induction cs using Finset.induction_on_max with
+  | empty =>
+    intro x _ _ e
+    simp only [sitePositions, Finset.biUnion_empty, deletePositions_empty, retainedCount_empty,
+      Retained, Finset.notMem_empty, false_imp_iff, implies_true, true_and, exists_eq_right]
+  | insert c cs hmax ih =>
+    intro x hsep hok e
+    have hc := hok c (mem_insert_self ..)
     have hcx := hc.le_len
+    have hlt : ∀ c2 ∈ cs, c2 + δ < c := fun c2 h2 =>
+      hsep c2 (mem_insert_of_mem h2) c (mem_insert_self ..) (hmax c2 h2)
+    have hD : ∀ p ∈ sitePositions δ cs, p < c := fun p hp => by
+      obtain ⟨c2, h2, -, h3⟩ := mem_sitePositions.mp hp
+      have := hlt c2 h2; omega
     have hok' : ∀ c2 ∈ cs, ValidDeletionSite W t (x.take c ++ x.drop (c + δ)) c2 δ := by
       intro c2 hc2
       have h2 := hlt c2 hc2
-      refine (hok c2 (List.mem_cons_of_mem _ hc2)).of_take (p := c)
-        (take_deleteSite_eq (by omega) le_rfl) h2 ?_
+      refine (hok c2 (mem_insert_of_mem hc2)).of_take (p := c)
+        (take_deleteSite_of_le (by omega) le_rfl) h2.le ?_
       rw [length_deleteSite hcx]; omega
-    rw [show deleteIntervals δ x (c :: cs) = deleteIntervals δ (x.take c ++ x.drop
-        (c + δ)) cs from rfl,
-      contextAnchors_deleteIntervals hne hr1 hr hsep' hok' e]
+    rw [sitePositions_insert, deletePositions_union_Ico x hD (by omega),
+      ih (fun a ha b hb => hsep a (mem_insert_of_mem ha) b (mem_insert_of_mem hb)) hok' e]
     constructor
     · rintro ⟨p', hp', hret, hk⟩
-      rcases (contextAnchors_deleteSite hne hc hr1 hr p').mp hp' with ⟨hpc, hpx⟩ | ⟨hcp, hpx⟩
-      · refine ⟨p', hpx, ?_, ?_⟩
-        · intro c2 hc2
-          rcases List.mem_cons.mp hc2 with rfl | hc2
-          · omega
-          · exact hret c2 hc2
-        · simp only [retainedCut, ite_eq_left hpc]; exact hk
-      · refine ⟨p' + δ, hpx, ?_, ?_⟩
-        · intro c2 hc2
-          rcases List.mem_cons.mp hc2 with rfl | hc2
+      rcases (contextAnchors_deleteSite hc hr1 hr p').mp hp' with ⟨hpc, hpx⟩ | ⟨hcp, hpx⟩
+      · refine ⟨p', hpx, fun c2 hc2 => ?_, by rwa [retainedCount_union_Ico_of_le hpc]⟩
+        rcases mem_insert.mp hc2 with rfl | hc2
+        · omega
+        · exact hret c2 hc2
+      · refine ⟨p' + δ, hpx, fun c2 hc2 => ?_, ?_⟩
+        · rcases mem_insert.mp hc2 with rfl | hc2
           · omega
           · have := hlt c2 hc2; omega
-        · simp only [retainedCut]
-          split_ifs with h
-          · have : p' + δ = p' := by omega
-            rw [this]; exact hk
-          · rw [Nat.add_sub_cancel]; exact hk
+        · rwa [retainedCount_union_Ico_of_ge hD (by omega), Nat.add_sub_cancel]
     · rintro ⟨p, hp, hret, hk⟩
-      have hretc := hret c (List.mem_cons_self ..)
-      refine ⟨if p ≤ c then p else p - δ, ?_, ?_, hk⟩
-      · rw [contextAnchors_deleteSite hne hc hr1 hr]
-        split_ifs with h
-        · exact Or.inl ⟨h, hp⟩
-        · exact Or.inr ⟨by omega, by rw [Nat.sub_add_cancel (by omega)]; exact hp⟩
-      · intro c2 hc2
-        have h2 := hlt c2 hc2
-        have := hret c2 (List.mem_cons_of_mem _ hc2)
-        split_ifs with h <;> omega
+      have hretc := hret c (mem_insert_self ..)
+      by_cases h : p ≤ c
+      · exact ⟨p, (contextAnchors_deleteSite hc hr1 hr p).mpr (Or.inl ⟨h, hp⟩),
+          fun c2 hc2 => hret c2 (mem_insert_of_mem hc2),
+          by rwa [← retainedCount_union_Ico_of_le h]⟩
+      · refine ⟨p - δ, (contextAnchors_deleteSite hc hr1 hr _).mpr
+          (Or.inr ⟨by omega, by rwa [Nat.sub_add_cancel (by omega)]⟩), ?_,
+          by rwa [← retainedCount_union_Ico_of_ge hD (by omega)]⟩
+        intro c2 hc2 ⟨h1, h2⟩
+        have := hlt c2 hc2; omega
+
+/-- A maximal interval of deleted positions is a site. -/
+theorem mem_sites_of_maximal_interval (hs : StrictlySeparated δ cs) {j c : ℕ} (hjc : j < c)
+    (hD : ∀ p, j ≤ p → p < c → p ∈ sitePositions δ cs)
+    (hj : j = 0 ∨ j - 1 ∉ sitePositions δ cs) (hc : c ∉ sitePositions δ cs) :
+    j ∈ cs ∧ c = j + δ := by
+  obtain ⟨c₀, hc₀, h1, h2⟩ := mem_sitePositions.mp (hD (c - 1) (by omega) (by omega))
+  have hce : c = c₀ + δ := by
+    by_contra hne
+    exact hc (mem_sitePositions.mpr ⟨c₀, hc₀, by omega, by omega⟩)
+  have hje : j = c₀ := by
+    rcases lt_trichotomy j c₀ with h | h | h
+    · obtain ⟨c₁, hc₁, h3, h4⟩ := mem_sitePositions.mp (hD (c₀ - 1) (by omega) (by omega))
+      have := hs c₁ hc₁ c₀ hc₀ (by omega)
+      omega
+    · exact h
+    · rcases hj with h0 | h0
+      · omega
+      · exact absurd (mem_sitePositions.mpr ⟨c₀, hc₀, by omega, by omega⟩) h0
+  exact ⟨hje ▸ hc₀, by omega⟩
 
 variable {S : Type}
 
 omit [DecidableEq α] in
-theorem runFrom_deleteSite (T : Table α S k) (q0 : S) {x : List α} {c δ : ℕ}
-    (hcx : c + δ ≤ x.length) (hq : T.runFrom q0 (x.take c) = T.runFrom q0 (x.take (c + δ)))
-    (a : ℕ) : T.runFrom q0 ((x.take c ++ x.drop (c + δ)).take a) =
-      T.runFrom q0 (x.take (if a ≤ c then a else a + δ)) := by
-  split_ifs with h
-  · rw [take_deleteSite_of_le (by omega) h]
-  · rw [take_deleteSite_of_ge (by omega) (by omega), Table.runFrom_append, hq,
-      ← Table.runFrom_append, ← take_add_delta (by omega)]
-
-omit [DecidableEq α] in
-/-- The states along the edited text are states of the original text, since every deleted text
-starts and ends in the same state. -/
-theorem runFrom_deleteIntervals (T : Table α S k) (q0 : S) {δ : ℕ} :
-    ∀ {cs : List ℕ} {x : List α}, Separated δ cs →
-    (∀ c ∈ cs, c + δ < x.length ∧ T.runFrom q0 (x.take c) = T.runFrom q0 (x.take (c + δ))) →
-    (deleteIntervals δ x cs).length + δ * cs.length = x.length ∧
-      (∀ a,
-          T.runFrom q0 ((deleteIntervals δ x cs).take a) = T.runFrom q0 (x.take
-              (leftOriginalCut δ cs a))) ∧
-      (∀ a < (deleteIntervals δ x cs).length, leftOriginalCut δ cs a < x.length) ∧
-      leftOriginalCut δ cs (deleteIntervals δ x cs).length = x.length
-  | [], x, _, _ => by simp [deleteIntervals, leftOriginalCut]
-  | c :: cs, x, hsep, hst => by
-    rw [Separated, List.pairwise_cons] at hsep
-    obtain ⟨hlt, hsep'⟩ := hsep
-    obtain ⟨hcx, hq⟩ := hst c (List.mem_cons_self ..)
-    have hst' : ∀ c2 ∈ cs, c2 + δ < (x.take c ++ x.drop (c + δ)).length ∧
-        T.runFrom q0 ((x.take c ++ x.drop (c + δ)).take c2) =
-          T.runFrom q0 ((x.take c ++ x.drop (c + δ)).take (c2 + δ)) := by
-      intro c2 hc2
-      have h2 := hlt c2 hc2
-      obtain ⟨-, hq2⟩ := hst c2 (List.mem_cons_of_mem _ hc2)
-      rw [length_deleteSite hcx.le, take_deleteSite_of_le (by omega) (by omega),
-        take_deleteSite_of_le (by omega) h2]
-      exact ⟨by omega, hq2⟩
-    obtain ⟨hlen, hrun, hlt', hend⟩ := runFrom_deleteIntervals T q0 hsep' hst'
-    rw [length_deleteSite hcx.le] at hlen hlt' hend
-    refine ⟨by simp only [deleteIntervals, List.length_cons]; rw [Nat.mul_succ]; omega, ?_, ?_, ?_⟩
-    · intro a
-      simp only [deleteIntervals, leftOriginalCut]
-      rw [hrun a, runFrom_deleteSite T q0 hcx.le hq]
-    · intro a ha
-      simp only [deleteIntervals] at ha
-      have := hlt' a ha
-      simp only [leftOriginalCut]
-      split_ifs <;> omega
-    · simp only [deleteIntervals, leftOriginalCut, hend]
-      split_ifs <;> omega
+/-- If every deleted text starts and ends in the same state, the state of the edited text at a
+cut is the state of the original text at the greatest preimage of the cut. -/
+theorem runFrom_deleteSites (T : Table α S k) (q0 : S) {x : List α} (hs : StrictlySeparated δ cs)
+    (hst : ∀ c ∈ cs, c + δ < x.length ∧
+      runFrom T.step q0 (x.take c) = runFrom T.step q0 (x.take (c + δ)))
+    (a : ℕ) :
+    runFrom T.step q0 ((deletePositions x (sitePositions δ cs)).take a) =
+      runFrom T.step q0 (x.take (greatestPreimage (sitePositions δ cs) a)) := by
+  refine runFrom_take_deletePositions T q0 x (fun j c hjc _ hD hj hc => ?_) (fun h => ?_) a
+  · obtain ⟨hjs, rfl⟩ := mem_sites_of_maximal_interval hs hjc hD hj hc
+    exact (hst j hjs).2
+  · obtain ⟨c, hc, h1, h2⟩ := mem_sitePositions.mp h
+    have := (hst c hc).1; omega
 
 end SeveralSites
 
@@ -454,7 +427,7 @@ theorem runPrefix_eq_of_label (T : Table α S k) {W : Fin k → List α} {t : �
     rw [Nat.sub_add_cancel hl1] at e1
     rw [Nat.sub_add_cancel hl2] at e2
     simp only [Table.runPrefix]
-    rw [e1, e2, Table.runFrom_append, Table.runFrom_append, hτw]
+    rw [e1, e2, runFrom_append, runFrom_append, hτw]
     simp only [Table.runPrefix] at hq
     rw [hq]
 
@@ -496,12 +469,10 @@ def traversingOccurrences (l : Fin k) : Finset (Fin k × ℕ × ℕ) :=
 def sites (l : Fin k) :
     Finset ℕ := (m.traversingOccurrences l).image (fun o => depthCut W t o m.maxDepth)
 
-/-- The sites of word `l`, from right to left. -/
-def siteList (l : Fin k) : List ℕ := ((m.sites l).sort (· ≤ ·)).reverse
-
 /-- The edited tuple: delete `[depthCut o j, depthCut o i)` from every upper occurrence `o` that
 traverses the edge. -/
-def apply : Fin k → List α := fun l => deleteIntervals m.deletionLength (W l) (m.siteList l)
+def apply : Fin k → List α :=
+  fun l => deletePositions (W l) (sitePositions m.deletionLength (m.sites l))
 
 theorem one_le_minDepth :
     1 ≤ m.minDepth := by have := m.left_margin; unfold deletionMargin at this; omega
@@ -516,8 +487,7 @@ theorem mem_throughOcc {l : Fin k} {o : Fin k × ℕ × ℕ} :
 
 /-- In a traversing occurrence `(l, s, e)`, the deletion site lies strictly inside the upper
 block, its two cuts are lower anchors, and the deleted text has length `deletionLength`. -/
-theorem site_spec (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
-    (hth : m.edge.TraversedBy o) :
+theorem site_spec {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) (hth : m.edge.TraversedBy o) :
     o.2.1 < depthCut W t o m.maxDepth ∧ depthCut W t o m.maxDepth < depthCut W t o m.minDepth ∧
       depthCut W t o m.minDepth < o.2.2 ∧ o.2.2 ≤ (W o.1).length ∧
       depthCut W t o m.maxDepth + m.deletionLength = depthCut W t o m.minDepth ∧
@@ -526,23 +496,23 @@ theorem site_spec (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho : o �
   have hbn := (m.edge.through_iff.mp hth).1
   have hjn : m.maxDepth < lowerBlockCount W t o := lt_of_lt_of_le m.maxDepth_lt_endDepth hbn
   have hin : m.minDepth < lowerBlockCount W t o := by have := m.minDepth_lt_maxDepth; omega
-  obtain ⟨hall, -⟩ := depthCut_spec hne ho
+  obtain ⟨hall, -⟩ := depthCut_spec ho
   obtain ⟨hjA, hjs, -, -⟩ := hall m.maxDepth hjn
   obtain ⟨hiA, -, -, -⟩ := hall m.minDepth hin
-  have hji := depthCut_lt_of_lt hne ho m.minDepth_lt_maxDepth hjn.le
+  have hji := depthCut_lt_of_lt ho m.minDepth_lt_maxDepth hjn.le
   have hie : depthCut W t o m.minDepth < o.2.2 :=
-    depthCut_lt_of_lt hne ho (show 0 < m.minDepth from m.one_le_minDepth) hin.le
-  have hj' := m.edge.depthCut_through hne ho hth m.maxDepth_lt_endDepth.le
-  have hi' := m.edge.depthCut_through hne ho hth (d := m.minDepth)
+    depthCut_lt_of_lt ho (show 0 < m.minDepth from m.one_le_minDepth) hin.le
+  have hj' := m.edge.depthCut_through ho hth m.maxDepth_lt_endDepth.le
+  have hi' := m.edge.depthCut_through ho hth (d := m.minDepth)
     (by have := m.minDepth_lt_maxDepth; have := m.maxDepth_lt_endDepth; omega)
-  have hE := (upperOcc_spec hne ho).2.1
+  have hE := (upperOcc_spec ho).2.1
   refine ⟨hjs, hji, hie, hE, ?_, hjA, hiA⟩
   unfold deletionLength
   omega
 
-theorem delta_pos (hne : ∀ i, W i ≠ []) : 0 < m.deletionLength := by
+theorem delta_pos : 0 < m.deletionLength := by
   obtain ⟨o, ho, -, hth⟩ := m.edge.exists_through
-  have := m.site_spec hne ho hth
+  have := m.site_spec ho hth
   omega
 
 theorem mem_sites {l : Fin k} {c : ℕ} :
@@ -556,12 +526,12 @@ theorem mem_sites {l : Fin k} {c : ℕ} :
 
 /-- Two deletion sites of one word lie in different upper blocks, so the earlier site ends
 strictly before the later one starts. -/
-theorem sites_separated (hne : ∀ i, W i ≠ []) {l : Fin k} {c c' : ℕ} (hc : c ∈ m.sites l)
+theorem sites_separated {l : Fin k} {c c' : ℕ} (hc : c ∈ m.sites l)
     (hc' : c' ∈ m.sites l) (hlt : c < c') : c + m.deletionLength < c' := by
   obtain ⟨o, ho, hl, hth, rfl⟩ := m.mem_sites.mp hc
   obtain ⟨o', ho', hl', hth', rfl⟩ := m.mem_sites.mp hc'
-  have s1 := m.site_spec hne ho hth
-  have s2 := m.site_spec hne ho' hth'
+  have s1 := m.site_spec ho hth
+  have s2 := m.site_spec ho' hth'
   rcases lt_trichotomy o.2.2 o'.2.2 with h | h | h
   · have := upperOccurrences_le_start ho ho' (hl.trans hl'.symm) h
     omega
@@ -570,27 +540,20 @@ theorem sites_separated (hne : ∀ i, W i ≠ []) {l : Fin k} {c c' : ℕ} (hc :
   · have := upperOccurrences_le_start ho' ho (hl'.trans hl.symm) h
     omega
 
-theorem separated (hne : ∀ i, W i ≠ []) (l : Fin k) :
-    Separated m.deletionLength (m.siteList l) := by
-  unfold Separated siteList
-  rw [List.pairwise_reverse]
-  have hs := (pairwise_sort (m.sites l) (· ≤ ·)).and (sort_nodup (m.sites l) (· ≤ ·))
-  refine hs.imp_of_mem ?_
-  intro a b ha hb hab
-  rw [mem_sort] at ha hb
-  exact (m.sites_separated hne ha hb (lt_of_le_of_ne hab.1 hab.2)).le
+theorem strictlySeparated (l : Fin k) :
+    StrictlySeparated m.deletionLength (m.sites l) :=
+  fun _ hc _ hc' h => m.sites_separated hc hc' h
 
 /-- Every site satisfies the hypotheses of `contextAnchors_deleteSite` and is a loop of the run. -/
-theorem site_valid (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c ∈ m.siteList l) :
+theorem site_valid {l : Fin k} {c : ℕ} (hc : c ∈ m.sites l) :
     ValidDeletionSite W t (W l) c m.deletionLength ∧ c + m.deletionLength < (W l).length ∧
-      T.runFrom (T.start l) ((W l).take c) =
-          T.runFrom (T.start l) ((W l).take (c + m.deletionLength)) := by
-  rw [siteList, List.mem_reverse, mem_sort] at hc
+      runFrom T.step (T.start l) ((W l).take c) =
+          runFrom T.step (T.start l) ((W l).take (c + m.deletionLength)) := by
   obtain ⟨o, ho, rfl, hth, rfl⟩ := m.mem_sites.mp hc
-  obtain ⟨hsj, hji, hie, hE, hd, hjA, hiA⟩ := m.site_spec hne ho hth
+  obtain ⟨hsj, hji, hie, hE, hd, hjA, hiA⟩ := m.site_spec ho hth
   rw [hd]
   have hlab := m.labels_eq o ho hth
-  have hnotup := (upperOcc_spec hne ho).2.2.2.2
+  have hnotup := (upperOcc_spec ho).2.2.2.2
   refine ⟨⟨by omega, ?_, ?_, ?_⟩, by omega, ?_⟩
   · intro ht
     obtain ⟨t', rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
@@ -611,103 +574,80 @@ theorem site_valid (hne : ∀ i, W i ≠ []) {l : Fin k} {c : ℕ} (hc : c ∈ m
     exact hnotup _ hmem ⟨by omega, hie⟩
   · exact runPrefix_eq_of_label T (by omega) (by omega) hlab
 
-/-- The length of an edited word, and its states through the cut map `leftOriginalCut`. -/
-theorem apply_run (hne : ∀ i, W i ≠ []) (l : Fin k) :
-    (m.apply l).length + m.deletionLength * (m.siteList l).length = (W l).length ∧
-      (∀ a,
-          T.runPrefix m.apply l a = T.runPrefix W l (leftOriginalCut m.deletionLength
-              (m.siteList l) a)) ∧
-      (∀ a < (m.apply l).length, leftOriginalCut m.deletionLength (m.siteList l) a < (W l).length) ∧
-      leftOriginalCut m.deletionLength (m.siteList l) (m.apply l).length = (W l).length :=
-  runFrom_deleteIntervals T (T.start l) (m.separated hne l)
-    (fun _ hc => ⟨(m.site_valid hne hc).2.1, (m.site_valid hne hc).2.2⟩)
+theorem length_not_mem_sitePositions (l : Fin k) :
+    (W l).length ∉ sitePositions m.deletionLength (m.sites l) := by
+  intro h
+  obtain ⟨c, hc, h1, h2⟩ := mem_sitePositions.mp h
+  have := (m.site_valid hc).2.1
+  omega
+
+/-- The state of an edited word at a cut is the state of the original word at the greatest
+preimage of the cut. -/
+theorem runPrefix_apply (l : Fin k) (a : ℕ) :
+    T.runPrefix m.apply l a =
+      T.runPrefix W l (greatestPreimage (sitePositions m.deletionLength (m.sites l)) a) :=
+  runFrom_deleteSites T (T.start l) (m.strictlySeparated l)
+    (fun _ hc => ⟨(m.site_valid hc).2.1, (m.site_valid hc).2.2⟩) a
 
 /-- The edited tuple has the same endpoints. -/
-theorem endState_apply (hne : ∀ i, W i ≠ []) (l : Fin k) :
+theorem endState_apply (l : Fin k) :
     T.endState m.apply l = T.endState W l := by
-  obtain ⟨-, hrun, -, hend⟩ := m.apply_run hne l
   simp only [Table.endState]
-  rw [hrun, hend]
+  rw [m.runPrefix_apply, apply, greatestPreimage_length _ (m.length_not_mem_sitePositions l)]
 
 /-- The edited tuple visits only states that the original visits. -/
-theorem visitedStates_subset [DecidableEq S] (hne : ∀ i, W i ≠ []) (l : Fin k) :
+theorem visitedStates_subset [DecidableEq S] (l : Fin k) :
     T.visitedStates m.apply l ⊆ T.visitedStates W l := by
-  obtain ⟨-, hrun, hlt, hend⟩ := m.apply_run hne l
   intro q hq
   obtain ⟨a, ha, rfl⟩ := Table.mem_visitedStates.mp hq
-  rw [hrun]
-  refine Table.runPrefix_mem_visitedStates W l ?_
-  rcases Nat.lt_or_ge a (m.apply l).length with h | h
-  · exact (hlt a h).le
-  · have : a = (m.apply l).length := by omega
-    rw [this, hend]
+  rw [m.runPrefix_apply]
+  exact Table.runPrefix_mem_visitedStates W l
+    (greatestPreimage_le_length _ (m.length_not_mem_sitePositions l) ha)
 
-theorem properVisitedStates_subset [DecidableEq S] (hne : ∀ i, W i ≠ []) (l : Fin k) :
+theorem properVisitedStates_subset [DecidableEq S] (l : Fin k) :
     T.properVisitedStates m.apply l ⊆ T.properVisitedStates W l := by
-  obtain ⟨-, hrun, hlt, -⟩ := m.apply_run hne l
   intro q hq
   obtain ⟨a, ha, rfl⟩ := Table.mem_properVisitedStates.mp hq
-  rw [hrun]
-  exact Table.mem_properVisitedStates.mpr ⟨_, hlt a ha, rfl⟩
+  rw [m.runPrefix_apply]
+  exact Table.mem_properVisitedStates.mpr ⟨_, greatestPreimage_lt_length _ ha, rfl⟩
 
 /-- The edited tuple is fresh. -/
-theorem fresh_apply [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ []) (l : Fin k) :
+theorem fresh_apply [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (l : Fin k) :
     T.Fresh m.apply l := by
   intro h
-  rw [m.endState_apply hne l] at h
-  exact hfr l (m.properVisitedStates_subset hne l h)
+  rw [m.endState_apply l] at h
+  exact hfr l (m.properVisitedStates_subset l h)
 
 /-- The edited tuple is shorter. -/
-theorem totalLength_apply_lt (hne : ∀ i, W i ≠ []) : totalLength m.apply < totalLength W := by
+theorem totalLength_apply_lt : totalLength m.apply < totalLength W := by
   obtain ⟨o, ho, -, hth⟩ := m.edge.exists_through
   have hsite : depthCut W t o m.maxDepth ∈ m.sites o.1 := m.mem_sites.mpr ⟨o, ho, rfl, hth, rfl⟩
-  have hpos : 0 < (m.siteList o.1).length := by
-    rw [siteList, List.length_reverse, length_sort]; exact card_pos.mpr ⟨_, hsite⟩
-  have hd := m.delta_pos hne
+  have hd := m.delta_pos
   unfold totalLength
   apply Finset.sum_lt_sum
   · intro l _
-    have := (m.apply_run hne l).1
-    omega
+    rw [apply, length_deletePositions]
+    exact retainedCount_le _
   · refine ⟨o.1, mem_univ _, ?_⟩
-    have := (m.apply_run hne o.1).1
-    have : 0 < m.deletionLength * (m.siteList o.1).length := Nat.mul_pos hd hpos
-    omega
+    rw [apply, length_deletePositions]
+    exact retainedCount_lt_of_mem
+      (mem_sitePositions.mpr ⟨_, hsite, le_rfl, by omega⟩)
+      (by have := (m.site_valid hsite).2.1; omega)
 
 /-- For the markers of `W`, the level-`r` anchors (`1 ≤ r ≤ t + 1`) of an edited word are exactly
-the images under `retainedCut` of the original anchors that are not deleted. -/
-theorem contextAnchors_apply (hne : ∀ i, W i ≠ []) {r : ℕ} (hr1 : 1 ≤ r) (hr : r ≤ t + 1)
-    (l : Fin k) (e' : ℕ) :
+the images under the cut map of the original anchors that are not deleted. -/
+theorem contextAnchors_apply {r : ℕ} (hr1 : 1 ≤ r) (hr : r ≤ t + 1) (l : Fin k) (e' : ℕ) :
     e' ∈ contextAnchors W r (m.apply l) ↔
-      ∃ p ∈ contextAnchors W r (W l), (∀ c ∈ m.siteList l, ¬ (c < p ∧ p < c + m.deletionLength)) ∧
-        retainedCut m.deletionLength (m.siteList l) p = e' :=
-  contextAnchors_deleteIntervals hne hr1 hr (m.separated hne l)
-      (fun _ hc => (m.site_valid hne hc).1) e'
+      ∃ p ∈ contextAnchors W r (W l), Retained m.deletionLength (m.sites l) p ∧
+        retainedCount (sitePositions m.deletionLength (m.sites l)) p = e' :=
+  contextAnchors_deleteSites hr1 hr _ (m.strictlySeparated l)
+    (fun _ hc => (m.site_valid hc).1) e'
 
 /-- A block deletion whose edited tuple has smaller channels is a fresh domination. -/
-theorem freshDominates_of_channel [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ [])
+theorem freshDominates_of_channel [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     (hch : ∀ i j, T.channel m.apply i j ⊆ T.channel W i j) : FreshDominates T m.apply W :=
-  ⟨⟨m.endState_apply hne, m.visitedStates_subset hne, hch⟩, m.fresh_apply hfr hne⟩
+  ⟨⟨m.endState_apply, m.visitedStates_subset, hch⟩, m.fresh_apply hfr⟩
 
 end BlockDeletion
-
-/-! ## Block deletions are fresh dominations -/
-
-/-- Every block deletion on a fresh tuple of nonempty words is a fresh domination. -/
-def BlockDeletionPreservesFreshDomination (α : Type) [DecidableEq α] : Prop :=
-  ∀ (S : Type) [Fintype S] [DecidableEq S] (k : ℕ) (T : Table α S k)
-    (W : Fin k → List α) (t : ℕ), (∀ i, T.Fresh W i) → (∀ i, W i ≠ []) →
-      ∀ m : BlockDeletion T W t, FreshDominates T m.apply W
-
-/-- Every block deletion on a fresh tuple of nonempty words makes every channel smaller. -/
-def BlockDeletionPreservesChannels (α : Type) [DecidableEq α] : Prop :=
-  ∀ (S : Type) [Fintype S] [DecidableEq S] (k : ℕ) (T : Table α S k)
-    (W : Fin k → List α) (t : ℕ), (∀ i, T.Fresh W i) → (∀ i, W i ≠ []) →
-      ∀ m : BlockDeletion T W t, ∀ i j, T.channel m.apply i j ⊆ T.channel W i j
-
-/-- If block deletions make channels smaller, they are fresh dominations. -/
-theorem blockDeletionPreservesFreshDomination_of_channels (h : BlockDeletionPreservesChannels α) :
-    BlockDeletionPreservesFreshDomination α :=
-  fun S _ _ k T W t hfr hne m => m.freshDominates_of_channel hfr hne (h S k T W t hfr hne m)
 
 end DeciSigma1.Holes.Fresh

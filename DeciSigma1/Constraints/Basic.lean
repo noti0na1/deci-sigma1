@@ -3,20 +3,15 @@ import DeciSigma1.Semantics.Order
 
 /-! # Flat subtype constraints
 
-A flat constraint is a finite conjunction of literals, each relating variables through the
-constructor and the constants. Two syntaxes are used for the signature `{⊥, f, ⊤}`: `LitT n V` over
-an arbitrary type of variables, with variable inequalities `x ≤ y`, constructor bounds
-`f(x₀, …) ≤ y` and `x ≤ f(y₀, …)`, and the equations `x = ⊥` and `x = ⊤`; and the normalized syntax
-`Lit n k` over the variables `Fin k`, without variable inequalities, used by the satisfiability
-algorithms.
-Satisfaction is defined for a variance `c` through `Tree.Le c`, and covariantly through the order of
-`Tree`.
+A constraint is a finite conjunction of literals `LitT n V` with variables in an arbitrary type:
+variable inequalities, constructor bounds, and equations to `⊥` or `⊤`. Satisfaction is defined
+for a variance `c` through `Tree.Le c`, and covariantly through the order of `Tree`.
 
 ## Main declarations
 
-- `LitT`, `HoldsT`, `SatT`: literals over arbitrary variables and their satisfaction.
-- `Lit`, `Constraint`, `Holds`, `Sat`: normalized literals and constraints.
-- `Covariant.Holds`, `Covariant.Sat`: covariant satisfaction of normalized constraints.
+- `LitT`, `LitT.map`: flat literals and variable renaming.
+- `HoldsT`, `SatT`: satisfaction with variance.
+- `Covariant.Holds`, `Covariant.Sat`: covariant satisfaction.
 -/
 
 namespace DeciSigma1.Constraints
@@ -58,48 +53,23 @@ def HoldsT {V : Type*} (c : Fin n → Bool) (ρ : V → Semantics.Tree n) : LitT
 def SatT {V : Type*} (c : Fin n → Bool) (ρ : V → Semantics.Tree n)
     (χ : List (LitT n V)) : Prop := ∀ l ∈ χ, HoldsT c ρ l
 
-/-- The variables of a normalized constraint. -/
-abbrev V (k : ℕ) := Fin k
-
-/-- Normalized literals over the variables `Fin k`: `x ≤ f(a)`, `f(a) ≤ x`, `x = ⊥` and `x = ⊤`. -/
-inductive Lit (n k : ℕ) where
-  | leF (x : V k) (children : Fin n → V k)
-  | fLe (children : Fin n → V k) (x : V k)
-  | eqBot (x : V k)
-  | eqTop (x : V k)
-
-/-- A normalized constraint: a finite conjunction of normalized literals. -/
-abbrev Constraint (n k : ℕ) := List (Lit n k)
-
-/-- Satisfaction of a normalized literal, with variance `c`. -/
-def Holds {n k : ℕ} (c : Fin n → Bool)
-    (ρ : V k → Semantics.Tree n) : Lit n k → Prop
-  | .leF x a => Tree.Le c (ρ x) (Semantics.Tree.node (ρ ∘ a))
-  | .fLe a x => Tree.Le c (Semantics.Tree.node (ρ ∘ a)) (ρ x)
-  | .eqBot x => ρ x = Tree.bot
-  | .eqTop x => ρ x = Tree.top
-
-/-- Satisfaction of a normalized constraint, with variance `c`. -/
-def Sat {n k : ℕ} (c : Fin n → Bool)
-    (ρ : V k → Semantics.Tree n) (χ : Constraint n k) : Prop :=
-  ∀ l ∈ χ, Holds c ρ l
-
-/-- Covariant satisfaction of a normalized literal. -/
-def Covariant.Holds {n k : ℕ} (ρ : V k → Semantics.Tree n) : Lit n k → Prop
+/-- Covariant satisfaction of a literal. -/
+def Covariant.Holds {V : Type*} (ρ : V → Semantics.Tree n) : LitT n V → Prop
+  | .le x y => ρ x ≤ ρ y
   | .leF x a => ρ x ≤ Semantics.Tree.node (ρ ∘ a)
   | .fLe a x => Semantics.Tree.node (ρ ∘ a) ≤ ρ x
   | .eqBot x => ρ x = Tree.bot
   | .eqTop x => ρ x = Tree.top
 
-/-- Covariant satisfaction of a normalized constraint. -/
-def Covariant.Sat {n k : ℕ} (ρ : V k → Semantics.Tree n) (χ : Constraint n k) : Prop :=
+/-- Covariant satisfaction of a finite conjunction. -/
+def Covariant.Sat {V : Type*} (ρ : V → Semantics.Tree n) (χ : List (LitT n V)) : Prop :=
   ∀ l ∈ χ, Holds ρ l
 
-@[simp] theorem holds_false {n k : ℕ} (ρ : V k → Semantics.Tree n) (l : Lit n k) :
-    Holds (fun _ => false) ρ l ↔ Covariant.Holds ρ l := by
-  cases l <;> simp [Holds, Covariant.Holds]
+@[simp] theorem holds_false {V : Type*} (ρ : V → Semantics.Tree n) (l : LitT n V) :
+    HoldsT (fun _ => false) ρ l ↔ Covariant.Holds ρ l := by
+  cases l <;> simp [HoldsT, Covariant.Holds]
 
-@[simp] theorem sat_false {n k : ℕ} (ρ : V k → Semantics.Tree n) (χ : Constraint n k) :
-    Sat (fun _ => false) ρ χ ↔ Covariant.Sat ρ χ := by simp [Sat, Covariant.Sat]
+@[simp] theorem sat_false {V : Type*} (ρ : V → Semantics.Tree n) (χ : List (LitT n V)) :
+    SatT (fun _ => false) ρ χ ↔ Covariant.Sat ρ χ := by simp [SatT, Covariant.Sat]
 
 end DeciSigma1.Constraints

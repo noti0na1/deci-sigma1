@@ -51,9 +51,15 @@ def fixedPoint : DeciSigma1.Full.Logic.BooleanSentence 1 :=
 
 /-- The infinite tree `f(f(…))` is regular and satisfies `x = f(x)`. -/
 theorem fixedPoint_regular : fixedPoint.HoldsIn RegularTop (fun _ => true) := by
-  refine ⟨fun _ => (RGraph.allF 1).unfold, fun _ => ⟨RGraph.allF 1, rfl⟩, ?_⟩
-  exact (DeciSigma1.Full.Logic.holds_eq_iff _ _ _ _).mpr
-      (RGraph.allF_unfold_node (n := 1))
+  refine ⟨fun _ => fullTree, ?_, ?_⟩
+  · intro _
+    apply (Set.finite_singleton (fullTree : Semantics.Tree 1)).subset
+    rintro u ⟨w, hw⟩
+    apply Tree.ext
+    funext v
+    rw [Tree.subtree_fn hw]
+    rfl
+  · exact (DeciSigma1.Full.Logic.holds_eq_iff _ _ _ _).mpr (fullTree_eq_node (n := 1))
 
 /-- No finite unary tree `t` satisfies `t = f(t)`. -/
 theorem finite_ne_node_self (a : FTree 1) : a.toTree ≠ Semantics.Tree.node (fun _ => a.toTree) := by

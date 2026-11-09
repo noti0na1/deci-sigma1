@@ -1,9 +1,11 @@
-import DeciSigma1.Automata.Basic
+import Mathlib.Data.List.OfFn
 import DeciSigma1.Words.Periods
 
-/-! # Ultimately periodic infinite words
+/-! # Infinite words and ultimately periodic infinite words
 
-Infinite words are functions `ℕ → α`. A `Ray` is an ultimately periodic infinite word
+Infinite words are functions `ℕ → α`, with finite prefixes `streamPrefix ξ n`, periods
+(`StreamPeriod`) and least periods (`LeastStreamPeriod`); the positive periods of an infinite
+word are the multiples of its least period. A `Ray` is an ultimately periodic infinite word
 `stem · loop^ω`, given by a finite stem and a nonempty loop. In the bound on rejected tails,
 rays describe live periodic continuations of runs of a reader, and the comparisons between
 suffixes of rays are the comparisons that a channel records.
@@ -18,6 +20,8 @@ suffixes start at the same distance before the onsets, or both at or after them
 
 ## Main declarations
 
+- `streamPrefix`, `prepend`: finite prefixes of infinite words and prefixing by a finite word.
+- `StreamPeriod`, `LeastStreamPeriod`, `leastPeriod_dvd_iff`: periods of infinite words.
 - `PeriodicFrom`: an infinite word is purely periodic from a position on.
 - `streamEq_of_agree`: Fine–Wilf for purely periodic infinite words.
 - `Ray`, `Ray.stream`, `Ray.onset`, `Ray.period`: rays, their infinite words, onsets and
@@ -31,8 +35,143 @@ suffixes start at the same distance before the onsets, or both at or after them
 
 namespace DeciSigma1.Words
 
-open DeciSigma1.Automata
 open DeciSigma1.Words (pow)
+
+/-! ## Finite prefixes and periods of infinite words -/
+
+section Streams
+
+variable {α : Type*}
+
+/-- The finite prefix of length `n` of an infinite word. -/
+def streamPrefix (ξ : ℕ → α) (n : ℕ) : List α := List.ofFn (fun i : Fin n => ξ i)
+
+theorem streamPrefix_succ (ξ : ℕ → α) (n : ℕ) :
+    streamPrefix ξ (n + 1) = streamPrefix ξ n ++ [ξ n] := by
+  simpa [streamPrefix, List.concat_eq_append] using
+    (List.ofFn_succ' (fun i : Fin (n + 1) => ξ i))
+
+@[simp] theorem length_streamPrefix (ξ : ℕ → α) (n : ℕ) :
+    (streamPrefix ξ n).length = n := by simp [streamPrefix]
+
+@[simp] theorem getElem_streamPrefix (ξ : ℕ → α) (n i : ℕ) (h : i < n) :
+    (streamPrefix ξ n)[i]'(by simpa using h) = ξ i := by simp [streamPrefix]
+
+@[simp] theorem take_streamPrefix (ξ : ℕ → α) (n k : ℕ) :
+    (streamPrefix ξ n).take k = streamPrefix ξ (min k n) := by
+  apply List.ext_getElem
+  · simp
+  · intro i h₁ h₂
+    simp [streamPrefix]
+
+/-- Prefixing an infinite word by a finite word. -/
+def prepend (w : List α) (ξ : ℕ → α) (i : ℕ) : α :=
+  if h : i < w.length then w[i] else ξ (i - w.length)
+
+theorem prepend_prefix (w : List α) (ξ : ℕ → α) :
+    streamPrefix (prepend w ξ) w.length = w := by
+  apply List.ext_getElem <;> simp [streamPrefix, prepend]
+
+theorem prepend_prefix_add (w : List α) (ξ : ℕ → α) (n : ℕ) :
+    streamPrefix (prepend w ξ) (w.length + n) = w ++ streamPrefix ξ n := by
+  induction n with
+  | zero => simpa only [Nat.add_zero, show streamPrefix ξ 0 = [] from rfl,
+      List.append_nil] using prepend_prefix w ξ
+  | succ n ih =>
+    rw [← Nat.add_assoc, streamPrefix_succ, ih]
+    simp [prepend, List.append_assoc, streamPrefix_succ]
+
+/-- The infinite word `ξ` has period `p`: `ξ (i + p) = ξ i` for every `i`. -/
+def StreamPeriod (ξ : ℕ → α) (p : ℕ) : Prop := ∀ i, ξ (i + p) = ξ i
+
+theorem streamPeriod_mod {ξ : ℕ → α} {p : ℕ} (h : StreamPeriod ξ p) (n : ℕ) :
+    ξ n = ξ (n % p) := by
+  by_cases hp : p = 0
+  · simp [hp]
+  · induction n using Nat.strong_induction_on with
+    | h n ih =>
+      by_cases hn : n < p
+      · simp [Nat.mod_eq_of_lt hn]
+      · have hle : p ≤ n := by omega
+        calc
+          ξ n = ξ (n - p) := by simpa [Nat.sub_add_cancel hle] using h (n - p)
+          _ = ξ ((n - p) % p) := ih _ (by omega)
+          _ = ξ (n % p) := by rw [← Nat.mod_eq_sub_mod hle]
+
+theorem streamPeriod_prefix {ξ : ℕ → α} {p : ℕ} (h : StreamPeriod ξ p) (n : ℕ) :
+    List.HasPeriod (streamPrefix ξ n) p := by
+  rw [List.hasPeriod_iff_getElem?]
+  intro i hi
+  have hi' : i <
+      n := by simpa only [length_streamPrefix] using (by omega : i < (streamPrefix ξ n).length)
+  have hip : i + p < n := by simp only [length_streamPrefix] at hi; omega
+  simp only [streamPrefix, List.getElem?_ofFn, dite_eq_left hi', dite_eq_left hip, h i]
+
+theorem streamPeriod_gcd {ξ : ℕ → α} {p q : ℕ}
+    (hp : StreamPeriod ξ p) (hq : StreamPeriod ξ q) : StreamPeriod ξ (Nat.gcd p q) := by
+  intro i
+  let n := i + p + q + Nat.gcd p q + 1
+  have hg := (streamPeriod_prefix hp n).gcd (streamPeriod_prefix hq n) (by simp [n]; omega)
+  have hh := (List.hasPeriod_iff_getElem?.mp hg) i (by simp [n]; omega)
+  have hi : i < n := by dsimp [n]; omega
+  have hj : i + Nat.gcd p q < n := by dsimp [n]; omega
+  simpa only [streamPrefix, List.getElem?_ofFn, dite_eq_left hi, dite_eq_left hj,
+    Option.some.injEq] using hh.symm
+
+theorem streamPrefix_add (ξ : ℕ → α) (k n : ℕ) :
+    streamPrefix ξ (k + n) = streamPrefix ξ k ++ streamPrefix (fun i => ξ (k + i)) n := by
+  induction n with
+  | zero => simp [streamPrefix]
+  | succ n ih =>
+    rw [← Nat.add_assoc, streamPrefix_succ, ih, streamPrefix_succ, List.append_assoc]
+
+theorem streamPeriod_shift {ξ : ℕ → α} {p : ℕ} (h : StreamPeriod ξ p) (k : ℕ) :
+    StreamPeriod (fun i => ξ (k + i)) p := by
+  intro i; simpa [Nat.add_assoc] using h (k + i)
+
+/-- The least positive period of an infinite word. -/
+def LeastStreamPeriod (ξ : ℕ → α) (p : ℕ) : Prop :=
+  0 < p ∧ StreamPeriod ξ p ∧ ∀ q, 0 < q → StreamPeriod ξ q → p ≤ q
+
+/-- If an infinite word with a positive period has a suffix with period `q`, the word itself has
+period `q`. -/
+theorem period_of_suffix {ξ : ℕ → α} {p q k : ℕ} (hp : 0 < p)
+    (hξ : StreamPeriod ξ p) (hq : StreamPeriod (fun i => ξ (k + i)) q) :
+    StreamPeriod ξ q := by
+  intro i
+  have hlarge : k ≤ i + k * p := by nlinarith
+  have hh := hq (i + k * p - k)
+  change ξ (k + (i + k * p - k + q)) = ξ (k + (i + k * p - k)) at hh
+  have he₁ : k + (i + k * p - k + q) = i + q + k * p := by omega
+  have he₂ : k + (i + k * p - k) = i + k * p := by omega
+  rw [he₁, he₂, streamPeriod_mod hξ (i + q + k * p),
+    streamPeriod_mod hξ (i + k * p)] at hh
+  simpa only [Nat.add_mul_mod_self_right, ← streamPeriod_mod hξ] using hh
+
+/-- Every suffix of an infinite word has the same least period. -/
+theorem leastPeriod_suffix {ξ : ℕ → α} {p : ℕ} (hp : LeastStreamPeriod ξ p) (k : ℕ) :
+    LeastStreamPeriod (fun i => ξ (k + i)) p := by
+  refine ⟨hp.1, streamPeriod_shift hp.2.1 k, ?_⟩
+  intro q hq hper
+  exact hp.2.2 q hq (period_of_suffix hp.1 hp.2.1 hper)
+
+/-- The positive periods of an infinite word are the multiples of its least period. -/
+theorem leastPeriod_dvd_iff {ξ : ℕ → α} {p q : ℕ} (hp : LeastStreamPeriod ξ p)
+    (_hq : 0 < q) : StreamPeriod ξ q ↔ p ∣ q := by
+  constructor
+  · intro hper
+    have hg := streamPeriod_gcd hp.2.1 hper
+    have hgp := Nat.gcd_pos_of_pos_left q hp.1
+    have hmin := hp.2.2 (Nat.gcd p q) hgp hg
+    have hle := Nat.gcd_le_left q hp.1
+    have he : Nat.gcd p q = p := by omega
+    rw [← he]; exact Nat.gcd_dvd_right p q
+  · intro hd i
+    rw [streamPeriod_mod hp.2.1 (i + q), streamPeriod_mod hp.2.1 i]
+    congr 1
+    simp [Nat.add_mod, Nat.mod_eq_zero_of_dvd hd]
+
+end Streams
 
 variable {α : Type}
 
@@ -72,7 +211,7 @@ theorem streamEq_of_agree {ξ η : ℕ → α} {p q : ℕ} (hξ : LeastStreamPer
     exact h i (by simpa using hi)
   have hwp : (streamPrefix ξ n).HasPeriod p := streamPeriod_prefix hξ.2.1 n
   have hwq : (streamPrefix ξ n).HasPeriod q := hw ▸ streamPeriod_prefix hη.2.1 n
-  have hg := fine_wilf hwp hwq (by simp only [length_streamPrefix, n]; omega)
+  have hg := hwp.gcd hwq (by simp only [length_streamPrefix, n]; omega)
   set g := Nat.gcd p q
   have hgpos : 0 < g := Nat.gcd_pos_of_pos_left q hξ.1
   have hper : PeriodicOn (streamPrefix ξ n) g 0 n := by

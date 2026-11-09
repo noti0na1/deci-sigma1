@@ -1,5 +1,4 @@
 import DeciSigma1.Constraints.TopFree.Basic
-import DeciSigma1.Readers.Basic
 
 /-! # Disjunctive entailment over `{⊥, f}`
 
@@ -16,15 +15,11 @@ solution in `C`.
 
 namespace DeciSigma1.Entailment
 
-open DeciSigma1.Readers
-
 /-- Disjunctive entailment over the class `C`: every solution of `χ` with values in `C` satisfies
 one of the inequalities `x_i ≤ y_i` with `q i = (x_i, y_i)`. -/
 def DisjEntailsIn {n k : ℕ} {V : Type} (C : Semantics.PrefixSet n → Prop)
     (χ : List (Constraints.TopFree.Lit n V)) (q : Fin k → V × V) : Prop :=
   ∀ ρ : V → Semantics.PrefixSet n, (∀ v, C (ρ v)) → Constraints.TopFree.Sat ρ χ →
     ∃ i, ρ (q i).1 ≤ ρ (q i).2
-
-variable {α : Type} [Fintype α] [DecidableEq α]
 
 end DeciSigma1.Entailment

@@ -118,8 +118,8 @@ same way with inclusion of constructor positions as the order. Queries may repea
 | regular | finitely many distinct subtrees | `DisjEntailsReg c χ q` | `DisjEntailsTopFreeReg χ q` |
 | finite | finitely many nodes | `DisjEntailsFin c χ q` | |
 
-A regular tree over `{⊥, f, ⊤}` is the unfolding of a finite graph (`Full.Models.RegularTop`)
-and a finite tree the tree of a finite term (`Full.Models.FiniteTop`); over `{⊥, f}` a
+A regular tree over `{⊥, f, ⊤}` has finitely many distinct subtrees (`Full.Models.RegularTop`)
+and a finite tree is the tree of a finite term (`Full.Models.FiniteTop`); over `{⊥, f}` a
 regular tree is a set of constructor positions with finitely many residuals
 (`Semantics.IsRegularTree`). Solutions range over the class. Over regular and arbitrary
 trees the answers agree (`disjEntailsTopFreeReg_iff`, `Full.Reduction.disjEntails_regular_iff`);
@@ -198,47 +198,59 @@ whose answers come from finite searches justified by the proofs.
 
 ## Proof overview
 
-1. **Satisfiability.** If `χ` has no solution in the class, the entailment holds. Solutions
-   are sets of configurations closed under Horn clauses, and run automata over the argument
-   positions decide membership in least closures; this gives the satisfiability tests
-   (`Automata.decideSat`, `Full.Closure.decideSat`, and the finite tests of
-   [Satisfiability](DeciSigma1/Satisfiability/Decide.lean)).
-2. **Readers and holes.** From `χ` and the queries the decider builds a *structural reader*
+1. **Satisfiability.** If `χ` has no solution in the class, the entailment holds. A constraint
+   with variance is translated into a covariant constraint on two signed copies of each
+   variable; it has a solution exactly when the translation has no label clash, and a finite
+   solution exactly when it has neither a label clash nor a cycle clash
+   ([Satisfiability](DeciSigma1/Satisfiability/Decide.lean)).
+2. **Witnesses and readers.** A failed query `¬(x ≤ y)` is witnessed by a path at which the
+   labels of `x` and `y` are in the wrong order. Each query has two witness *modes*; if `χ` is
+   satisfiable, a family of witnesses is realized by one solution exactly when its seeds and
+   exclusions are consistent (`Full.Reduction.SeedConsistency`). For each of the `2^k` mode
+   vectors the decider builds a *structural reader*
    ([Readers/Basic](DeciSigma1/Readers/Basic.lean)): a deterministic automaton over `Fin n`
    with one start state per query, a dead state, a set of rejected states and an admission
    relation between states. A *hole* is a tuple of words, one per query, whose runs stay
    alive and end in rejected states, such that no admitted pair of states occurs on a
    *channel*: a pair of cuts where the rest of one word is a prefix of the rest of another
-   word, of the same or of another coordinate. If `χ` is satisfiable, the entailment fails
-   iff the reader has a hole (`Entailment.not_disjEntails_iff_hole`), and the least solution
-   containing the seeds of a hole is a regular countermodel.
-3. **Top and variance.** With `⊤` and contravariant arguments, a failed query `¬(x ≤ y)` is
-   witnessed by a path at which the labels of `x` and `y` are in the wrong order. Each query
-   has two witness *modes*; if `χ` is satisfiable, a family of witnesses is realized by one
-   solution exactly when its seeds and exclusions are consistent
-   (`Full.Reduction.SeedConsistency`). For each of the `2^k` mode vectors one structural reader
-   over signed variables has these families as its holes
-   (`Full.Reduction.not_disjEntails_iff_hole`).
-4. **Small holes.** Every reader with `N` states and `k` starts over an alphabet of `σ`
+   word, of the same or of another coordinate. If `χ` is satisfiable, the entailment fails iff
+   the reader of some mode has a hole (`Full.Reduction.not_disjEntails_iff_hole`).
+3. **Small holes.** Every reader with `N` states and `k` starts over an alphabet of `σ`
    letters that has a hole has one of total length at most `smallHoleBound σ k N`
    (`exists_small_hole`). The bound composes two results
    ([Holes/Bound](DeciSigma1/Holes/Bound.lean)):
+   - *rejected tails* ([Holes/Tail](DeciSigma1/Holes/Tail), with the periodic deletions of
+     [Holes/Periodic](DeciSigma1/Holes/Periodic)): every hole has a hole whose rejected tails
+     from immortal endpoints have bounded length; the proof selects compatible ultimately
+     periodic continuations and compresses periodic runs; the compression creates no admitted
+     pair on a channel and carries the first rejected cut along the deletion;
    - *fresh tuples* ([Holes/Fresh](DeciSigma1/Holes/Fresh)): a tuple of words none of whose
      endpoints is visited earlier on its run is dominated (same endpoints, fewer visited
      states and smaller channels) by a tuple of bounded total length; the proof deletes
-     repeated blocks of a marker hierarchy simultaneously in all coordinates;
-   - *rejected tails* ([Holes/Tail](DeciSigma1/Holes/Tail), with the periodic deletions of
-     [Holes/Periodic](DeciSigma1/Holes/Periodic)): every hole has a hole with the same
-     endpoint mortality whose rejected tails from immortal endpoints have bounded length; the
-     proof selects compatible ultimately periodic continuations and compresses periodic runs
-     while preserving every channel and the first rejection.
-5. **Decision.** The decider tests satisfiability and then searches the finitely many tuples
+     repeated blocks of a marker hierarchy simultaneously in all coordinates.
+
+   Both deletions use one library for deleting positions from words and following cuts and
+   runs through the deletion ([Words/Deletion](DeciSigma1/Words/Deletion.lean)).
+4. **Decision.** The decider tests satisfiability and then searches the finitely many tuples
    of total length at most the bound, for each mode vector. The bound is computable but very
    large: the deciders establish decidability, they are not practical algorithms.
-6. **Other tree classes.** The countermodels of step 2 are regular. Over `{⊥, f, ⊤}`, the
-   finitely many observations a countermodel must keep are realized by a regular solution,
-   and by a finite one whenever `χ` has a finite solution
-   ([Full/Models](DeciSigma1/Full/Models)).
+5. **The signature `{⊥, f}`.** A set of constructor positions is the tree with these
+   positions labeled `f` and `⊥` below (`Semantics.PrefixSet.toTree`); this embedding
+   preserves the order and the constructor, and its image consists of the trees without `⊤`.
+   No tree below a tree `u` with `u ≤ f(u, …, u)` contains `⊤`. So a constraint over `{⊥, f}`
+   entails a disjunction exactly when the constraint with a fresh variable `u`, the literal
+   `u ≤ f(u, …, u)` and `x ≤ u` for every variable `x`, entails it over `{⊥, f, ⊤}` with a
+   covariant constructor (`Entailment.disjEntailsIn_iff_guarded`), and the `{⊥, f}` deciders
+   use this reduction. The guard is needed: at arity zero, `x ≤ f()` holds for every tree over
+   `{⊥, f}` but fails at `x = ⊤`.
+6. **Regular and finite trees.** The countermodel of step 2 is the least solution containing
+   the seeds of the witnesses. Its leaf cones are finite unions of regular languages, so it
+   has finitely many subtrees (`Full.Reduction.SeedConsistency.regular_realizes`): regular and
+   arbitrary entailment agree. Over finite trees, the finitely many observations a
+   countermodel must keep are bounds by finite trees; each is compiled into one-sided
+   constructor literals on fresh variables, a ranked extension of `χ` that creates no cycle
+   clash, so they are realized by a finite solution whenever `χ` has one
+   (`Full.Models.finiteBoundPinning`).
 7. **Boolean sentences.** Formulas are put in disjunctive normal form, compound subterms are
    named, and each conjunctive clause is decided through disjunctive entailment
    (`Logic.ConjunctiveClause.realizable_iff_not_disjEntailsIn`); quantifier blocks and Boolean
@@ -282,17 +294,17 @@ import DeciSigma1
 | --- | --- |
 | [Main.lean](DeciSigma1/Main.lean) | the public statements and the proof map |
 | [Semantics](DeciSigma1/Semantics) | trees over `{⊥, f, ⊤}` and over `{⊥, f}`, the order with variance, finite and regular trees, medians |
-| [Constraints](DeciSigma1/Constraints) | flat literals in both signatures, closure, the signed translation, path chains |
-| [Satisfiability](DeciSigma1/Satisfiability) | least solutions and shapes, decision of (finite) satisfiability, arity zero |
-| [Automata](DeciSigma1/Automata) | deterministic word automata and the run automata of constraints |
-| [Words](DeciSigma1/Words) | periods, primitive words, conjugacy, ultimately periodic words, suffix chains |
+| [Constraints](DeciSigma1/Constraints) | flat literals in both signatures, closure, the signed translation, compiled ground bounds, ranked extensions |
+| [Satisfiability](DeciSigma1/Satisfiability) | least shapes, label and cycle clashes, decision of satisfiability and finite satisfiability |
+| [Automata](DeciSigma1/Automata) | runs of transition functions, word automata, the run automata of constraints |
+| [Words](DeciSigma1/Words) | periods, primitive words, conjugacy, infinite and ultimately periodic words, deletion of positions, suffix chains |
 | [Arithmetic](DeciSigma1/Arithmetic) | difference constraints, simple paths and periodic runs |
 | [Readers](DeciSigma1/Readers) | tables with several starts, structural readers, holes, domination |
 | [Holes](DeciSigma1/Holes) | the small-hole theorem: fresh tuples, periodic deletion, rejected tails |
-| [Entailment](DeciSigma1/Entailment) | the reduction over `{⊥, f}`, its deciders and its Boolean sentences |
-| [Full](DeciSigma1/Full) | the reduction over `{⊥, f, ⊤}` with variance, its class transfers, deciders and sentences |
+| [Entailment](DeciSigma1/Entailment) | the signature `{⊥, f}`: the guard reduction to `{⊥, f, ⊤}`, its deciders and its Boolean sentences |
+| [Full](DeciSigma1/Full) | the reduction to holes over `{⊥, f, ⊤}` with variance, regular and finite countermodels, deciders and sentences |
 | [Logic](DeciSigma1/Logic) | Boolean sentences generic in the term language, normal forms, the decision procedure |
-| [Examples](DeciSigma1/Examples) | entailments, sentences and readers that show the definitions are not vacuous |
+| [Examples](DeciSigma1/Examples) | entailments, sentences, readers and satisfiability checks that show the definitions are not vacuous |
 | [Audit.lean](DeciSigma1/Audit.lean) | the axiom and computability check |
 
 ## References

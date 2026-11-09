@@ -11,10 +11,11 @@ signed configurations `(v, s, w)`: the path `w` lies in the cone of sign `s` of 
 the path), contains the facts (`x = ⊥`, `x = ⊤`), avoids the negative facts (the roots excluded by
 constructor bounds) and is consistent (no path in both cones of a variable) (`sat_iff_isSolution`).
 
-As over `{⊥, f}`, the least closure of the facts (`leastClosure`), of the facts and a seed
+The least closure of the facts (`leastClosure`), the closure of the facts and a seed
 (`seedClosure`) and the derivations between configurations (`Reach`) describe satisfiability
 (`sat_iff_leastClosure`) and liveness of configurations (`live_iff`, `dead_iff`). Moves come in
-pairs reversed by exchanging the signs (`moves_dual`).
+pairs reversed by exchanging the signs (`moves_dual`). Clause and move derivations use
+`Relation.ReflTransGen`.
 
 ## Main declarations
 
@@ -323,9 +324,8 @@ theorem isSolution_iff_assignment {S : Set (Config n V)} :
   · rintro ⟨ρ, h, rfl⟩; exact (sat_iff_isSolution ρ).mp h
 
 /-- Derivations by finitely many clauses. -/
-inductive Reach (c : Fin n → Bool) (χ : List (LitT n V)) (a : Config n V) : Config n V → Prop
-  | refl : Reach c χ a a
-  | step {b d} : Reach c χ a b → Clause c χ b d → Reach c χ a d
+abbrev Reach (c : Fin n → Bool) (χ : List (LitT n V)) :=
+  Relation.ReflTransGen (Clause c χ)
 
 /-- The configurations derivable from the facts and the seeds `A`. -/
 def hull (c : Fin n → Bool) (χ : List (LitT n V)) (A : Set (Config n V)) : Set (Config n V) :=
@@ -335,11 +335,11 @@ theorem Reach.mem_of_closed {a b : Config n V} {S : Set (Config n V)}
     (h : Reach c χ a b) (hc : Closed c χ S) (ha : a ∈ S) : b ∈ S := by
   induction h with
   | refl => exact ha
-  | step _ hs ih => exact hc hs ih
+  | tail _ hs ih => exact hc hs ih
 
 theorem hull_closed (A : Set (Config n V)) : Closed c χ (hull c χ A) := by
   rintro a b h ⟨s, hs, hr⟩
-  exact ⟨s, hs, .step hr h⟩
+  exact ⟨s, hs, .tail hr h⟩
 
 theorem hull_facts (A : Set (Config n V)) {p : Config n V} (hp : Fact χ p) :
     p ∈ hull c χ A := ⟨p, Or.inl hp, .refl⟩
@@ -402,23 +402,17 @@ theorem moves_append (σ : List (Fin n)) {p q : Config n V} (h : Moves c χ p q)
   | refl => exact .refl
   | tail _ hm ih => exact ih.tail (move_append σ hm)
 
-theorem Reach.trans {a b d : Config n V} (hab : Reach c χ a b)
-    (hbd : Reach c χ b d) : Reach c χ a d := by
-  induction hbd with
-  | refl => exact hab
-  | step _ hs ih => exact .step ih hs
-
 theorem moves_reach {a b : Config n V} (h : Moves c χ a b) : Reach c χ a b := by
   induction h with
   | refl => exact .refl
-  | tail _ hm ih => exact .step ih (.move hm)
+  | tail _ hm ih => exact .tail ih (.move hm)
 
 theorem reach_extend (v : V) (s : Bool) (u α : List (Fin n)) :
     Reach c χ (v, s, u) (v, s, u ++ α) := by
   induction α using List.reverseRecOn with
-  | nil => simpa using (Reach.refl : Reach c χ (v, s, u) (v, s, u))
+  | nil => simpa using (Relation.ReflTransGen.refl : Reach c χ (v, s, u) (v, s, u))
   | append_singleton α i ih =>
-    simpa [List.append_assoc] using Reach.step ih (.extend v s (u ++ α) i)
+    simpa [List.append_assoc] using Relation.ReflTransGen.tail ih (.extend v s (u ++ α) i)
 
 /-- A derivation is a move derivation from an extension of its start. -/
 theorem reach_iff_moves {v : V} {s : Bool} {u : List (Fin n)} {b : Config n V} :
@@ -427,7 +421,7 @@ theorem reach_iff_moves {v : V} {s : Bool} {u : List (Fin n)} {b : Config n V} :
   · intro h
     induction h with
     | refl => exact ⟨[], by simpa using (Relation.ReflTransGen.refl)⟩
-    | step _ hs ih =>
+    | tail _ hs ih =>
       obtain ⟨α, hα⟩ := ih
       cases hs with
       | move hm => exact ⟨α, hα.tail hm⟩

@@ -11,8 +11,8 @@ original text near the end of its word, and the equal labels at the two cuts of 
 give the same window of text and states before both cuts.
 
 Thus every channel of the edited tuple is contained in the original channel
-(`blockDeletionPreservesChannels`), and block deletions on fresh tuples of nonempty words are
-fresh dominations (`blockDeletionPreservesFreshDomination`).
+(`BlockDeletion.channel`), and block deletions on fresh tuples are fresh dominations
+(`BlockDeletion.freshDominates`).
 
 ## Main declarations
 
@@ -20,13 +20,12 @@ fresh dominations (`blockDeletionPreservesFreshDomination`).
 - `BlockDeletion.channel_pair_lifts_of_right_endpoint`: comparisons ending inside the upper
   block of a junction.
 - `BlockDeletion.channel`: every channel of the edited tuple is contained in the original one.
-- `blockDeletionPreservesChannels`, `blockDeletionPreservesFreshDomination`: block deletions
-  preserve channels and are fresh dominations.
+- `BlockDeletion.freshDominates`: block deletions are fresh dominations.
 -/
 
 namespace DeciSigma1.Holes.Fresh
 
-open DeciSigma1.Readers
+open DeciSigma1.Readers DeciSigma1.Words
 open Finset
 
 /-! ## Junctions and windows -/
@@ -42,15 +41,15 @@ variable {T : Table α S k} {W : Fin k → List α} {t : ℕ} (m : BlockDeletion
 /-- In a comparison of edited texts in which every host junction strictly inside has the rest
 of its upper block inside the comparison, the host and target junctions strictly inside
 correspond. The proof is an induction on the rightmost junction. -/
-theorem matching [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ [])
+theorem matching [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     {i j : Fin k} {a b L : ℕ} (hL : (m.apply j).length = b + L)
     (hpre : (m.apply j).drop b <+: (m.apply i).drop a)
     (hB : ∀ d,
-        0 < d → d < L → IsJunction m.deletionLength (m.siteList i)
+        0 < d → d < L → IsJunction m.deletionLength (m.sites i)
             (a + d) → d + m.upperCutLength ≤ L) :
     ∀ d, 0 < d → d < L →
-      (IsJunction m.deletionLength (m.siteList i) (a + d) ↔ IsJunction m.deletionLength
-          (m.siteList j) (b + d)) := by
+      (IsJunction m.deletionLength (m.sites i) (a + d) ↔ IsJunction m.deletionLength
+          (m.sites j) (b + d)) := by
   obtain ⟨r, hr⟩ := hpre
   have hxa : ∀ d, 0 < d → d < L → a + L ≤ (m.apply i).length := by
     intro d h1 h2
@@ -64,63 +63,63 @@ theorem matching [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i �
     rw [← List.drop_drop, ← List.drop_drop, ← hr, List.drop_append_of_le_length (by simp; omega),
       List.take_append_of_le_length (by simp; omega)]
   suffices H : ∀ e d, L - d = e → 0 < d → d < L →
-      (IsJunction m.deletionLength (m.siteList i) (a + d) ↔ IsJunction m.deletionLength
-          (m.siteList j) (b + d)) from
+      (IsJunction m.deletionLength (m.sites i) (a + d) ↔ IsJunction m.deletionLength
+          (m.sites j) (b + d)) from
     fun d h1 h2 => H _ d rfl h1 h2
   intro e
   induction e using Nat.strong_induction_on with
   | _ e ih =>
   intro d he hd0 hdL
   have IH : ∀ d', d < d' → d' < L →
-      (IsJunction m.deletionLength (m.siteList i) (a + d') ↔ IsJunction m.deletionLength
-          (m.siteList j) (b + d')) :=
+      (IsJunction m.deletionLength (m.sites i) (a + d') ↔ IsJunction m.deletionLength
+          (m.sites j) (b + d')) :=
     fun d' h1 h2 => ih (L - d') (by omega) d' rfl (by omega) h2
   constructor
   · intro hJ
     have hdn := hB d hd0 hdL hJ
-    refine m.transfer hfr hne hJ (htext d hdn) ?_ (by omega)
+    refine m.transfer hfr hJ (htext d hdn) ?_ (by omega)
     rintro J hJ' ⟨h1, h2⟩
     have h3 := (IH (J - b) (by omega) (by omega)).mpr (by rwa [Nat.add_sub_cancel' (by omega)])
-    have := m.junction_sep hne hJ h3 (by omega)
+    have := m.junction_sep hJ h3 (by omega)
     omega
   · intro hJ
     have hdn : d + m.upperCutLength ≤ L := by
       obtain ⟨c, hc, hce⟩ := hJ
-      have := (m.junction_window hne hc).2.2.2.1
+      have := (m.junction_window hc).2.2.1
       omega
-    refine m.transfer hfr hne hJ (htext d hdn).symm ?_ (by have := hxa d hd0 hdL; omega)
+    refine m.transfer hfr hJ (htext d hdn).symm ?_ (by have := hxa d hd0 hdL; omega)
     rintro J hJ' ⟨h1, h2⟩
     have h3 := (IH (J - a) (by omega) (by omega)).mp (by rwa [Nat.add_sub_cancel' (by omega)])
-    have := m.junction_sep hne hJ h3 (by omega)
+    have := m.junction_sep hJ h3 (by omega)
     omega
 
 /-! ## Comparisons ending inside the upper block of a junction -/
 
 /-- A word that is not active at level `t + 1` has no deletion site and is not edited. -/
-theorem apply_of_inactive (hne : ∀ i, W i ≠ []) {l : Fin k} (hl : l ∉ active W (t + 1)) :
-    m.siteList l = [] ∧ m.apply l = W l := by
-  have h : m.siteList l = [] := by
-    rw [List.eq_nil_iff_forall_not_mem]
+theorem apply_of_inactive {l : Fin k} (hl : l ∉ active W (t + 1)) :
+    m.sites l = ∅ ∧ m.apply l = W l := by
+  have h : m.sites l = ∅ := by
+    rw [Finset.eq_empty_iff_forall_notMem]
     intro c hc
     obtain ⟨o, ho, hol, hth, -⟩ := m.site_occ hc
-    exact hl (hol ▸ m.active_of_through hne ho hth)
+    exact hl (hol ▸ m.active_of_through ho hth)
   refine ⟨h, ?_⟩
-  show deleteIntervals m.deletionLength (W l) (m.siteList l) = W l
-  rw [h]; rfl
+  rw [BlockDeletion.apply, h]
+  exact deletePositions_empty _
 
 /-- No deletion site meets the last marker of level `t + 1` of its word, by the bound on anchors
 inside a marker and the deletion margin. -/
-theorem terminal [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ []) {l : Fin k}
-    (hl : l ∈ active W (t + 1)) {c : ℕ} (hc : c ∈ m.siteList l) :
+theorem terminal [DecidableEq S] (hfr : ∀ i, T.Fresh W i) {l : Fin k}
+    (hl : l ∈ active W (t + 1)) {c : ℕ} (hc : c ∈ m.sites l) :
     c + m.deletionLength + (marker W (t + 1) l).length ≤ (W l).length := by
   obtain ⟨o, ho, rfl, hth, hoc⟩ := m.site_occ hc
-  have hsp := m.site_spec hne ho hth
+  have hsp := m.site_spec ho hth
   rw [hoc] at hsp
   refine Nat.le_of_not_lt fun hcon => ?_
   have hσ := marker_suffix W (t + 1) o.1
   have hocc : marker W (t + 1) o.1 <+:
       (W o.1).drop ((W o.1).length - (marker W (t + 1) o.1).length) := occ_of_suffix hσ
-  have hspan := card_anchors_Ioc_marker_le hfr hne t hl (W o.1) hocc
+  have hspan := card_anchors_Ioc_marker_le hfr t hl (W o.1) hocc
   have hσl := hσ.length_le
   have hin : m.minDepth ≤
       lowerBlockCount W t o := by have := m.minDepth_le_endDepth;
@@ -128,26 +127,26 @@ theorem terminal [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i �
   have hin' : m.minDepth < lowerBlockCount W t o := by
     have := m.minDepth_lt_maxDepth; have := m.maxDepth_lt_endDepth; have :=
         (m.edge.through_iff.mp hth).1; omega
-  have hctx := anchors_eq_contextAnchors hne (active_succ_subset W t hl)
+  have hctx := anchors_eq_contextAnchors (active_succ_subset W t hl)
   have hdi : depthCut W t o m.minDepth = c + m.deletionLength := by omega
-  have := card_depthCuts hne ho hin (X := (contextAnchors W t (W o.1)).filter
+  have := card_depthCuts ho hin (X := (contextAnchors W t (W o.1)).filter
     (fun p => (W o.1).length - (marker W (t + 1) o.1).length < p ∧
       p ≤ (W o.1).length - (marker W (t + 1) o.1).length + (marker W (t + 1) o.1).length)) (by
     intro d hd
     rw [mem_filter, ← hctx]
-    have h1 := depthCut_anti hne ho hd hin
-    have h2 := depthCut_anti hne ho (Nat.zero_le d) (hd.trans hin)
-    obtain ⟨hall, -⟩ := depthCut_spec hne ho
+    have h1 := depthCut_anti ho hd hin
+    have h2 := depthCut_anti ho (Nat.zero_le d) (hd.trans hin)
+    obtain ⟨hall, -⟩ := depthCut_spec ho
     rw [show depthCut W t o 0 = o.2.2 from rfl] at h2
     refine ⟨(hall d (by omega)).1, by omega, by omega⟩)
   have := m.deletionMargin_gt m.left_margin
   omega
 
-theorem contextAnchors_anti (hne : ∀ i, W i ≠ []) {s t' : ℕ} (h : s ≤ t') (u : List α) :
+theorem contextAnchors_anti {s t' : ℕ} (h : s ≤ t') (u : List α) :
     contextAnchors W t' u ⊆ contextAnchors W s u := by
   induction h with
   | refl => exact subset_refl _
-  | step _ ih => exact (contextAnchors_succ_subset hne _ u).trans ih
+  | step _ ih => exact (contextAnchors_succ_subset _ u).trans ih
 
 theorem le_windowLength {r : ℕ} (hr1 : 1 ≤ r) (hrt : r ≤ t) {g : Fin k} (hg : g ∈ active W r)
     {u : List α} {c : ℕ} (hs : marker W r g <:+ u.take c) :
@@ -233,15 +232,15 @@ theorem label_window {l : Fin k} {c c' : ℕ} (hc : c ≤ (W l).length) (hc' : c
   obtain ⟨t2, d2⟩ := take_of_suffix_take hc' hs' (e := e) (by omega)
   refine ⟨by omega, by omega, by rw [d1, d2], ?_⟩
   simp only [Table.runPrefix]
-  rw [t1, t2, Table.runFrom_append, Table.runFrom_append]
+  rw [t1, t2, runFrom_append, runFrom_append]
   simp only [Table.runPrefix] at hq
   rw [hlen, hq]
 
 /-- The label window of a deletion site meets no other site of its word. -/
-theorem compatible_window [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ [])
-    {l : Fin k} {c c₂ : ℕ} (hc : c ∈ m.siteList l) (hc₂ : c₂ ∈ m.siteList l) (hlt : c₂ < c) :
+theorem compatible_window [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
+    {l : Fin k} {c c₂ : ℕ} (hc : c ∈ m.sites l) (hc₂ : c₂ ∈ m.sites l) (hlt : c₂ < c) :
     c₂ + m.deletionLength + windowLength W t (W l) c ≤ c := by
-  have hs := m.strictly_separated_sites hne l
+  have hs := m.strictlySeparated l
   have hsep := hs.lt hc₂ hc hlt
   rcases Nat.eq_zero_or_pos (windowLength W t (W l) c) with hw0 | hwpos
   · omega
@@ -249,35 +248,35 @@ theorem compatible_window [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ 
   refine Nat.le_of_not_lt fun hcon => ?_
   obtain ⟨o, ho, hol, hth, hoc⟩ := m.site_occ hc
   obtain ⟨o₂, ho₂, hol₂, hth₂, hoc₂⟩ := m.site_occ hc₂
-  have hord := m.site_order hne ho₂ ho hth₂ hth (hol₂.trans hol.symm) (by rw [hoc, hoc₂]; exact hlt)
-  have hsp := m.site_spec hne ho hth
-  have hsp₂ := m.site_spec hne ho₂ hth₂
+  have hord := m.site_order ho₂ ho hth₂ hth (hol₂.trans hol.symm) (by rw [hoc, hoc₂]; exact hlt)
+  have hsp := m.site_spec ho hth
+  have hsp₂ := m.site_spec ho₂ hth₂
   rw [hoc] at hsp
   rw [hoc₂] at hsp₂
   have hcW : c ≤ (W l).length := by rw [← hol]; omega
   obtain ⟨hl1, hocc⟩ := (suffix_take_iff hcW).mp hμ
   obtain ⟨r', rfl⟩ : ∃ r', r = r' + 1 := ⟨r - 1, by omega⟩
-  have hspan := card_anchors_inside_marker_le hfr hne r' hg (W l) hocc
+  have hspan := card_anchors_inside_marker_le hfr r' hg (W l) hocc
   have hin : m.minDepth ≤ lowerBlockCount W t o₂ := by
     have := m.minDepth_le_endDepth; have := (m.edge.through_iff.mp hth₂).1; omega
   have hin' : m.minDepth < lowerBlockCount W t o₂ := by
     have := m.minDepth_lt_maxDepth; have := m.maxDepth_lt_endDepth; have :=
         (m.edge.through_iff.mp hth₂).1; omega
   have hdi : depthCut W t o₂ m.minDepth = c₂ + m.deletionLength := by omega
-  have := card_depthCuts hne ho₂ hin (X := (contextAnchors W r' (W l)).filter
+  have := card_depthCuts ho₂ hin (X := (contextAnchors W r' (W l)).filter
     (fun p => c - (marker W (r' + 1) g).length < p ∧
       p < c - (marker W (r' + 1) g).length + (marker W (r' + 1) g).length)) (by
     intro d hd
     rw [mem_filter]
-    have h1 := depthCut_anti hne ho₂ hd hin
-    have h2 := depthCut_anti hne ho₂ (Nat.zero_le d) (hd.trans hin)
+    have h1 := depthCut_anti ho₂ hd hin
+    have h2 := depthCut_anti ho₂ (Nat.zero_le d) (hd.trans hin)
     rw [show depthCut W t o₂ 0 = o₂.2.2 from rfl] at h2
-    obtain ⟨hall, -⟩ := depthCut_spec hne ho₂
+    obtain ⟨hall, -⟩ := depthCut_spec ho₂
     have hA := (hall d (by omega)).1
-    have hEl := (upperOcc_spec hne ho₂).2.1
+    have hEl := (upperOcc_spec ho₂).2.1
     rw [hol₂] at hA hEl
     refine
-        ⟨contextAnchors_anti hne (by omega) _ (mem_contextAnchors_of_mem_anchors_of_lt_length hA
+        ⟨contextAnchors_anti (by omega) _ (mem_contextAnchors_of_mem_anchors_of_lt_length hA
             (by omega)), by omega,
       by omega⟩)
   have := m.deletionMargin_gt m.left_margin
@@ -286,28 +285,29 @@ theorem compatible_window [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ 
 /-- No junction of a word lies in the `windowLength` letters before the junction of a site: an
 earlier site ends before the label window, and a later site has a later junction. -/
 theorem junction_not_in_labelWindow [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
-    (hne : ∀ i, W i ≠ []) {l : Fin k} {c J' : ℕ} (hc : c ∈ m.siteList l)
-    (hJ' : IsJunction m.deletionLength (m.siteList l) J')
-    (h1 : retainedCut m.deletionLength (m.siteList l) c - windowLength W t (W l) c < J')
-    (h2 : J' < retainedCut m.deletionLength (m.siteList l) c) : False := by
+    {l : Fin k} {c J' : ℕ} (hc : c ∈ m.sites l)
+    (hJ' : IsJunction m.deletionLength (m.sites l) J')
+    (h1 : retainedCount (sitePositions m.deletionLength (m.sites l)) c -
+      windowLength W t (W l) c < J')
+    (h2 : J' < retainedCount (sitePositions m.deletionLength (m.sites l)) c) : False := by
   obtain ⟨c₂, hc₂, rfl⟩ := hJ'
-  have hs := m.strictly_separated_sites hne l
-  have hδ := m.delta_pos hne
+  have hs := m.strictlySeparated l
+  have hδ := m.delta_pos
   rcases lt_trichotomy c₂ c with hlt | rfl | hgt
   · -- the sites before `c` end before its label window, which is therefore retained text
-    have hwin : ∀ c₃ ∈ m.siteList l, c₃ < c →
+    have hwin : ∀ c₃ ∈ m.sites l, c₃ < c →
         c₃ + m.deletionLength + windowLength W t (W l) c ≤ c :=
-      fun c₃ hc₃ h => m.compatible_window hfr hne hc hc₃ h
-    have hret : Retained m.deletionLength (m.siteList l) (c - windowLength W t (W l) c) := by
+      fun c₃ hc₃ h => m.compatible_window hfr hc hc₃ h
+    have hret : Retained m.deletionLength (m.sites l) (c - windowLength W t (W l) c) := by
       intro c₃ hc₃ ⟨h3, h4⟩
       rcases lt_trichotomy c₃ c with h5 | rfl | h5
       · have := hwin c₃ hc₃ h5; omega
       · omega
       · have := hs.lt hc hc₃ h5; omega
     have := hwin c₂ hc₂ hlt
-    have hk1 := retainedCut_mono hs (retained_of_mem_sites hs hc₂) hret
+    have hk1 := retainedCount_mono (D := sitePositions m.deletionLength (m.sites l))
       (show c₂ ≤ c - windowLength W t (W l) c by omega)
-    have hk2 := retainedCut_dist hs hret (q := c) (by omega) fun c₃ hc₃ ⟨h3, h4⟩ => by
+    have hk2 := retainedCount_dist hret (q := c) (by omega) fun c₃ hc₃ ⟨h3, h4⟩ => by
       rcases lt_trichotomy c₃ c with h5 | rfl | h5
       · have := hwin c₃ hc₃ h5; omega
       · omega
@@ -315,78 +315,59 @@ theorem junction_not_in_labelWindow [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     omega
   · omega
   · -- a later site has a later junction
-    have := retainedCut_mono hs (retained_of_mem_sites hs hc) (retained_of_mem_sites hs hc₂) hgt.le
-    have hne' : retainedCut m.deletionLength (m.siteList l) c₂ ≠
-        retainedCut m.deletionLength (m.siteList l) c := by
+    have := retainedCount_mono (D := sitePositions m.deletionLength (m.sites l)) hgt.le
+    have hne' : retainedCount (sitePositions m.deletionLength (m.sites l)) c₂ ≠
+        retainedCount (sitePositions m.deletionLength (m.sites l)) c := by
       intro he
-      have k1 := (originalCuts_at_junction hδ hs hc).1
-      have k2 := (originalCuts_at_junction hδ hs hc₂).1
+      have k1 := greatestPreimage_site hs hc
+      have k2 := greatestPreimage_site hs hc₂
       rw [he] at k2
       omega
     omega
 
-/-- The state at a cut of the edited word, read at the right preimage. -/
-theorem runPrefix_apply (hne : ∀ i, W i ≠ []) (l : Fin k) (a : ℕ) :
-    T.runPrefix m.apply l a =
-        T.runPrefix W l (rightOriginalCut m.deletionLength (m.siteList l) a) := by
-  rw [(m.apply_run hne l).2.1]
-  rcases rightOriginalCut_or (m.delta_pos hne) (m.strictly_separated_sites hne l) a with h | ⟨hc, h⟩
-  · rw [h]
-  · rw [h]
-    have := (m.site_valid hne hc).2.2
-    simp only [Table.runPrefix]
-    exact this
-
-/-- The edited text of a word ends with its original terminal window: past the last site, the cut
-maps are shifts. -/
-theorem tail_window (hne : ∀ i, W i ≠ []) {l : Fin k} {P : ℕ}
-    (hP : ∀ c ∈ m.siteList l, c + m.deletionLength + P ≤ (W l).length) (hPl : P ≤ (W l).length)
+/-- The edited text of a word ends with its original terminal window: past the last site, the
+cut map is a shift. -/
+theorem tail_window {l : Fin k} {P : ℕ}
+    (hP : ∀ c ∈ m.sites l, c + m.deletionLength + P ≤ (W l).length) (hPl : P ≤ (W l).length)
     {b' : ℕ} (hb1 : (m.apply l).length - P ≤ b') (hb2 : b' ≤ (m.apply l).length) :
     (m.apply l).drop b' = (W l).drop ((W l).length - ((m.apply l).length - b')) ∧
-      rightOriginalCut m.deletionLength (m.siteList l) b' = (W l).length -
+      greatestPreimage (sitePositions m.deletionLength (m.sites l)) b' = (W l).length -
           ((m.apply l).length - b') := by
-  have hδ := m.delta_pos hne
-  have hs := m.strictly_separated_sites hne l
-  set cs := m.siteList l
-  have hlen : ∀ c ∈ cs, c + m.deletionLength ≤ (W l).length := fun c hc => (m.site_text hne hc).1.le
-  have hU : retainedCut m.deletionLength cs (W l).length = (m.apply l).length :=
-      retainedCut_length hδ hs hlen
-  have hret0 : Retained m.deletionLength cs ((W l).length - P) := by
+  have hδ := m.delta_pos
+  have hret0 : Retained m.deletionLength (m.sites l) ((W l).length - P) := by
     intro c hc ⟨h1, h2⟩; have := hP c hc; omega
   have hdist : ∀ q, (W l).length - P ≤ q → q ≤ (W l).length →
-      retainedCut m.deletionLength cs q = retainedCut m.deletionLength cs ((W l).length - P) +
+      retainedCount (sitePositions m.deletionLength (m.sites l)) q =
+        retainedCount (sitePositions m.deletionLength (m.sites l)) ((W l).length - P) +
           (q - ((W l).length - P)) := by
     intro q h1 h2
-    exact retainedCut_dist hs hret0 h1 (fun c hc ⟨h3, h4⟩ => by have := hP c hc; omega)
+    exact retainedCount_dist hret0 h1 (fun c hc ⟨h3, h4⟩ => by have := hP c hc; omega)
   have hk0 := hdist (W l).length (by omega) le_rfl
-  rw [hU] at hk0
+  rw [← length_deletePositions, ← BlockDeletion.apply] at hk0
   set p := (W l).length - ((m.apply l).length - b')
   have hp1 : (W l).length - P ≤ p := by omega
-  have hkp : retainedCut m.deletionLength cs p = b' := by rw [hdist p hp1 (by omega)]; omega
-  have hretp : Retained m.deletionLength cs p := by intro c hc ⟨h1, h2⟩; have := hP c hc; omega
-  have hpn : p ∉ cs := by
+  have hkp : retainedCount (sitePositions m.deletionLength (m.sites l)) p = b' := by
+    rw [hdist p hp1 (by omega)]; omega
+  have hpn : p ∉ sitePositions m.deletionLength (m.sites l) := by
     intro hm
-    have := hP p hm
-    have h0 : p = (W l).length - P := by omega
-    have := hP p hm
-    rcases Nat.eq_zero_or_pos P with hP0 | hPpos
-    · have := (m.site_text hne hm).1; omega
-    · omega
-  have hkR : rightOriginalCut m.deletionLength cs b' =
-      p := by rw [← hkp]; exact rightOriginalCut_retainedCut hs hretp hpn
+    obtain ⟨c, hc, h1, h2⟩ := mem_sitePositions.mp hm
+    have := hP c hc
+    have := (m.site_text hc).1
+    omega
+  have hkR : greatestPreimage (sitePositions m.deletionLength (m.sites l)) b' = p := by
+    rw [← hkp]; exact greatestPreimage_retainedCount hpn
   refine ⟨?_, hkR⟩
-  have hfree : ∀ J, IsJunction m.deletionLength cs J →
+  have hfree : ∀ J, IsJunction m.deletionLength (m.sites l) J →
       ¬ (b' < J ∧ J < b' + ((m.apply l).length - b')) := by
     rintro J ⟨c, hc, rfl⟩ ⟨h1, -⟩
-    have h3 := retainedCut_mono hs (retained_of_mem_sites hs hc) hret0 (show c ≤ (W l).length - P by
-      have := hP c hc; omega)
+    have h3 := retainedCount_mono (D := sitePositions m.deletionLength (m.sites l))
+      (show c ≤ (W l).length - P by have := hP c hc; omega)
     have h4 := hdist ((W l).length - P) le_rfl (by omega)
     omega
-  have hw := take_drop_deleteIntervals hδ hs hlen hfree
-  rw [hkR] at hw
-  change ((m.apply l).drop b').take ((m.apply l).length - b') =
-    ((W l).drop p).take ((m.apply l).length - b') at hw
-  rw [List.take_of_length_le (by simp), List.take_of_length_le (by simp; omega)] at hw
+  have hw : ((m.apply l).drop b').take ((m.apply l).length - b') =
+      ((W l).drop (greatestPreimage (sitePositions m.deletionLength (m.sites l)) b')).take
+        ((m.apply l).length - b') := take_drop_deleteSites _ hfree
+  rw [hkR, List.take_of_length_le (by simp), List.take_of_length_le (by simp; omega)] at hw
   exact hw
 
 /-- A comparison whose end lies strictly inside the upper block of a host junction gives a pair
@@ -395,24 +376,23 @@ comparison starts at most `windowLength` letters left of the junction, by the fa
 property, and the equal label window before the right cut of the deletion gives the original
 pair. -/
 theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
-    (hne : ∀ i, W i ≠ [])
     {i j : Fin k} {a b L d : ℕ} (hL : (m.apply j).length = b + L)
     (hpre : (m.apply j).drop b <+: (m.apply i).drop a) (hd0 : 0 < d) (hdL : d < L)
-    (hJ : IsJunction m.deletionLength (m.siteList i) (a + d)) (hlt : L < d + m.upperCutLength) :
+    (hJ : IsJunction m.deletionLength (m.sites i) (a + d)) (hlt : L < d + m.upperCutLength) :
     (T.runPrefix m.apply i a, T.runPrefix m.apply j b) ∈ T.channel W i j := by
-  have hδ := m.delta_pos hne
+  have hδ := m.delta_pos
   obtain ⟨c, hc, hce⟩ := hJ
   obtain ⟨o, ho, hol, hth, hoc⟩ := m.site_occ hc
-  obtain ⟨jk1, jk2, jsep, jlen, jwin⟩ := m.junction_window hne hc
-  rw [hce] at jk1 jk2 jlen jwin
-  have hsi := m.strictly_separated_sites hne i
-  have hleni : ∀ c' ∈ m.siteList i, c' + m.deletionLength ≤ (W i).length :=
-    fun c' hc' => (m.site_text hne hc').1.le
-  obtain ⟨hnt1, hnt2, hnpos⟩ := m.upperCutLength_spec hne ho hth
+  obtain ⟨jk2, jsep, jlen, jwin⟩ := m.junction_window hc
+  rw [hce] at jk2 jlen jwin
+  have hsi := m.strictlySeparated i
+  have hcret := retained_of_mem_sites hsi hc
+  have hcne : ∀ c' ∈ m.sites i, c ≠ c' + m.deletionLength := fun c' hc' => hsi.ne_right hδ hc hc'
+  obtain ⟨hnt1, hnt2, hnpos⟩ := m.upperCutLength_spec ho hth
   rw [hoc] at hnt2
-  have hsp := m.site_spec hne ho hth
+  have hsp := m.site_spec ho hth
   rw [hoc] at hsp
-  have hEl := (upperOcc_spec hne ho).2.1
+  have hEl := (upperOcc_spec ho).2.1
   rw [hol] at hEl
   obtain ⟨r, hr⟩ := hpre
   have hlenx : a + L ≤ (m.apply i).length := by
@@ -423,7 +403,7 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
     rw [← hr, List.take_append_of_le_length (by simp; omega),
         List.take_of_length_le (by simp; omega)]
   -- no junction of the host strictly inside `(a + d, a + L)`
-  have hfreeR : ∀ J', IsJunction m.deletionLength (m.siteList i) J' →
+  have hfreeR : ∀ J', IsJunction m.deletionLength (m.sites i) J' →
       ¬ (a + d < J' ∧ J' < a + d + (L - d)) := by
     rintro J' hJ' ⟨h1, h2⟩
     rcases jsep J' hJ' with h | h <;> omega
@@ -434,13 +414,13 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
         (1 ≤ t ∧ j ∉ active W (t + 1))) := by
     by_cases hj : j ∈ active W (t + 1)
     · have hσ := marker_suffix W (t + 1) j
-      have hterm := fun c' hc' => m.terminal hfr hne hj (c := c') hc'
+      have hterm := fun c' hc' => m.terminal hfr hj (c := c') hc'
       have hσl := hσ.length_le
-      have hlenj : (m.apply j).length + m.deletionLength * (m.siteList j).length = (W j).length :=
-        (m.apply_run hne j).1
+      have hlenj : (m.apply j).length ≤ (W j).length := by
+        rw [BlockDeletion.apply, length_deletePositions]; exact retainedCount_le _
       have hLs : L < (marker W (t + 1) j).length := by
         refine Nat.lt_of_not_le fun hge => ?_
-        obtain ⟨hw1, -⟩ := m.tail_window hne hterm hσl (b' := (m.apply j).length -
+        obtain ⟨hw1, -⟩ := m.tail_window hterm hσl (b' := (m.apply j).length -
           (marker W (t + 1) j).length) le_rfl (by omega)
         rw [show (m.apply j).length - ((m.apply j).length - (marker W (t + 1) j).length) =
           (marker W (t + 1) j).length by omega, ← List.suffix_iff_eq_drop.mp hσ] at hw1
@@ -455,27 +435,29 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
         have hanc : a + L ∈ contextAnchors W (t + 1) (m.apply i) :=
           (mem_contextAnchors_succ W).mpr ⟨hlenx, j, hj, hσU⟩
         obtain ⟨p, hp, hret, hkp⟩ :=
-          (m.contextAnchors_apply hne (r := t + 1) (by omega) le_rfl i _).mp hanc
+          (m.contextAnchors_apply (r := t + 1) (by omega) le_rfl i _).mp hanc
         have hpA : p ∈ anchors W (t + 1) i := mem_insert_of_mem hp
-        have hki : leftOriginalCut m.deletionLength (m.siteList i) (a + L) = p := by
-          rw [← hkp]
-          exact leftOriginalCut_retainedCut hsi hret
-              (fun c' hc' => (m.anchor_ne_site hne hpA hc').2)
-        have hka := leftOriginalCut_add hδ hsi (show 0 < L - d by omega) hfreeR
-        rw [show a + d + (L - d) = a + L by omega, hki, jk2] at hka
-        have hno := (upperOcc_spec hne ho).2.2.2.2 p (hol ▸ hpA)
+        have hka := greatestPreimage_add_eq (show 0 < L - d by omega) hfreeR hret
+          (fun c' hc' => (m.anchor_ne_site hpA hc').2) (by rw [hkp]; omega)
+        rw [jk2] at hka
+        have hno := (upperOcc_spec ho).2.2.2.2 p (hol ▸ hpA)
         exact hno ⟨by omega, by omega⟩
-      obtain ⟨hw1, hw2⟩ := m.tail_window hne hterm hσl (b' := b) (by omega) (by omega)
+      obtain ⟨hw1, hw2⟩ := m.tail_window hterm hσl (b' := b) (by omega) (by omega)
       rw [show (m.apply j).length - b = L by omega] at hw1 hw2
       refine ⟨hw1, ?_, Or.inl ⟨hj, hLs⟩⟩
-      rw [m.runPrefix_apply hne j b, hw2]
+      rw [m.runPrefix_apply j b, hw2]
     · have ht : 1 ≤ t := by
+        -- at level `0` an inactive word is empty, and so is its edited word
         by_contra h0
-        exact hj (by rw [show t = 0 by omega]; exact mem_univ _)
-      obtain ⟨hnil, happ⟩ := m.apply_of_inactive hne hj
+        have hnil : W j = [] := not_not.mp fun h =>
+          hj (by rw [show t = 0 by omega]; exact (mem_active_one W).mpr h)
+        have hlen := congrArg List.length (m.apply_of_inactive hj).2
+        rw [hnil, List.length_nil] at hlen
+        omega
+      obtain ⟨hnil, happ⟩ := m.apply_of_inactive hj
       have hb : b = (W j).length - L := by rw [happ] at hL; omega
       refine ⟨by rw [happ, hb], ?_, Or.inr ⟨ht, hj⟩⟩
-      rw [m.runPrefix_apply hne j b, hnil, hb]; rfl
+      rw [m.runPrefix_apply j b, hnil, hb]; simp [sitePositions]
   obtain ⟨hYold, hqj, hcase⟩ := hT
   -- the comparison starts at most `w` letters left of the junction
   set w := windowLength W t (W i) c with hwdef
@@ -489,7 +471,7 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
       rcases hcase with ⟨hj, hLs⟩ | ⟨ht, -⟩
       · by_contra h0
         have h1 : (marker W (t + 1) j).length = 1 := by
-          rw [show t = 0 by omega]; exact length_marker_one hne j
+          rw [show t = 0 by omega] at hj ⊢; exact length_marker_one hj
         omega
       · exact ht
     -- the level-`t` marker `τ` ending at the site
@@ -501,25 +483,23 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
     obtain ⟨-, h, hh, hτ⟩ := (mem_contextAnchors_succ W).mp hcA
     have hτw : (marker W (t' + 1) h).length ≤ w := le_windowLength (by omega) le_rfl hh hτ
     set τ := marker W (t' + 1) h with hτdef
-    have hτpos : 1 ≤ τ.length := List.length_pos_iff.mpr (marker_ne_nil hne (by omega) hh)
+    have hτpos : 1 ≤ τ.length := List.length_pos_iff.mpr (marker_ne_nil (by omega) hh)
     -- the window left of the junction is original text
-    have hfreeS : ∀ J', IsJunction m.deletionLength (m.siteList i) J' →
+    have hfreeS : ∀ J', IsJunction m.deletionLength (m.sites i) J' →
         ¬ (a + d - τ.length < J' ∧ J' < a + d - τ.length + τ.length) :=
-      fun J' hJ' h => m.junction_not_in_labelWindow hfr hne hc hJ' (by omega) (by omega)
-    have hka := leftOriginalCut_add hδ hsi hτpos hfreeS
-    rw [show a + d - τ.length + τ.length = a + d by omega, jk1] at hka
-    have hwinS := take_drop_deleteIntervals hδ hsi hleni hfreeS
-    rw [show rightOriginalCut m.deletionLength (m.siteList i)
+      fun J' hJ' h => m.junction_not_in_labelWindow hfr hc hJ' (by omega) (by omega)
+    have hka := greatestPreimage_add_eq hτpos hfreeS hcret hcne (by rw [hce]; omega)
+    have hwinS : ((m.apply i).drop (a + d - τ.length)).take τ.length =
+        ((W i).drop (greatestPreimage (sitePositions m.deletionLength (m.sites i))
+          (a + d - τ.length))).take τ.length := take_drop_deleteSites _ hfreeS
+    rw [show greatestPreimage (sitePositions m.deletionLength (m.sites i))
         (a + d - τ.length) = c - τ.length by omega] at hwinS
     have hcW : c ≤ (W i).length := by omega
     have hτold : ((W i).drop (c - τ.length)).take τ.length = τ :=
       (List.prefix_iff_eq_take.mp ((suffix_take_iff hcW).mp hτ).2).symm
     have hτU : τ <+: (m.apply i).drop (a + (d - τ.length)) := by
       rw [show a + (d - τ.length) = a + d - τ.length by omega]
-      change τ <+: (deleteIntervals m.deletionLength (W i) (m.siteList i)).drop (a + d - τ.length)
-      rw [← List.take_append_drop τ.length ((deleteIntervals m.deletionLength (W i)
-          (m.siteList i)).drop
-        (a + d - τ.length)), hwinS, hτold]
+      rw [← List.take_append_drop τ.length ((m.apply i).drop (a + d - τ.length)), hwinS, hτold]
       exact List.prefix_append _ _
     -- `τ` lies strictly inside the target suffix
     have hτY : τ <+: ((m.apply j).drop b).drop (d - τ.length) := by
@@ -535,25 +515,24 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
       have hσl := hσ.length_le
       have hτlen : (marker W (t' + 1) h).length = τ.length := rfl
       have hin := prefix_drop_of_occ hσo hτY (by omega) (by omega)
-      rcases (marker_occurrences_in_next_marker hne (by omega) hj).2.2 h hh _ hin with h1 | h1 <;>
+      rcases (marker_occurrences_in_next_marker (by omega) hj).2.2 h hh _ hin with h1 | h1 <;>
         omega
     · have hanc : (W j).length - L + (d - τ.length) + τ.length ∈ contextAnchors W (t' + 1) (W j) :=
         (mem_contextAnchors_succ W).mpr ⟨by omega, h, hh, suffix_take_of_occ hτY⟩
       have hA : (W j).length - L + (d - τ.length) + τ.length ∈ anchors W (t' + 1) j :=
         mem_insert_of_mem hanc
-      rw [anchors_eq_singleton hne (t := t' + 1) (by omega) hj, mem_singleton] at hA
+      rw [anchors_eq_singleton (t := t' + 1) (by omega) hj, mem_singleton] at hA
       omega
   -- the original pair, read from the right cut `c + δ`
   have hcW : c ≤ (W i).length := by omega
   have hcW' : c + m.deletionLength ≤ (W i).length := by omega
   obtain ⟨-, -, hlw, hlq⟩ := label_window hcW hcW' hlab (e := d) hdw
-  have hfreeD : ∀ J', IsJunction m.deletionLength (m.siteList i) J' → ¬ (a < J' ∧ J' < a + d) :=
-    fun J' hJ' h => m.junction_not_in_labelWindow hfr hne hc hJ' (by omega) (by omega)
-  have hkaD := leftOriginalCut_add hδ hsi hd0 hfreeD
-  rw [jk1] at hkaD
-  have hkRa : rightOriginalCut m.deletionLength (m.siteList i) a = c - d := by omega
+  have hfreeD : ∀ J', IsJunction m.deletionLength (m.sites i) J' → ¬ (a < J' ∧ J' < a + d) :=
+    fun J' hJ' h => m.junction_not_in_labelWindow hfr hc hJ' (by omega) (by omega)
+  have hkaD := greatestPreimage_add_eq hd0 hfreeD hcret hcne hce
+  have hkRa : greatestPreimage (sitePositions m.deletionLength (m.sites i)) a = c - d := by omega
   have hwinD : ((m.apply i).drop a).take d = ((W i).drop (c - d)).take d := by
-    have := take_drop_deleteIntervals hδ hsi hleni hfreeD
+    have := take_drop_deleteSites (W i) hfreeD
     rw [hkRa] at this
     exact this
   have hwinR : ((m.apply i).drop (a + d)).take (L - d) =
@@ -571,51 +550,42 @@ theorem channel_pair_lifts_of_right_endpoint [DecidableEq S] (hfr : ∀ i, T.Fre
       show c + m.deletionLength - d + d = c + m.deletionLength by omega]
     exact (List.prefix_append_right_inj _).mpr (List.take_prefix _ _)
   have hqi : T.runPrefix m.apply i a = T.runPrefix W i (c + m.deletionLength - d) := by
-    rw [m.runPrefix_apply hne i a, hkRa, hlq]
+    rw [m.runPrefix_apply i a, hkRa, hlq]
   rw [hqi, hqj]
   exact Table.pair_mem_channel (by omega) (by omega) hold
 
 /-- Every channel of the edited tuple, including those from a coordinate to itself and those
 with empty target suffixes, is contained in the corresponding channel of the original tuple. -/
-theorem channel [DecidableEq S] (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ [])
+theorem channel [DecidableEq S] (hfr : ∀ i, T.Fresh W i)
     (i j : Fin k) : T.channel m.apply i j ⊆ T.channel W i j := by
   intro pq hpq
   obtain ⟨a, ha, b, hb, hpre, rfl⟩ := Table.mem_channel.mp hpq
   have hL : (m.apply j).length = b + ((m.apply j).length - b) := by omega
   set L := (m.apply j).length - b
-  by_cases hA : ∃ d, 0 < d ∧ d < L ∧ IsJunction m.deletionLength (m.siteList i) (a + d) ∧ L < d +
+  by_cases hA : ∃ d, 0 < d ∧ d < L ∧ IsJunction m.deletionLength (m.sites i) (a + d) ∧ L < d +
       m.upperCutLength
   · obtain ⟨d, hd0, hdL, hJ, hlt⟩ := hA
-    exact m.channel_pair_lifts_of_right_endpoint hfr hne hL hpre hd0 hdL hJ hlt
-  · have hB : ∀ d, 0 < d → d < L → IsJunction m.deletionLength (m.siteList i) (a + d) → d +
+    exact m.channel_pair_lifts_of_right_endpoint hfr hL hpre hd0 hdL hJ hlt
+  · have hB : ∀ d, 0 < d → d < L → IsJunction m.deletionLength (m.sites i) (a + d) → d +
       m.upperCutLength ≤ L :=
       fun d h1 h2 h3 => Nat.le_of_not_lt fun h => hA ⟨d, h1, h2, h3, h⟩
-    have hm := m.matching hfr hne hL hpre hB
+    have hm := m.matching hfr hL hpre hB
     have hold :=
-        prefix_of_matched (m.delta_pos hne) (m.strictly_separated_sites hne i)
-            (m.strictly_separated_sites hne j)
-      (fun c hc => m.site_text hne hc) (fun c hc => m.site_text hne hc) L a b hL hpre hm
-    rw [m.runPrefix_apply hne i a, m.runPrefix_apply hne j b]
+        prefix_of_matched (m.delta_pos) (m.strictlySeparated i)
+            (m.strictlySeparated j)
+      (fun c hc => m.site_text hc) (fun c hc => m.site_text hc) L a b hL hpre hm
+    rw [m.runPrefix_apply i a, m.runPrefix_apply j b]
     exact Table.pair_mem_channel
-      (rightOriginalCut_le (m.strictly_separated_sites hne i) (fun c hc =>
-          (m.site_text hne hc).1.le) ha)
-      (rightOriginalCut_le (m.strictly_separated_sites hne j) (fun c hc =>
-          (m.site_text hne hc).1.le) hb) hold
+      (greatestPreimage_le_length _ (m.length_not_mem_sitePositions i) ha)
+      (greatestPreimage_le_length _ (m.length_not_mem_sitePositions j) hb) hold
+
+/-- A block deletion on a fresh tuple is a fresh domination. -/
+theorem freshDominates [DecidableEq S] (hfr : ∀ i, T.Fresh W i) :
+    FreshDominates T m.apply W :=
+  m.freshDominates_of_channel hfr (m.channel hfr)
 
 end BlockDeletion
 
 end Sites
-
-/-! ## Block deletions are fresh dominations -/
-
-/-- Block deletions on fresh tuples of nonempty words make every channel smaller. -/
-theorem blockDeletionPreservesChannels {α : Type} [DecidableEq α] :
-    BlockDeletionPreservesChannels α :=
-  fun _ _ _ _ _ _ _ hfr hne m i j => m.channel hfr hne i j
-
-/-- Block deletions on fresh tuples of nonempty words are fresh dominations. -/
-theorem blockDeletionPreservesFreshDomination {α : Type} [DecidableEq α] :
-    BlockDeletionPreservesFreshDomination α :=
-  blockDeletionPreservesFreshDomination_of_channels blockDeletionPreservesChannels
 
 end DeciSigma1.Holes.Fresh

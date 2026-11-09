@@ -8,12 +8,14 @@ offsets of at least `stateTransientLength` repeat with period `statePeriodModulu
 (`Piece.runPrefix_mod`). So every deleted block starts and ends in the same state, and the
 edited tuple has the same endpoints and visits only original states (`editedTuple_endState`,
 `editedTuple_visitedStates`). Each piece of the class keeps `retainedLength` letters, at least
-`fixedMargin`, and its image is a piece of the edited tuple (`imagePiece`).
+`fixedMargin` if it is shortened, and its image is a piece of the edited tuple (`imagePiece`).
 
-Every cut of the edited tuple has a canonical original cut, a retained position with that image
-(`CanonicalCut`, `exists_canonicalCut`); a text read from a canonical cut is original text as
-long as it crosses no deleted block (`text_canonicalCut`). The last section compares the
-retained lengths of two pieces joined by a follower edge.
+Every cut of the edited tuple has a canonical original cut, its greatest preimage
+`Words.greatestPreimage` (`CanonicalCut`, `exists_canonicalCut`,
+`canonicalCut_eq_greatestPreimage`); a text read
+from a canonical cut is original text as long as it crosses no deleted block
+(`text_canonicalCut`). The last section compares the retained lengths of two pieces joined by a
+follower edge.
 
 ## Main declarations
 
@@ -26,7 +28,7 @@ retained lengths of two pieces joined by a follower edge.
 
 namespace DeciSigma1.Holes.Periodic
 
-open DeciSigma1.Readers
+open DeciSigma1.Readers DeciSigma1.Words
 open DeciSigma1.Readers.Table
 
 variable {α S : Type} [DecidableEq α] {k : ℕ} {W : Fin k → List α} {ρ : List α}
@@ -392,7 +394,7 @@ include hN
 theorem block_states (l : Fin k) :
     ∀ j c, j < c → c ≤ (W l).length → (∀ p, j ≤ p → p < c → p ∈ deletedPositions W ρ N x l) →
       (j = 0 ∨ j - 1 ∉ deletedPositions W ρ N x l) → c ∉ deletedPositions W ρ N x l →
-      T.runFrom (T.start l) ((W l).take j) = T.runFrom (T.start l) ((W l).take c) := by
+      runFrom T.step (T.start l) ((W l).take j) = runFrom T.step (T.start l) ((W l).take c) := by
   intro j c hjc hc hD hj hcD
   obtain ⟨P, hP, hPl, h1, h2⟩ := mem_deletedPositions.mp (hD (c - 1) (by omega) (by omega))
   subst hPl
@@ -429,6 +431,14 @@ theorem runPrefix_editedTuple (l : Fin k) {c : ℕ} (hc : c ≤ (W l).length)
   unfold runPrefix keepCut editedTuple
   rw [deletePositions_take _ hc]
   exact runFrom_deletePositions_take T _ _ (hx.block_states T hN l) c hc hint
+
+/-- The state of the edited tuple at a cut is the original state at the greatest preimage of
+the cut. -/
+theorem runPrefix_editedTuple_greatestPreimage (l : Fin k) (a : ℕ) :
+    T.runPrefix (editedTuple W ρ N x) l a =
+      T.runPrefix W l (greatestPreimage (deletedPositions W ρ N x l) a) :=
+  runFrom_take_deletePositions T _ _ (hx.block_states T hN l)
+    (fun h => absurd (hx.deletedPositions_lt_length h) (lt_irrefl _)) a
 
 /-- The states of the image of a piece are its original states at the same offsets. -/
 theorem runPrefix_imagePiece (P : Piece W ρ.length) {o : ℕ}
@@ -487,32 +497,19 @@ theorem length_editedTuple (l : Fin k) :
     (editedTuple W ρ N x l).length = keepCut W ρ N x l (W l).length := by
   rw [editedTuple, length_deletePositions]; rfl
 
-/-- Every cut of an edited word has a canonical original cut. -/
+/-- Every cut of an edited word has a canonical original cut: its greatest preimage. -/
 theorem exists_canonicalCut (l : Fin k) {c' : ℕ} (hc' : c' ≤ (editedTuple W ρ N x l).length) :
-    ∃ c, hx.CanonicalCut l c c' := by
-  classical
-  rw [length_editedTuple] at hc'
-  rcases Nat.eq_or_lt_of_le hc' with h | h
-  · exact ⟨_, le_rfl, h.symm, fun h' => absurd h' (lt_irrefl _)⟩
-  have hex : ∃ c, c' < keepCut W ρ N x l (c + 1) :=
-    ⟨(W l).length, lt_of_lt_of_le h (retainedCount_mono (Nat.le_succ _))⟩
-  set c := Nat.find hex
-  have hc1 : c' < keepCut W ρ N x l (c + 1) := Nat.find_spec hex
-  have hc0 : keepCut W ρ N x l c ≤ c' := by
-    rcases Nat.eq_zero_or_pos c with h0 | h0
-    · rw [h0]; simp [keepCut]
-    · have := Nat.find_min hex (m := c - 1) (by omega)
-      rw [show c - 1 + 1 = c by omega] at this; omega
-  have hsucc := retainedCount_succ (D := deletedPositions W ρ N x l) c
-  unfold keepCut at hc1 hc0
-  have hcD : c ∉ deletedPositions W ρ N x l := by
-    intro hm; rw [ite_eq_left hm] at hsucc; omega
-  rw [ite_eq_right hcD] at hsucc
-  have hcl : c < (W l).length := by
-    by_contra hge
-    have := retainedCount_mono (D := deletedPositions W ρ N x l) (show (W l).length ≤ c by omega)
-    unfold keepCut at h; omega
-  exact ⟨c, hcl.le, by unfold keepCut; omega, fun _ => hcD⟩
+    ∃ c, hx.CanonicalCut l c c' :=
+  ⟨greatestPreimage (deletedPositions W ρ N x l) c',
+    greatestPreimage_le_length _
+        (fun h => absurd (hx.deletedPositions_lt_length h) (lt_irrefl _)) hc',
+    retainedCount_greatestPreimage c', fun _ => greatestPreimage_not_mem c'⟩
+
+theorem canonicalCut_eq_greatestPreimage {l : Fin k} {c c' : ℕ} (h : hx.CanonicalCut l c c') :
+    greatestPreimage (deletedPositions W ρ N x l) c' = c := by
+  obtain ⟨-, hk, hr⟩ := h
+  rw [← hk]
+  exact greatestPreimage_retainedCount fun hm => hr (hx.deletedPositions_lt_length hm) hm
 
 theorem canonicalCut_unique {l : Fin k} {c₁ c₂ c' : ℕ} (h₁ : hx.CanonicalCut l c₁ c')
     (h₂ : hx.CanonicalCut l c₂ c') :
@@ -584,18 +581,6 @@ theorem retainedCount_junction (P : Piece W ρ.length) (hxP : x P ≠ 0) :
       (by have := hx.site_bound hxP; unfold Piece.len; omega)]
   rfl
 
-/-- A deleted position whose predecessor is retained starts the site of a shortened piece. -/
-theorem site_start {l : Fin k} {p : ℕ} (hp : p ∈ deletedPositions W ρ N x l)
-    (hp' : p - 1 ∉ deletedPositions W ρ N x l) :
-    ∃ R : Piece W ρ.length, R.coordinate = l ∧ x R ≠ 0 ∧ R.start +
-        Periodic.boundaryMargin N ρ.length = p := by
-  obtain ⟨R, _, hRl, h1, h2⟩ := mem_deletedPositions.mp hp
-  have hxR : x R ≠ 0 := by intro h0; rw [h0] at h2; omega
-  refine ⟨R, hRl, hxR, ?_⟩
-  by_contra hne
-  subst hRl
-  exact hp' (hx.site_sub (by omega) (by omega))
-
 omit hx in
 theorem zero_not_mem (_hx : AdmissibleDeletion W ρ N x) (l : Fin k) :
     0 ∉ deletedPositions W ρ N x l := by
@@ -603,22 +588,29 @@ theorem zero_not_mem (_hx : AdmissibleDeletion W ρ N x) (l : Fin k) :
   obtain ⟨R, _, _, h1, _⟩ := mem_deletedPositions.mp hp
   have := Periodic.d_le_boundaryMargin N ρ.length; have := R.period_pos; omega
 
-/-- A deleted position at `c + i` after retained positions from the canonical cut `c` sits
-at the junction `c' + i` of a shortened piece. -/
-theorem junction_of_deleted {l : Fin k} {c c' i : ℕ} (hc : hx.CanonicalCut l c c') (hi : 0 < i)
-    (hprev : ∀ j < i, c + j ∉ deletedPositions W ρ N x l)
-        (hm : c + i ∈ deletedPositions W ρ N x l) :
-    ∃ R : Piece W ρ.length, R.coordinate = l ∧ x R ≠ 0 ∧ (hx.imagePiece R).start +
-        Periodic.boundaryMargin N ρ.length = c' + i := by
-  obtain ⟨_, hck, _⟩ := hc
-  obtain ⟨R, hRl, hxR, hRs⟩ := hx.site_start hm (by
-    have := hprev (i - 1) (by omega); rwa [show c + (i - 1) = c + i - 1 by omega] at this)
-  have hk := retainedCount_add_of_not_mem hprev
-  have hj := hx.retainedCount_junction R hxR
-  refine ⟨R, hRl, hxR, ?_⟩
-  rw [hRs, hRl] at hj
-  unfold keepCut at hj hck
-  omega
+/-- The image of a deleted position is the junction of a shortened piece. -/
+theorem keepCut_of_mem {l : Fin k} {p : ℕ} (hp : p ∈ deletedPositions W ρ N x l) :
+    ∃ R : Piece W ρ.length, R.coordinate = l ∧ x R ≠ 0 ∧
+      retainedCount (deletedPositions W ρ N x l) p =
+        (hx.imagePiece R).start + Periodic.boundaryMargin N ρ.length := by
+  obtain ⟨R, _, hRl, h1, h2⟩ := mem_deletedPositions.mp hp
+  have hxR : x R ≠ 0 := by intro h0; rw [h0] at h2; omega
+  subst hRl
+  refine ⟨R, rfl, hxR, ?_⟩
+  rw [← hx.retainedCount_junction R hxR]
+  obtain ⟨n, rfl⟩ := Nat.exists_eq_add_of_le h1
+  exact retainedCount_add_of_mem fun i hi => hx.site_sub (by omega) (by omega)
+
+/-- From a canonical cut, the positions up to the next junction are retained. -/
+theorem not_mem_of_canonicalCut {l : Fin k} {c c' n : ℕ} (hc : hx.CanonicalCut l c c')
+    (hJ : ∀ R : Piece W ρ.length, R.coordinate = l → x R ≠ 0 →
+      ¬ (c' < (hx.imagePiece R).start + Periodic.boundaryMargin N ρ.length ∧
+          (hx.imagePiece R).start + Periodic.boundaryMargin N ρ.length < c' + n)) :
+    ∀ i < n, c + i ∉ deletedPositions W ρ N x l := by
+  rw [← hx.canonicalCut_eq_greatestPreimage hc]
+  refine not_mem_of_no_junction fun p hp h => ?_
+  obtain ⟨R, hRl, hxR, hR⟩ := hx.keepCut_of_mem hp
+  exact hJ R hRl hxR (hR ▸ h)
 
 /-- From a canonical cut, `n` letters of the edited word with no deleted block in
 `(c', c' + n)` are `n` retained letters of the original word. -/
@@ -630,43 +622,19 @@ theorem text_canonicalCut {l : Fin k} {c c' n : ℕ} (hc : hx.CanonicalCut l c c
     (∀ i < n, c + i ∉ deletedPositions W ρ N x l ∧ c + i < (W l).length) ∧
       keepCut W ρ N x l (c + n) = c' + n ∧
       ∀ i < n, (W l)[c + i]? = (editedTuple W ρ N x l)[c' + i]? := by
-  have hc' := hc
-  obtain ⟨hcl, hck, hcr⟩ := hc
-  rw [length_editedTuple] at hn
-  have hall : ∀ i ≤ n, ∀ j < i, c + j ∉ deletedPositions W ρ N x l ∧ c + j < (W l).length := by
-    intro i
-    induction i with
-    | zero => intro _ j hj; omega
-    | succ i ih =>
-      intro hi j hj
-      rcases Nat.lt_or_ge j i with hji | hji
-      · exact ih (by omega) j hji
-      have hji' : j = i := by omega
-      subst hji'
-      have hprev : ∀ j' < j, c + j' ∉ deletedPositions W ρ N x l :=
-          fun j' hj' => (ih (by omega) j' hj').1
-      have hk := retainedCount_add_of_not_mem hprev
-      have hlt : c + j < (W l).length := by
-        by_contra hge
-        have :=
-            retainedCount_mono (D := deletedPositions W ρ N x l)
-                (show (W l).length ≤ c + j by omega)
-        unfold keepCut at hck hn; omega
-      refine ⟨?_, hlt⟩
-      rcases Nat.eq_zero_or_pos j with h0 | h0
-      · subst h0; simpa using hcr (by simpa using hlt)
-      · intro hm
-        obtain ⟨R, hRl, hxR, hRJ⟩ := hx.junction_of_deleted hc' h0 hprev hm
-        exact hJ R hRl hxR ⟨by omega, by omega⟩
-  have hprevn : ∀ j < n, c + j ∉ deletedPositions W ρ N x l := fun j hj => (hall n le_rfl j hj).1
-  have hkn := retainedCount_add_of_not_mem hprevn
-  unfold keepCut at hck
-  refine ⟨hall n le_rfl, by unfold keepCut; omega, ?_⟩
-  intro i hi
-  have hprev : ∀ j < i, c + j ∉ deletedPositions W ρ N x l := fun j hj => hprevn j (by omega)
-  have hk := retainedCount_add_of_not_mem hprev
-  rw [show c' + i = retainedCount (deletedPositions W ρ N x l) (c + i) by omega, editedTuple,
-    getElem?_deletePositions _ (hprevn i hi) (hall n le_rfl i hi).2]
+  have hret := hx.not_mem_of_canonicalCut hc hJ
+  have hck : retainedCount (deletedPositions W ρ N x l) c = c' := hc.2.1
+  have hk : ∀ i ≤ n, retainedCount (deletedPositions W ρ N x l) (c + i) = c' + i := fun i hi => by
+    rw [retainedCount_add_of_not_mem fun j hj => hret j (by omega), hck]
+  have hlt : ∀ i < n, c + i < (W l).length := fun i hi => by
+    by_contra hge
+    have := retainedCount_mono (D := deletedPositions W ρ N x l) (Nat.le_of_not_lt hge)
+    have := hk i hi.le
+    rw [editedTuple, length_deletePositions] at hn
+    omega
+  refine ⟨fun i hi => ⟨hret i hi, hlt i hi⟩, hk n le_rfl, fun i hi => ?_⟩
+  rw [← hk i hi.le]
+  exact (getElem?_deletePositions _ (hret i hi) (hlt i hi)).symm
 
 /-- With no junction in `(c', c' + n]` either, the cut `n` letters later is again canonical, and
 the `n` letters in between are original letters. -/
@@ -679,16 +647,10 @@ theorem canonicalCut_add {l : Fin k} {c c' n : ℕ} (hc : hx.CanonicalCut l c c'
       ∀ i < n, (W l)[c + i]? = (editedTuple W ρ N x l)[c' + i]? := by
   obtain ⟨hall, hkn, htext⟩ :=
     hx.text_canonicalCut hc hn fun R hRl hxR h => hJ R hRl hxR ⟨h.1, by omega⟩
-  refine ⟨⟨?_, hkn, ?_⟩, htext⟩
-  · rcases Nat.eq_zero_or_pos n with h0 | h0
-    · subst h0; simpa using hc.1
-    · have := (hall (n - 1) (by omega)).2; omega
-  · intro hlt
-    rcases Nat.eq_zero_or_pos n with h0 | h0
-    · subst h0; simpa using hc.2.2 (by simpa using hlt)
-    · intro hm
-      obtain ⟨R, hRl, hxR, hRJ⟩ := hx.junction_of_deleted hc h0 (fun j hj => (hall j hj).1) hm
-      exact hJ R hRl hxR ⟨by omega, by omega⟩
+  refine ⟨⟨?_, hkn, fun _ => hx.not_mem_of_canonicalCut hc hJ n (by omega)⟩, htext⟩
+  rcases Nat.eq_zero_or_pos n with h0 | h0
+  · subst h0; simpa using hc.1
+  · have := (hall (n - 1) (by omega)).2; omega
 
 /-- Every piece of the edited tuple is the image of a piece. -/
 theorem exists_imagePiece (P' : Piece (editedTuple W ρ N x) ρ.length) :

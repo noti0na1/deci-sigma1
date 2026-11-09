@@ -89,14 +89,12 @@ difference system has no positive cycle. -/
 structure RayFamily [DecidableEq α] [Fintype S] [DecidableEq S] {σ : ℕ}
     (C : LevelBounds σ k (Fintype.card S)) (M : StructuralReader α S k) (W : Fin k → List α) where
   level : ℕ
-  two_le : 2 ≤ level
   le_top : level ≤ levelCount k
   rays : Finset (Fin k)
   windowLength : Fin k → ℕ
   startCut : Fin k → ℕ
   endCut : Fin k → ℕ
   ray : {i // i ∈ rays} → Ray α
-  immortal_endState : ∀ i ∈ rays, M.Immortal (M.endState W i)
   fixed : ∀ j, j ∉ rays → ¬ M.Immortal (M.endState W j) ∨ LevelCoverProperty C (level - 2) M W j
   closed : ∀ i ∈ rays, ClosedAt M.toTable (M.start i) (W i) (windowLength i) (startCut i) (endCut i)
   ray_eq : ∀ i (hi : i ∈ rays),
@@ -158,11 +156,11 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
       obtain ⟨u, hu, -⟩ := h 1
       exact hα.false (u.head (List.ne_nil_of_length_pos (by omega)))
     exact ⟨{
-      level := l, two_le := hl2, le_top := hlt, rays := ∅, windowLength := 0, startCut := 0,
+      level := l, le_top := hlt, rays := ∅, windowLength := 0, startCut := 0,
       endCut := 0, ray := fun i => absurd i.2 (Finset.notMem_empty _),
       fixed := fun j _ => .inl (hmort j),
       no_positive_cycle := by rintro ⟨i, -⟩; exact absurd i.2 (Finset.notMem_empty _),
-      immortal_endState := by simp, closed := by simp, ray_eq := by simp,
+      closed := by simp, ray_eq := by simp,
       firstRejection_le_startCut := by simp, free := by simp, period_le_bound := by simp,
       cover := by simp, no_self_admission := by simp }⟩
   obtain ⟨a0⟩ := not_isEmpty_iff.mp hα
@@ -263,10 +261,9 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
     rw [hΩT i h, ← (hΩ₀ i h).2.1]
     exact (hadm i _ (hΩ₀ i h).1 (hΩ₀ i h).2.2.1 fun _ => (hΩ₀ i h).2.2.2.1).1
   refine ⟨{
-    level := l, two_le := hl2, le_top := hlt, rays := Tset ∪ Mset,
+    level := l, le_top := hlt, rays := Tset ∪ Mset,
     windowLength := fun i => (Ω i).windowLength, startCut := fun i => (Ω i).startCut,
     endCut := fun i => (Ω i).endCut, ray := fun i => mk i.1 (Ω i.1),
-    immortal_endState := fun i hi => ((hmem i).mp hi).1,
     fixed := fun j hj => hfixed j fun h => hj ((hmem j).mpr h), closed := hclosed,
     ray_eq := fun i hi => hmk i _ (hclosed i hi),
     firstRejection_le_startCut := fun i hi => ?_, free := fun i hi j hj => ?_,

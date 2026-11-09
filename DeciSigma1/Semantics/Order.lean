@@ -366,11 +366,6 @@ theorem treeLe_iff_normalize (c : Fin n → Bool) (t u : Tree n) :
 theorem treeLe_refl (c : Fin n → Bool) (t : Tree n) : Le c t t :=
   (treeLe_iff_normalize c t t).mpr le_rfl
 
-theorem treeLe_trans {c : Fin n → Bool} {t u v : Tree n}
-    (htu : Le c t u) (huv : Le c u v) : Le c t v :=
-  (treeLe_iff_normalize c t v).mpr (_root_.le_trans ((treeLe_iff_normalize c t u).mp htu)
-    ((treeLe_iff_normalize c u v).mp huv))
-
 theorem treeLe_antisymm {c : Fin n → Bool} {t u : Tree n}
     (htu : Le c t u) (hut : Le c u t) : t = u :=
   normalize_injective c false (_root_.le_antisymm ((treeLe_iff_normalize c t u).mp htu)

@@ -4,7 +4,7 @@ import DeciSigma1.Logic.Decide
 /-! # Boolean sentences over `{⊥, f}`
 
 Terms over `{⊥, f}` are built from variables, the constant `⊥` and the covariant constructor
-`f` of arity `n`; they denote trees without top, ordered by inclusion of constructor
+`f` of arity `n`; they denote trees over `{⊥, f}`, ordered by inclusion of constructor
 positions. This module instantiates the Boolean sentences of `DeciSigma1.Logic` with these
 terms, flattens clauses into the flat literals `Constraints.TopFree.Lit`, and decides the
 sentences over arbitrary and over regular trees with the procedures for disjunctive entailment
@@ -19,8 +19,7 @@ both classes, so has every sentence (`booleanSentence_regular_iff`).
 - `BFTermClosed`: classes of trees that contain `⊥` and are closed under `f`.
 - `TreeClass`, `TreeClass.Contains`: arbitrary or regular trees.
 - `flattening`: flat literals that name subterms.
-- `decideBooleanSentenceOfBounds`: the decision procedure, given bounds for the small-hole
-  theorem.
+- `decideBooleanSentence`: the decision procedure.
 - `booleanSentence_regular_iff`: truth over regular trees equals truth over arbitrary trees.
 -/
 
@@ -125,7 +124,7 @@ theorem eval_of_holds_defs (var : V → W) (name : BFTerm n V → W) (σ : W →
 
 end BFTerm
 
-/-- Terms over `{⊥, f}` denote trees without top, ordered by inclusion. -/
+/-- Terms over `{⊥, f}` denote sets of constructor positions, ordered by inclusion. -/
 def interpretation (n : ℕ) : DeciSigma1.Logic.Interpretation (BFTerm n) (PrefixSet n) where
   eval ρ t := t.eval ρ
   le := (· ≤ ·)
@@ -189,22 +188,19 @@ theorem TreeClass.bfTermClosed : (C : TreeClass) → BFTermClosed (C.Contains (n
   | .arbitrary => bfTermClosed_all
   | .regular => bfTermClosed_reg
 
-variable [Fintype V] [DecidableEq V] {J Λ : ℕ → ℕ → ℕ}
+variable [Fintype V] [DecidableEq V]
 
 /-- The procedures for disjunctive entailment over arbitrary and over regular trees. -/
-@[instance_reducible] def disjEntailmentDeciderOfBounds
-    (hJ : Holes.FreshDominatorBound (Fin n) J) (hT : Holes.RejectedTailBound (Fin n) Λ) :
+@[instance_reducible] def disjEntailmentDecider :
     (C : TreeClass) → DeciSigma1.Logic.DisjEntailmentDecider (flattening n) C.Contains
-  | .arbitrary => fun χ q => decideDisjEntailsOfBounds hJ hT χ q
-  | .regular => fun χ q => decideDisjEntailsRegOfBounds hJ hT χ q
+  | .arbitrary => fun χ q => decideDisjEntails χ q
+  | .regular => fun χ q => decideDisjEntailsReg χ q
 
-/-- Boolean sentences over `{⊥, f}` are decidable over arbitrary and over regular trees, given
-bounds for the small-hole theorem. -/
-def decideBooleanSentenceOfBounds (hJ : Holes.FreshDominatorBound (Fin n) J)
-    (hT : Holes.RejectedTailBound (Fin n) Λ) (C : TreeClass) (φ : BooleanSentence n) :
+/-- Boolean sentences over `{⊥, f}` are decidable over arbitrary and over regular trees. -/
+def decideBooleanSentence (C : TreeClass) (φ : BooleanSentence n) :
     Decidable (φ.HoldsIn C.Contains) :=
   DeciSigma1.Logic.decideBooleanSentence (flattening n) (C.bfTermClosed.eval)
-    (disjEntailmentDeciderOfBounds hJ hT C) φ
+    (disjEntailmentDecider C) φ
 
 /-- A sentence over `{⊥, f}` has the same truth value over regular and over arbitrary
 trees. -/
@@ -213,6 +209,6 @@ theorem booleanSentence_regular_iff (φ : BooleanSentence n) :
   DeciSigma1.Logic.BooleanSentence.holdsIn_iff_of_disjEntailsIn_iff (flattening n)
     bfTermClosed_reg.eval bfTermClosed_all.eval
     (fun χ q => show (flattening n).DisjEntailsIn IsRegularTree χ q ↔
-      (flattening n).DisjEntailsIn (fun _ => True) χ q from disjEntailsReg_iff χ q) φ
+      (flattening n).DisjEntailsIn (fun _ => True) χ q from disjEntailsIn_regular_iff χ q) φ
 
 end DeciSigma1.Entailment.Logic

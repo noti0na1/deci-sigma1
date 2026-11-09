@@ -1,23 +1,20 @@
 import DeciSigma1.Holes.Periodic.Bound
 import DeciSigma1.Holes.Periodic.Transport
-import DeciSigma1.Holes.Statements
 import DeciSigma1.Holes.Tail.RunCovers
 
 /-! # Compression of runs and the bound on rejected tails
-
-A hole whose immortal rejected tails are covered by designated runs is shortened one period
-class at a time. A *pass* takes a designated run of largest period and applies an admissible
-deletion to its class (`Holes.Periodic`), which keeps the hole, its endpoints and its first
-rejected cuts, and preserves the other designated runs
-(`exists_preserved_piece_of_nonconjugate_root`).
-The occurrence height of the class is bounded by the number of states, the designated runs and
-the uncovered positions (`occurrenceHeight_le`): pieces with pairwise comparable followers end at
-distinct live states before the first rejected cut, and at most two of them end in each
-designated run. So after the pass the processed runs have at most `pieceLengthBound` letters
-each and count as uncovered letters (`exists_hole_compressed_step`). After all runs are
-processed the immortal rejected tails are bounded by `compressionLengthBound`
+A hole whose immortal rejected tails are covered by designated runs is shortened one period class at
+a time. A *pass* takes a designated run of largest period and applies an admissible deletion to its
+class (`Holes.Periodic`), which gives a hole with the same endpoints, whose first rejected cuts are
+the images of the original ones, and preserves the other designated runs
+(`exists_preserved_piece_of_nonconjugate_root`). The occurrence height of the class is bounded by
+the number of states, the designated runs and the uncovered positions (`occurrenceHeight_le`):
+pieces with pairwise comparable followers end at distinct live states before the first rejected cut,
+and at most two of them end in each designated run. So after the pass the processed runs have at
+most `pieceLengthBound` letters each and count as uncovered letters (`exists_hole_compressed_step`).
+After all runs are processed the immortal rejected tails are bounded by `compressionLengthBound`
 (`exists_hole_tail_le_compressionLengthBound`). With `exists_hole_with_run_cover` this gives the
-rejected-tail bound `tailLengthBound` (`rejectedTailBound_tailLengthBound`).
+rejected-tail bound `tailLengthBound` (`exists_hole_rejectedTailLength_le`).
 
 ## Main declarations
 
@@ -25,7 +22,7 @@ rejected-tail bound `tailLengthBound` (`rejectedTailBound_tailLengthBound`).
 - `exists_hole_compressed_step`: one pass of compression.
 - `compressionLengthBound`, `exists_hole_tail_le_compressionLengthBound`: the bound after all
   passes.
-- `tailLengthBound`, `rejectedTailBound_tailLengthBound`: the bound on rejected tails.
+- `tailLengthBound`, `exists_hole_rejectedTailLength_le`: the bound on rejected tails.
 -/
 
 namespace DeciSigma1.Holes.Tail
@@ -398,7 +395,7 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
     (hE : ∑ i,
         (if M.Immortal (M.endState U i) then (uncoveredTailPositions M U runs i).card else 0) ≤ E)
     (hne : runs.Nonempty) :
-    ∃ U', M.IsHole U' ∧ (∀ i, M.endState U' i = M.endState U i) ∧
+    ∃ U', M.IsHole U' ∧
       HasBoundedRunCover M U' n D (E + (n + 1) * Periodic.pieceLengthBound (Fintype.card S) D
         (k * (Fintype.card S - 1) + 2 * (n + 1) + E)) := by
   classical
@@ -430,7 +427,7 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
     ⟨r.coordinate, keepCut U ρ N x r.coordinate r.start, keepCut U ρ N x r.coordinate r.stop,
         r.period⟩
   let runs' := (runs.filter (fun r => ¬ same r)).image img
-  refine ⟨editedTuple U ρ N x, hU', hends, runs', ?_, ?_, ?_⟩
+  refine ⟨editedTuple U ρ N x, hU', runs', ?_, ?_, ?_⟩
   · -- at least one run fewer
     have : (runs.filter (fun r => ¬ same r)).card < runs.card :=
       Finset.card_lt_card (Finset.filter_ssubset.mpr ⟨r0, hr0, fun h => h hsame0⟩)
@@ -593,37 +590,31 @@ variable [Fintype α] [DecidableEq α] [Fintype S] [DecidableEq S]
 theorem exists_hole_tail_le_compressionLengthBoundIter (M : StructuralReader α S k) (D : ℕ)
     (n : ℕ) : ∀ (U : Fin k → List α) (E : ℕ),
     M.IsHole U → HasBoundedRunCover M U n D E →
-    ∃ U', M.IsHole U' ∧ (∀ i, M.endState U' i = M.endState U i) ∧
-      ∀ i, M.Immortal (M.endState U' i) → M.rejectedTailLength U' i ≤
-          compressionLengthBoundIter k (Fintype.card S) D n E := by
+    ∃ U', M.IsHole U' ∧ ∀ i, M.Immortal (M.endState U' i) → M.rejectedTailLength U' i ≤
+      compressionLengthBoundIter k (Fintype.card S) D n E := by
   induction n with
   | zero =>
     rintro U E hU ⟨runs, hcard, -, hE⟩
     have : runs = ∅ := Finset.card_eq_zero.mp (by omega)
     subst this
-    exact ⟨U, hU, fun _ => rfl, fun i hi => tail_le_of_empty M hE i hi⟩
+    exact ⟨U, hU, fun i hi => tail_le_of_empty M hE i hi⟩
   | succ n ih =>
     rintro U E hU ⟨runs, hcard, hruns, hE⟩
     by_cases hne : runs.Nonempty
-    · obtain ⟨U', hU', hend, hcov⟩ := exists_hole_compressed_step M hU runs hcard hruns hE hne
-      obtain ⟨U'', hU'', hend', htail⟩ := ih U' _ hU' hcov
-      exact ⟨U'', hU'', fun i => (hend' i).trans (hend i), htail⟩
+    · obtain ⟨U', hU', hcov⟩ := exists_hole_compressed_step M hU runs hcard hruns hE hne
+      exact ih U' _ hU' hcov
     · rw [Finset.not_nonempty_iff_eq_empty] at hne
       subst hne
-      exact ⟨U, hU, fun _ => rfl, fun i hi =>
+      exact ⟨U, hU, fun i hi =>
         (tail_le_of_empty M hE i hi).trans (le_compressionLengthBoundIter _ _ _ _ _)⟩
 
-/-- A hole with a run cover has a hole with the same endpoint mortality whose immortal rejected
-tails have at most `compressionLengthBound k N R D E` letters. -/
+/-- A hole with a run cover has a hole whose immortal rejected tails have at most
+`compressionLengthBound k N R D E` letters. -/
 theorem exists_hole_tail_le_compressionLengthBound (M : StructuralReader α S k) {W : Fin k → List α}
-    (hW : M.IsHole W) {R D E : ℕ}
-    (hcov : HasScaledRunCover M W R D E) :
-    ∃ W', M.IsHole W' ∧ M.SameEndpointMortality W' W ∧
-      ∀ i, M.Immortal (M.endState W' i) → M.rejectedTailLength W' i ≤
-          compressionLengthBound k (Fintype.card S) R D E := by
-  obtain ⟨W', hW', hend, htail⟩ :=
-      exists_hole_tail_le_compressionLengthBoundIter M D (k * R) W E hW hcov
-  exact ⟨W', hW', fun i => by rw [hend i], htail⟩
+    (hW : M.IsHole W) {R D E : ℕ} (hcov : HasScaledRunCover M W R D E) :
+    ∃ W', M.IsHole W' ∧ ∀ i, M.Immortal (M.endState W' i) → M.rejectedTailLength W' i ≤
+      compressionLengthBound k (Fintype.card S) R D E :=
+  exists_hole_tail_le_compressionLengthBoundIter M D (k * R) W E hW hcov
 
 end Passes
 
@@ -635,18 +626,17 @@ def tailLengthBound (σ k N : ℕ) : ℕ :=
       ((levelBounds σ k N).periodBound (levelCount k))
     (uncoveredLengthBound (levelBounds σ k N))
 
-variable [Fintype α] [DecidableEq α]
+variable [Fintype α] [DecidableEq α] [Fintype S] [DecidableEq S]
 
-/-- `tailLengthBound` bounds rejected tails: every hole with an immortal coordinate has a hole
-with the same endpoint mortality whose immortal rejected tails have at most
-`tailLengthBound σ k N` letters. The construction works for every hole, whether or not it has an
-immortal coordinate. -/
-theorem rejectedTailBound_tailLengthBound :
-    RejectedTailBound α (tailLengthBound (Fintype.card α)) := by
-  intro S _ _ k M W hW _
-  obtain ⟨W', hW', ht', -, -, hcov⟩ :=
+/-- The bound on rejected tails: a structural reader with `k` starts and `N` states over an
+alphabet of size `σ` that has a hole has a hole whose immortal coordinates have rejected tails
+of at most `tailLengthBound σ k N` letters. -/
+theorem exists_hole_rejectedTailLength_le (M : StructuralReader α S k) {W : Fin k → List α}
+    (hW : M.IsHole W) :
+    ∃ W', M.IsHole W' ∧ ∀ i, M.Immortal (M.endState W' i) →
+      M.rejectedTailLength W' i ≤ tailLengthBound (Fintype.card α) k (Fintype.card S) := by
+  obtain ⟨W', hW', hcov⟩ :=
     exists_hole_with_run_cover (levelBounds (Fintype.card α) k (Fintype.card S)) hW
-  obtain ⟨W'', hW'', ht'', htail⟩ := exists_hole_tail_le_compressionLengthBound M hW' hcov
-  exact ⟨W'', hW'', fun i => (ht'' i).trans (ht' i), htail⟩
+  exact exists_hole_tail_le_compressionLengthBound M hW' hcov
 
 end DeciSigma1.Holes.Tail

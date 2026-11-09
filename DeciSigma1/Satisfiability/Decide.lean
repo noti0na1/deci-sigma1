@@ -1,18 +1,20 @@
+import Mathlib.Data.Finset.Lattice.Fold
 import Mathlib.Algebra.BigOperators.Group.List.Basic
 import Mathlib.Algebra.Group.Action.Defs
 import Mathlib.Data.Fintype.Pigeonhole
 import Mathlib.Tactic.Linarith
 import DeciSigma1.Semantics.Selector
+import DeciSigma1.Automata.Constraints
 
-/-! # Deciding satisfiability of normalized constraints
+/-! # Deciding satisfiability of flat constraints
 
-A covariant normalized constraint is satisfiable over arbitrary or regular trees exactly when it has
+A covariant flat constraint is satisfiable over arbitrary trees exactly when it has
 no label clash, and over finite trees exactly when it has, in addition, no cycle clash: a nonempty
 path along which a variable is bounded below by itself and a derivably larger variable is bounded
 above by itself (`CycleClash`), which forces an infinite tree (`satFin_iff`). Cycle clashes have
 witnesses of bounded length, so both conditions are decidable (`satInfB`, `Covariant.satFinB`). With
-variance, satisfiability over finite trees reduces to the signed translation, through the selected
-symmetric solution of `DeciSigma1.Semantics.Selector` (`satFinB`, `satFinB_iff`).
+variance, the same criteria apply to the signed translation at every arity, through the selected
+symmetric solution of `DeciSigma1.Semantics.Selector`.
 
 ## Main declarations
 
@@ -22,6 +24,7 @@ symmetric solution of `DeciSigma1.Semantics.Selector` (`satFinB`, `satFinB_iff`)
 - `satFin_iff`, `Covariant.satFinB`, `Covariant.satFinB_iff`: finite satisfiability of covariant
   constraints.
 - `FTree.truncate`, `FTree.toTree_truncate`: trees of bounded depth are finite.
+- `sat_iff_signed_not_labelClash`: arbitrary satisfiability with variance.
 - `satFinB`, `satFinB_iff`: finite satisfiability with variance.
 -/
 
@@ -29,76 +32,33 @@ namespace DeciSigma1.Satisfiability
 
 open DeciSigma1.Constraints
 
-variable {n k : ℕ}
+variable {n : ℕ} {V : Type*} [Fintype V] [DecidableEq V]
 
 /-! ## Executable path judgments -/
 
-namespace PathDecision
+/-- A Boolean test for a lower path judgment: membership in the lower run. -/
+def lowerAtB (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) : Bool :=
+  decide (x ∈ Automata.lowerRun χ y π)
 
-/-- A Boolean lower path judgment, given the derived pairs `pairs` of `χ`; passing the pairs as an
-argument avoids recomputing them in the recursion. -/
-def lower (χ : Constraint n k) (pairs : Finset (V k × V k)) :
-    List (Fin n) → V k → V k → Bool
-  | [], x, y => decide ((x, y) ∈ pairs)
-  | i :: π, x, y => (lowerLits χ).any fun l =>
-      decide ((l.2, y) ∈ pairs) && lower χ pairs π x (l.1 i)
+/-- A Boolean test for an upper path judgment: membership in the upper run. -/
+def upperAtB (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) : Bool :=
+  decide (y ∈ Automata.upperRun χ x π)
 
-/-- A Boolean upper path judgment, given the derived pairs `pairs` of `χ`. -/
-def upper (χ : Constraint n k) (pairs : Finset (V k × V k)) :
-    List (Fin n) → V k → V k → Bool
-  | [], x, y => decide ((x, y) ∈ pairs)
-  | i :: π, x, y => (upperLits χ).any fun m =>
-      decide ((x, m.1) ∈ pairs) && upper χ pairs π (m.2 i) y
-
-end PathDecision
-
-/-- A Boolean test for `LowerAt` (`lowerAtB_iff`). -/
-def lowerAtB (χ : Constraint n k) (π : List (Fin n)) (x y : V k) : Bool :=
-  PathDecision.lower χ (derivedPairs χ) π x y
-
-/-- A Boolean test for `UpperAt` (`upperAtB_iff`). -/
-def upperAtB (χ : Constraint n k) (π : List (Fin n)) (x y : V k) : Bool :=
-  PathDecision.upper χ (derivedPairs χ) π x y
-
-theorem lowerAtB_iff (χ : Constraint n k) (π : List (Fin n)) (x y : V k) :
+theorem lowerAtB_iff (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
     lowerAtB χ π x y = true ↔ LowerAt χ π x y := by
-  induction π generalizing x y with
-  | nil => simp [lowerAtB, PathDecision.lower, mem_derivedPairs]
-  | cons i π ih =>
-    change ((lowerLits χ).any fun l =>
-      derivesB χ l.2 y && lowerAtB χ π x (l.1 i)) = true ↔ _
-    simp only [List.any_eq_true, Bool.and_eq_true, derivesB_iff, ih]
-    constructor
-    · rintro ⟨⟨a, u⟩, hl, hd, hp⟩
-      exact .cons ((mem_lowerLits χ a u).mp hl) hd hp
-    · intro h
-      cases h with
-      | @cons a u _ _ _ _ hl hd hp =>
-        exact ⟨(a, u), (mem_lowerLits χ a u).mpr hl, hd, hp⟩
+  simp only [lowerAtB, decide_eq_true_eq, lowerAt_iff_run]
 
-theorem upperAtB_iff (χ : Constraint n k) (π : List (Fin n)) (x y : V k) :
+theorem upperAtB_iff (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
     upperAtB χ π x y = true ↔ UpperAt χ π x y := by
-  induction π generalizing x y with
-  | nil => simp [upperAtB, PathDecision.upper, mem_derivedPairs]
-  | cons i π ih =>
-    change ((upperLits χ).any fun m =>
-      derivesB χ x m.1 && upperAtB χ π (m.2 i) y) = true ↔ _
-    simp only [List.any_eq_true, Bool.and_eq_true, derivesB_iff, ih]
-    constructor
-    · rintro ⟨⟨v, b⟩, hm, hd, hp⟩
-      exact .cons hd ((mem_upperLits χ v b).mp hm) hp
-    · intro h
-      cases h with
-      | @cons _ v b _ _ _ hd hm hp =>
-        exact ⟨(v, b), (mem_upperLits χ v b).mpr hm, hd, hp⟩
+  simp only [upperAtB, decide_eq_true_eq, upperAt_iff_run]
 
 /-! ## Satisfiability decisions -/
 
 /-- A Boolean test for satisfiability of a covariant constraint over arbitrary trees: the absence
 of a label clash. -/
-def satInfB (χ : Constraint n k) : Bool := !labelClashB χ
+def satInfB (χ : List (LitT n V)) : Bool := !labelClashB χ
 
-theorem satInfB_iff_not_labelClash (χ : Constraint n k) :
+theorem satInfB_iff_not_labelClash (χ : List (LitT n V)) :
     satInfB χ = true ↔ ¬ LabelClash χ := by
   simp [satInfB, Bool.eq_false_iff, labelClashB_iff]
 
@@ -108,13 +68,13 @@ namespace DeciSigma1.Satisfiability
 
 open DeciSigma1.Constraints DeciSigma1.Constraints.PathBounds DeciSigma1.Semantics
 
-variable {n k : ℕ} {χ : Constraint n k}
+variable {n : ℕ} {V : Type*} [Fintype V] {χ : List (LitT n V)}
 
 /-! ## Cycle clashes and repeated embeddings -/
 
 /-- A cycle clash: along a nonempty path `π`, `x` is bounded below by itself, `x ≤ y` is derived,
 and `y` is bounded above by itself. -/
-def CycleClash (χ : Constraint n k) : Prop :=
+def CycleClash (χ : List (LitT n V)) : Prop :=
   ∃ π x y, π ≠ [] ∧ LowerAt χ π x x ∧ Derives χ x y ∧ UpperAt χ π y y
 
 namespace PathBounds
@@ -181,7 +141,7 @@ end DeciSigma1.Satisfiability
 namespace DeciSigma1.Semantics.FTree
 
 open DeciSigma1.Constraints DeciSigma1.Constraints.PathBounds DeciSigma1.Semantics
-variable {n k : ℕ} {χ : Constraint n k}
+variable {n : ℕ} {V : Type*} [Fintype V] {χ : List (LitT n V)}
 
 /-- The height of a finite tree: the length of its longest path. -/
 def height : FTree n → ℕ
@@ -219,11 +179,12 @@ end DeciSigma1.Semantics.FTree
 namespace DeciSigma1.Satisfiability
 
 open DeciSigma1.Constraints DeciSigma1.Constraints.PathBounds DeciSigma1.Semantics
-variable {n k : ℕ} {χ : Constraint n k}
+variable {n : ℕ} {V : Type*} [Fintype V] {χ : List (LitT n V)}
 
+omit [Fintype V] in
 /-- A constraint with a cycle clash has no finite solution. -/
 theorem CycleClash.no_finite_solution (hc : CycleClash χ) :
-    ¬ ∃ σ : V k → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
+    ¬ ∃ σ : V → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
   rintro ⟨σ, hσ⟩
   obtain ⟨π, x, y, hπ, hl, hd, hu⟩ := hc
   have hdom := PathBounds.repeat_isSome (hl.embed_le hσ) (hd.sound _ hσ)
@@ -240,22 +201,23 @@ namespace DeciSigma1.Satisfiability
 
 open DeciSigma1.Constraints DeciSigma1.Constraints.Covariant DeciSigma1.Semantics
 
-variable {n k : ℕ} {χ : Constraint n k}
+variable {n : ℕ} {V : Type*} [Fintype V] {χ : List (LitT n V)}
 
 /-! ## Bounded cycles and least-shape depth -/
 
-/-- Lower and upper path judgments through a common variable along a path longer than `k * k` give
-a cycle clash along a path of length between one and `k * k`. -/
-theorem cycleClash_bounded_of_long_path (π : List (Fin n)) (x y z : V k)
-    (hl : LowerAt χ π x z) (hu : UpperAt χ π z y) (hlen : k * k < π.length) :
-    ∃ ρ x' y', 0 < ρ.length ∧ ρ.length ≤ k * k ∧
+/-- Lower and upper path judgments through a common variable along a path longer than the number
+of variable pairs give a cycle clash of length between one and that number. -/
+theorem cycleClash_bounded_of_long_path (π : List (Fin n)) (x y z : V)
+    (hl : LowerAt χ π x z) (hu : UpperAt χ π z y)
+      (hlen : Fintype.card V * Fintype.card V < π.length) :
+    ∃ ρ x' y', 0 < ρ.length ∧ ρ.length ≤ Fintype.card V * Fintype.card V ∧
       LowerAt χ ρ x' x' ∧ Derives χ x' y' ∧ UpperAt χ ρ y' y' := by
   have hπ : π ≠ [] := by intro he; simp [he] at hlen
   obtain ⟨w, hw0, _, hw⟩ := hl.chain hπ
   obtain ⟨v, hv0, _, hv⟩ := hu.chain hπ
   obtain ⟨i, j, hne, he⟩ := Fintype.exists_ne_map_eq_of_card_lt
-    (fun m : Fin (k * k + 1) => (w m.val, v m.val)) (by simp [V])
-  have hpair : ∃ i j : Fin (k * k + 1), i < j ∧
+    (fun m : Fin (Fintype.card V * Fintype.card V + 1) => (w m.val, v m.val)) (by simp)
+  have hpair : ∃ i j : Fin (Fintype.card V * Fintype.card V + 1), i < j ∧
       (w i.val, v i.val) = (w j.val, v j.val) := by
     rcases lt_or_gt_of_ne hne with hij | hji
     · exact ⟨i, j, hij, he⟩
@@ -278,16 +240,18 @@ theorem cycleClash_bounded_of_long_path (π : List (Fin n)) (x y z : V k)
   · exact upperAt_nil_iff.mp (hlp.decompose_upper (π' := []) (by simpa using hup))
   · simpa only [← hv_eq] using hv i.val j.val (by omega) hj
 
-/-- A path of length greater than `k * k + 1` in the domain of the least shape gives a cycle clash
-along a path of length between one and `k * k`. -/
-theorem leastShape_bounded_cycle_of_long_path {z : V k} {π : List (Fin n)}
-    (hdom : ((leastShape χ z).fn π).isSome) (hlen : k * k + 1 < π.length) :
-    ∃ ρ x y, 0 < ρ.length ∧ ρ.length ≤ k * k ∧
+/-- A path in the least shape longer than the number of variable pairs plus one gives
+a cycle clash of length at most the number of pairs. -/
+theorem leastShape_bounded_cycle_of_long_path {z : V} {π : List (Fin n)}
+    (hdom : ((leastShape χ z).fn π).isSome)
+      (hlen : Fintype.card V * Fintype.card V + 1 < π.length) :
+    ∃ ρ x y, 0 < ρ.length ∧ ρ.length ≤ Fintype.card V * Fintype.card V ∧
       LowerAt χ ρ x x ∧ Derives χ x y ∧ UpperAt χ ρ y y := by
-  let τ := π.take (k * k + 1)
-  have hτ : τ.length = k * k + 1 := by
-    simp [τ, Nat.min_eq_left (show k * k + 1 ≤ π.length by omega)]
-  have hprefix : τ <+: π := ⟨π.drop (k * k + 1), List.take_append_drop _ _⟩
+  let τ := π.take (Fintype.card V * Fintype.card V + 1)
+  have hτ : τ.length = Fintype.card V * Fintype.card V + 1 := by
+    simp [τ, Nat.min_eq_left (show Fintype.card V * Fintype.card V + 1 ≤ π.length by omega)]
+  have hprefix : τ <+: π := ⟨π.drop (Fintype.card V * Fintype.card V + 1),
+    List.take_append_drop _ _⟩
   have hne : τ ≠ π := by intro he; have := congrArg List.length he; omega
   have hf := (leastShape χ z).label_eq_f_of_proper_prefix hprefix hne hdom
   obtain ⟨hl, hu⟩ := shapeLabel_eq_f_iff.mp (leastShape_label_eq hf).symm
@@ -295,9 +259,10 @@ theorem leastShape_bounded_cycle_of_long_path {z : V k} {π : List (Fin n)}
   obtain ⟨y, b, _, hy⟩ := hu
   exact cycleClash_bounded_of_long_path τ x y z hx hy (by omega)
 
-/-- Without a cycle clash, the least shape has depth at most `k * k + 1`. -/
-theorem leastShape_depth (hn : ¬ CycleClash χ) (z : V k) (π : List (Fin n))
-    (hdom : ((leastShape χ z).fn π).isSome) : π.length ≤ k * k + 1 := by
+/-- Without a cycle clash, the least shape has depth at most the number of variable pairs plus
+one. -/
+theorem leastShape_depth (hn : ¬ CycleClash χ) (z : V) (π : List (Fin n))
+    (hdom : ((leastShape χ z).fn π).isSome) : π.length ≤ Fintype.card V * Fintype.card V + 1 := by
   by_contra hlen
   obtain ⟨ρ, x, y, hp, _, hl, hd, hu⟩ :=
     leastShape_bounded_cycle_of_long_path hdom (by omega)
@@ -310,7 +275,7 @@ end DeciSigma1.Satisfiability
 namespace DeciSigma1.Semantics.FTree
 
 open DeciSigma1.Constraints DeciSigma1.Constraints.Covariant DeciSigma1.Semantics
-variable {n k : ℕ} {χ : Constraint n k}
+variable {n : ℕ} {V : Type*} [Fintype V] {χ : List (LitT n V)}
 
 /-- The finite tree with the labels of `t` up to depth `d`; a constructor at depth `d` becomes
 `f(⊤, …, ⊤)`. It represents `t` when the domain of `t` has depth at most `d`
@@ -376,13 +341,13 @@ end DeciSigma1.Semantics.FTree
 namespace DeciSigma1.Satisfiability
 
 open DeciSigma1.Constraints DeciSigma1.Constraints.Covariant DeciSigma1.Semantics
-variable {n k : ℕ} {χ : Constraint n k}
+variable {n : ℕ} {V : Type*} [Fintype V] {χ : List (LitT n V)}
 
 /-- If the least shape has bounded depth, it truncates to a finite solution. -/
 theorem satFin_of_leastShape_depth (hn : ¬ LabelClash χ)
-    (hd : ∀ z π, ((leastShape χ z).fn π).isSome → π.length ≤ k * k + 1) :
-    ∃ σ : V k → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
-  let σ := fun z => FTree.truncate (k * k + 1) (leastShape χ z)
+    (hd : ∀ z π, ((leastShape χ z).fn π).isSome → π.length ≤ Fintype.card V * Fintype.card V + 1) :
+    ∃ σ : V → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
+  let σ := fun z => FTree.truncate (Fintype.card V * Fintype.card V + 1) (leastShape χ z)
   have hσ : FTree.toTree ∘ σ = leastShape χ := by
     funext z
     exact FTree.toTree_truncate (hd z)
@@ -390,7 +355,7 @@ theorem satFin_of_leastShape_depth (hn : ¬ LabelClash χ)
 
 /-- A covariant constraint has a finite solution exactly when it has neither a label clash nor a
 cycle clash. -/
-theorem satFin_iff : (∃ σ : V k → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ) ↔
+theorem satFin_iff : (∃ σ : V → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ) ↔
     ¬ LabelClash χ ∧ ¬ CycleClash χ := by
   constructor
   · intro hfin
@@ -403,7 +368,7 @@ theorem satFin_iff : (∃ σ : V k → FTree n, Covariant.Sat (FTree.toTree ∘ 
 /-- Without a label clash, every cycle clash has a witness along a path of length between one and
 the number of variable pairs. -/
 theorem cycleClash_iff_bounded (hn : ¬ LabelClash χ) :
-    CycleClash χ ↔ ∃ ρ x y, 0 < ρ.length ∧ ρ.length ≤ k * k ∧
+    CycleClash χ ↔ ∃ ρ x y, 0 < ρ.length ∧ ρ.length ≤ Fintype.card V * Fintype.card V ∧
       LowerAt χ ρ x x ∧ Derives χ x y ∧ UpperAt χ ρ y y := by
   constructor
   · intro hc
@@ -422,86 +387,44 @@ namespace DeciSigma1.Satisfiability
 
 open DeciSigma1.Constraints DeciSigma1.Semantics
 
-variable {n k : ℕ}
-
-/-! ## Bounded path enumeration -/
-
-/-- All nonempty paths over `Fin n` of length at most the given bound. -/
-def nonemptyPathsUpTo (n : ℕ) : ℕ → List (List (Fin n))
-  | 0 => []
-  | m + 1 => (List.finRange n).map (fun i => [i]) ++
-      (List.finRange n).flatMap (fun i => (nonemptyPathsUpTo n m).map (i :: ·))
-
-theorem mem_nonemptyPathsUpTo (ρ : List (Fin n)) (m : ℕ) :
-    ρ ∈ nonemptyPathsUpTo n m ↔ 0 < ρ.length ∧ ρ.length ≤ m := by
-  induction m generalizing ρ with
-  | zero =>
-    simp only [nonemptyPathsUpTo, List.not_mem_nil, false_iff, not_and]
-    omega
-  | succ m ih =>
-    cases ρ with
-    | nil => simp [nonemptyPathsUpTo]
-    | cons i ρ =>
-      have h1 : i :: ρ ∈ (List.finRange n).map (fun j => [j]) ↔ ρ = [] := by
-        simp only [List.mem_map, List.mem_finRange, true_and]
-        constructor
-        · rintro ⟨j, hj⟩
-          exact (List.cons.inj hj).2.symm
-        · rintro rfl
-          exact ⟨i, rfl⟩
-      have h2 : i :: ρ ∈ (List.finRange n).flatMap
-          (fun j => (nonemptyPathsUpTo n m).map (j :: ·)) ↔ ρ ∈ nonemptyPathsUpTo n m := by
-        simp only [List.mem_flatMap, List.mem_finRange, true_and, List.mem_map]
-        constructor
-        · rintro ⟨j, σ, hσ, he⟩
-          obtain ⟨rfl, rfl⟩ := List.cons.inj he
-          exact hσ
-        · intro h
-          exact ⟨i, ρ, h, rfl⟩
-      rw [nonemptyPathsUpTo, List.mem_append, h1, h2, ih]
-      cases ρ <;> simp
+variable {n : ℕ} {V : Type*} [Fintype V] [DecidableEq V]
 
 /-! ## Executable cycle search -/
 
-/-- A Boolean search for cycle clashes along paths of length at most `k * k`. It is sound, and
-complete when there is no label clash (`cycleClashB_complete`). -/
-def cycleClashB (χ : Constraint n k) : Bool :=
+/-- A Boolean test for a cycle clash along a path of length at most the number of variable
+pairs. -/
+def cycleClashB (χ : List (LitT n V)) : Bool :=
   let pairs := derivedPairs χ
-  (nonemptyPathsUpTo n (k * k)).any fun ρ =>
-    (List.finRange k).any fun x => (List.finRange k).any fun y =>
-      PathDecision.lower χ pairs ρ x x && decide ((x, y) ∈ pairs) &&
-        PathDecision.upper χ pairs ρ y y
+  decide (∃ ρ ∈ Automata.wordsUpTo (α := Fin n) (Fintype.card V * Fintype.card V), ρ ≠ [] ∧
+    ∃ x y, lowerAtB χ ρ x x = true ∧ (x, y) ∈ pairs ∧ upperAtB χ ρ y y = true)
 
-theorem cycleClashB_iff_bounded (χ : Constraint n k) :
+theorem cycleClashB_iff_bounded (χ : List (LitT n V)) :
     cycleClashB χ = true ↔ ∃ ρ x y,
-      0 < ρ.length ∧ ρ.length ≤ k * k ∧
+      0 < ρ.length ∧ ρ.length ≤ Fintype.card V * Fintype.card V ∧
       LowerAt χ ρ x x ∧ Derives χ x y ∧ UpperAt χ ρ y y := by
-  change (nonemptyPathsUpTo n (k * k)).any (fun ρ => (List.finRange k).any fun x =>
-    (List.finRange k).any fun y =>
-      lowerAtB χ ρ x x && derivesB χ x y && upperAtB χ ρ y y) = true ↔ _
-  simp only [List.any_eq_true, mem_nonemptyPathsUpTo, List.mem_finRange, true_and,
-    Bool.and_eq_true, lowerAtB_iff, derivesB_iff, upperAtB_iff]
+  simp only [cycleClashB, decide_eq_true_eq, Automata.mem_wordsUpTo,
+    lowerAtB_iff, mem_derivedPairs, upperAtB_iff]
   constructor
-  · rintro ⟨ρ, ⟨h1, h2⟩, x, y, ⟨hl, hd⟩, hu⟩
-    exact ⟨ρ, x, y, h1, h2, hl, hd, hu⟩
-  · rintro ⟨ρ, x, y, h1, h2, hl, hd, hu⟩
-    exact ⟨ρ, ⟨h1, h2⟩, x, y, ⟨hl, hd⟩, hu⟩
+  · rintro ⟨ρ, hlen, hne, x, y, hl, hd, hu⟩
+    exact ⟨ρ, x, y, List.length_pos_iff.mpr hne, hlen, hl, hd, hu⟩
+  · rintro ⟨ρ, x, y, hpos, hlen, hl, hd, hu⟩
+    exact ⟨ρ, hlen, List.length_pos_iff.mp hpos, x, y, hl, hd, hu⟩
 
-theorem cycleClashB_sound {χ : Constraint n k} (h : cycleClashB χ = true) :
+theorem cycleClashB_sound {χ : List (LitT n V)} (h : cycleClashB χ = true) :
     CycleClash χ := by
   obtain ⟨ρ, x, y, hp, _, hl, hd, hu⟩ := (cycleClashB_iff_bounded χ).mp h
   exact ⟨ρ, x, y, List.ne_nil_of_length_pos hp, hl, hd, hu⟩
 
-theorem cycleClashB_complete {χ : Constraint n k} (hn : ¬ LabelClash χ)
+theorem cycleClashB_complete {χ : List (LitT n V)} (hn : ¬ LabelClash χ)
     (h : CycleClash χ) : cycleClashB χ = true :=
   (cycleClashB_iff_bounded χ).mpr ((cycleClash_iff_bounded hn).mp h)
 
 /-! ## Finite satisfiability decision -/
 
 /-- A Boolean test for finite satisfiability of a covariant constraint. -/
-def Covariant.satFinB (χ : Constraint n k) : Bool := !labelClashB χ && !cycleClashB χ
+def Covariant.satFinB (χ : List (LitT n V)) : Bool := !labelClashB χ && !cycleClashB χ
 
-theorem Covariant.satFinB_iff_not_clash (χ : Constraint n k) :
+theorem Covariant.satFinB_iff_not_clash (χ : List (LitT n V)) :
     satFinB χ = true ↔ ¬ LabelClash χ ∧ ¬ CycleClash χ := by
   change (satInfB χ && !cycleClashB χ) = true ↔ _
   rw [Bool.and_eq_true, satInfB_iff_not_labelClash]
@@ -515,8 +438,8 @@ theorem Covariant.satFinB_iff_not_clash (χ : Constraint n k) :
     cases h : cycleClashB χ <;> simp_all
 
 /-- `Covariant.satFinB` decides whether a covariant constraint has a finite solution. -/
-theorem Covariant.satFinB_iff (χ : Constraint n k) :
-    satFinB χ = true ↔ ∃ σ : V k → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
+theorem Covariant.satFinB_iff (χ : List (LitT n V)) :
+    satFinB χ = true ↔ ∃ σ : V → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
   rw [satFin_iff, satFinB_iff_not_clash]
 
 end DeciSigma1.Satisfiability
@@ -526,56 +449,63 @@ namespace DeciSigma1.Satisfiability.SignSelection
 open DeciSigma1.Constraints DeciSigma1.Constraints.Covariant DeciSigma1.Semantics
 open DeciSigma1.Semantics.SignSelection
 
-variable {n k : ℕ}
+variable {n : ℕ} {V : Type*} [Fintype V]
 
 /-! ## The selector on the least shape -/
 
 /-- The selector applied to the least shape `B` of `signed c χ`. -/
-noncomputable def selectedShape (c : Fin n → Bool) (χ : Constraint n k) :
-    V (2 * k) → Semantics.Tree n :=
+noncomputable def selectedShape (c : Fin n → Bool) (χ : List (LitT n V)) :
+    (V × Bool) → Semantics.Tree n :=
   select c (leastShape (signed c χ)) (leastShape_sameShape_signedDual (signed_flipClosed c χ))
 
-theorem selectedShape_sat {c : Fin n → Bool} {χ : Constraint n k}
+omit [Fintype V] in
+theorem selectedShape_sat {c : Fin n → Bool} {χ : List (LitT n V)}
     (hl : ¬ LabelClash (signed c χ)) : Covariant.Sat (selectedShape c χ) (signed c χ) :=
   select_sat (leastShape_sat hl) _
 
-theorem selectedShape_fixed (c : Fin n → Bool) (χ : Constraint n k) :
+omit [Fintype V] in
+theorem selectedShape_fixed (c : Fin n → Bool) (χ : List (LitT n V)) :
     Signed.dual (selectedShape c χ) = selectedShape c χ := select_fixed _ _ _
 
-@[simp] theorem selectedShape_domain (c : Fin n → Bool) (χ : Constraint n k)
-    (z : V (2 * k)) (π : List (Fin n)) :
+omit [Fintype V] in
+@[simp] theorem selectedShape_domain (c : Fin n → Bool) (χ : List (LitT n V))
+    (z : (V × Bool)) (π : List (Fin n)) :
     ((selectedShape c χ z).fn π).isSome = ((leastShape (signed c χ) z).fn π).isSome :=
   select_domain _ _ _ _ _
 
 /-- Without a cycle clash in the signed translation, the selected symmetric solution has bounded
 depth. -/
-theorem selectedShape_depth {c : Fin n → Bool} {χ : Constraint n k}
-    (hc : ¬ CycleClash (signed c χ)) (z : V (2 * k)) (π : List (Fin n))
-    (hπ : ((selectedShape c χ z).fn π).isSome) : π.length ≤ (2 * k) * (2 * k) + 1 :=
+theorem selectedShape_depth {c : Fin n → Bool} {χ : List (LitT n V)}
+    (hc : ¬ CycleClash (signed c χ)) (z : (V × Bool)) (π : List (Fin n))
+    (hπ : ((selectedShape c χ z).fn π).isSome) :
+    π.length ≤ Fintype.card (V × Bool) * Fintype.card (V × Bool) + 1 :=
   select_depth c _ _ (leastShape_depth hc) z π hπ
 
+omit [Fintype V] in
 /-- If the signed translation has no label clash, the decoded selected shape solves `χ` with
 variance `c`. -/
-theorem decoded_selectedShape_sat {c : Fin n → Bool} {χ : Constraint n k}
-    (hl : ¬ LabelClash (signed c χ)) : Constraints.Sat c (decoded c (selectedShape c χ)) χ := by
+theorem decoded_selectedShape_sat {c : Fin n → Bool} {χ : List (LitT n V)}
+    (hl : ¬ LabelClash (signed c χ)) : Constraints.SatT c (decoded c (selectedShape c χ)) χ := by
   apply (sat_iff_signed c _ χ).mpr
   rw [normalized_decoded c (selectedShape_fixed c χ)]
   exact selectedShape_sat hl
 
 /-- If the signed translation has a finite solution, the decoded selected shape is a finite solution
 of `χ` with variance `c`. -/
-theorem finite_selected_solution {c : Fin n → Bool} {χ : Constraint n k}
-    (hs : ∃ σ : V (2 * k) → FTree n, Covariant.Sat (FTree.toTree ∘ σ) (signed c χ)) :
-    ∃ σ : V k → FTree n, Constraints.Sat c (FTree.toTree ∘ σ) χ ∧
+theorem finite_selected_solution {c : Fin n → Bool} {χ : List (LitT n V)}
+    (hs : ∃ σ : (V × Bool) → FTree n, Covariant.Sat (FTree.toTree ∘ σ) (signed c χ)) :
+    ∃ σ : V → FTree n, Constraints.SatT c (FTree.toTree ∘ σ) χ ∧
       FTree.toTree ∘ σ = decoded c (selectedShape c χ) := by
   obtain ⟨hl, hc⟩ := satFin_iff.mp hs
   have hρ := decoded_selectedShape_sat hl
-  have hd (u : V k) : ∀ π, ((decoded c (selectedShape c χ) u).fn π).isSome →
-      π.length ≤ (2 * k) * (2 * k) + 1 := by
+  have hd (u : V) : ∀ π, ((decoded c (selectedShape c χ) u).fn π).isSome →
+      π.length ≤ (Fintype.card (V × Bool)) * (Fintype.card (V × Bool)) + 1 := by
     intro π hπ
     apply selectedShape_depth hc (signedVar u false) π
     simpa [decoded] using hπ
-  let σ := fun u => FTree.truncate ((2 * k) * (2 * k) + 1) (decoded c (selectedShape c χ) u)
+  let σ :=
+    fun u => FTree.truncate ((Fintype.card (V × Bool)) * (Fintype.card (V × Bool)) + 1) (decoded c
+    (selectedShape c χ) u)
   have he : FTree.toTree ∘ σ = decoded c (selectedShape c χ) :=
     funext fun u => FTree.toTree_truncate (hd u)
   exact ⟨σ, by rw [he]; exact hρ, he⟩
@@ -588,14 +518,25 @@ open DeciSigma1.Constraints DeciSigma1.Satisfiability.Covariant DeciSigma1.Seman
 
 open DeciSigma1.Semantics.SignSelection
 
-variable {n k : ℕ}
+variable {n : ℕ} {V : Type*} [Fintype V]
+
+omit [Fintype V] in
+/-- A constraint with variance is satisfiable exactly when its signed translation has no label
+clash. -/
+theorem sat_iff_signed_not_labelClash (c : Fin n → Bool) (χ : List (LitT n V)) :
+    (∃ ρ, SatT c ρ χ) ↔ ¬ LabelClash (signed c χ) := by
+  constructor
+  · rintro ⟨ρ, hρ⟩
+    exact satisfiable_iff_not_labelClash.mp ⟨normalized c ρ, (sat_iff_signed c ρ χ).mp hρ⟩
+  · intro h
+    exact ⟨decoded c (SignSelection.selectedShape c χ), SignSelection.decoded_selectedShape_sat h⟩
 
 /-! ## Finite satisfiability through the signed translation -/
 
 /-- A constraint with variance has a finite solution exactly when its signed translation has one. -/
-theorem satFinite_iff_signed (c : Fin n → Bool) (χ : Constraint n k) :
-    (∃ σ : V k → FTree n, Sat c (FTree.toTree ∘ σ) χ) ↔
-      (∃ σ : V (2 * k) → FTree n, Covariant.Sat (FTree.toTree ∘ σ) (signed c χ)) := by
+theorem satFinite_iff_signed (c : Fin n → Bool) (χ : List (LitT n V)) :
+    (∃ σ : V → FTree n, SatT c (FTree.toTree ∘ σ) χ) ↔
+      (∃ σ : (V × Bool) → FTree n, Covariant.Sat (FTree.toTree ∘ σ) (signed c χ)) := by
   constructor
   · rintro ⟨σ, hσ⟩
     refine ⟨fun z => (σ (base z)).normalize c (sign z), ?_⟩
@@ -608,13 +549,15 @@ theorem satFinite_iff_signed (c : Fin n → Bool) (χ : Constraint n k) :
     obtain ⟨σ, hσ, _⟩ := SignSelection.finite_selected_solution hs
     exact ⟨σ, hσ⟩
 
+variable [DecidableEq V]
+
 /-- A Boolean test for finite satisfiability with variance `c`: the covariant test on the signed
 translation. -/
-def satFinB (c : Fin n → Bool) (χ : Constraint n k) : Bool := Covariant.satFinB (signed c χ)
+def satFinB (c : Fin n → Bool) (χ : List (LitT n V)) : Bool := Covariant.satFinB (signed c χ)
 
 /-- `satFinB c` decides whether a constraint has a finite solution with variance `c`. -/
-theorem satFinB_iff (c : Fin n → Bool) (χ : Constraint n k) :
-    satFinB c χ = true ↔ ∃ σ : V k → FTree n, Sat c (FTree.toTree ∘ σ) χ :=
+theorem satFinB_iff (c : Fin n → Bool) (χ : List (LitT n V)) :
+    satFinB c χ = true ↔ ∃ σ : V → FTree n, SatT c (FTree.toTree ∘ σ) χ :=
   (Covariant.satFinB_iff _).trans (satFinite_iff_signed c χ).symm
 
 end DeciSigma1.Satisfiability

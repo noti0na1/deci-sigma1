@@ -2,21 +2,15 @@ import DeciSigma1.Constraints.Signed
 
 /-! # Medians of trees
 
-The labels `⊥ < f < ⊤` form a three-element chain, and the pointwise median of three trees, pruned
-below its first leaf on each path, is again a tree (`treeMedian`). The median is monotone in each
-argument and commutes with the constructor and with duality. It is the interpolation used to make a
-solution of the signed translation of a constraint symmetric: the median of a solution, its sign
-dual and the tree with `f` at every path is a symmetric solution (`median_signed_solution`), which
-decodes to a solution with the original variance. Hence a constraint with variance is satisfiable
-exactly when its signed translation is (`sat_iff_signed_sat`).
+The pointwise median of the leaf-extended labels of three trees is again a tree. It commutes with
+constructors and duality and is monotone in each input. These properties are used to symmetrize
+finite solutions. The module also defines the all-constructor tree.
 
 ## Main declarations
 
-- `extendedLabel`: the label at a path, extended past the leaves of the tree.
-- `medianSym`, `treeMedian`, `extendedLabel_treeMedian`: the median of three trees.
+- `treeMedian`, `treeMedian_node`, `dual_treeMedian`: the median and its structural properties.
+- `treeMedian_mono`: monotonicity of the median.
 - `fullTree`: the tree with the constructor at every path.
-- `symmetrize`, `median_signed_solution`: symmetric solutions of the signed translation.
-- `sat_iff_signed_sat`: satisfiability is preserved and reflected by the signed translation.
 -/
 
 namespace DeciSigma1.Semantics
@@ -41,16 +35,6 @@ def extendedLabel (t : Tree n) (w : List (Fin n)) : Sym :=
 @[simp] theorem extendedLabel_node_cons (a : Fin n → Tree n) (i : Fin n) (w : List (Fin n)) :
     extendedLabel (Tree.node a) (i :: w) = extendedLabel (a i) w := by
   simp [extendedLabel]
-
-theorem extendedLabel_of_fn {t : Tree n} {w : List (Fin n)} {s : Sym}
-    (h : t.fn w = some s) : extendedLabel t w = s := by
-  induction w generalizing t with
-  | nil => simp [extendedLabel, h]
-  | cons i w ih =>
-    rcases t.eq_bot_or_eq_top_or_node with rfl | rfl | ⟨a, rfl⟩
-    · simp at h
-    · simp at h
-    · rw [extendedLabel_node_cons]; exact ih (by simpa using h)
 
 theorem extendedLabel_step (t : Tree n) (w : List (Fin n)) (i : Fin n) :
     extendedLabel t (w ++ [i]) = (t.fn (w ++ [i])).getD (extendedLabel t w) := by
@@ -230,91 +214,7 @@ def fullTree : Tree n where
 
 @[simp] theorem fullTree_fn (w : List (Fin n)) : (fullTree : Tree n).fn w = some .f := rfl
 
-@[simp] theorem extendedLabel_fullTree (w : List (Fin n)) :
-    extendedLabel (fullTree : Tree n) w = .f := extendedLabel_of_fn rfl
-
-@[simp] theorem dual_fullTree : dual (fullTree : Tree n) = fullTree := by
-  apply extendedLabel_injective; funext w; simp
-
 theorem fullTree_eq_node : (fullTree : Tree n) = Tree.node (fun _ => fullTree) := by
   apply Tree.ext; funext w; cases w <;> rfl
-
-theorem fullTree_bounds :
-    (fullTree : Tree n) ≤ Tree.node (fun _ => fullTree) ∧
-      Tree.node (fun _ => fullTree) ≤ (fullTree : Tree n) := by
-  rw [← fullTree_eq_node]; exact ⟨le_rfl, le_rfl⟩
-
-end DeciSigma1.Semantics
-
-namespace DeciSigma1.Semantics
-
-open DeciSigma1.Constraints DeciSigma1.Constraints.Covariant DeciSigma1.Constraints.Signed
-
-variable {n k : ℕ}
-
-/-- The median of two covariant solutions and `fullTree` is a covariant solution: constructor
-literals use monotonicity of the median, and the leaf equations hold in both solutions. -/
-theorem sat_treeMedian_fullTree {A B : V k → Tree n} {χ : Constraint n k}
-    (ha : Covariant.Sat A χ) (hb : Covariant.Sat B χ) : Covariant.Sat
-        (fun z => treeMedian (A z) (B z) fullTree) χ := by
-  intro l hl
-  have h₁ := ha l hl
-  have h₂ := hb l hl
-  cases l with
-  | leF u a =>
-    have h := treeMedian_mono h₁ h₂ fullTree_bounds.1
-    rw [treeMedian_node] at h
-    exact h
-  | fLe a u =>
-    have h := treeMedian_mono h₁ h₂ fullTree_bounds.2
-    rw [treeMedian_node] at h
-    exact h
-  | eqBot u =>
-    change A u = Tree.bot at h₁
-    change B u = Tree.bot at h₂
-    change treeMedian (A u) (B u) fullTree = Tree.bot
-    simp [h₁, h₂]
-  | eqTop u =>
-    change A u = Tree.top at h₁
-    change B u = Tree.top at h₂
-    change treeMedian (A u) (B u) fullTree = Tree.top
-    simp [h₁, h₂]
-
-/-- The median of a signed assignment, its sign dual and the tree with `f` at every path. -/
-noncomputable def symmetrize (A : V (2 * k) → Tree n) (z : V (2 * k)) : Tree n :=
-  treeMedian (A z) (dual A z) fullTree
-
-theorem symmetrize_sat (c : Fin n → Bool) {A : V (2 * k) → Tree n}
-    {χ : Constraint n k} (h : Covariant.Sat A (signed c χ)) :
-    Covariant.Sat (symmetrize A) (signed c χ) :=
-  sat_treeMedian_fullTree h (sat_signedDual c h)
-
-@[simp] theorem symmetrize_fixed (A : V (2 * k) → Tree n) :
-    dual (symmetrize A) = symmetrize A := by
-  funext z
-  obtain ⟨u, p, rfl⟩ := exists_eq_signedVar z
-  simp only
-      [signedDual_signedVar, symmetrize, dual_treeMedian, dual_fullTree, Bool.not_not,
-          dual_involutive]
-  exact treeMedian_swap _ _ _
-
-/-- The symmetrization of a solution of the signed translation is a solution that is fixed by sign
-duality. -/
-theorem median_signed_solution (c : Fin n → Bool) {A : V (2 * k) → Tree n}
-    {χ : Constraint n k} (h : Covariant.Sat A (signed c χ)) :
-    Covariant.Sat (symmetrize A) (signed c χ) ∧ dual (symmetrize A) = symmetrize A :=
-  ⟨symmetrize_sat c h, symmetrize_fixed A⟩
-
-theorem signed_sat_implies_sat (c : Fin n → Bool) (χ : Constraint n k)
-    (h : ∃ A, Covariant.Sat A (signed c χ)) : ∃ ρ, Constraints.Sat c ρ χ := by
-  obtain ⟨A, ha⟩ := h
-  obtain ⟨ρ, hρ, _⟩ := (fixed_solution_correspondence c χ (symmetrize A)).mp
-    (median_signed_solution c ha)
-  exact ⟨ρ, hρ⟩
-
-/-- Satisfiability is preserved and reflected by the signed translation. -/
-theorem sat_iff_signed_sat (c : Fin n → Bool) (χ : Constraint n k) :
-    (∃ ρ, Constraints.Sat c ρ χ) ↔ ∃ A, Covariant.Sat A (signed c χ) :=
-  ⟨sat_implies_signed_sat c χ, signed_sat_implies_sat c χ⟩
 
 end DeciSigma1.Semantics

@@ -5,15 +5,15 @@ import Mathlib.Tactic.Common
 
 Without `⊤`, a tree over `{⊥, f}` is determined by the set of paths labeled `f`, a prefix-closed
 set of words; every other path of its domain is a `⊥` leaf. In this representation the covariant
-subtype order is inclusion, `⊥` is the empty set and the constructor adds the empty word. Finite
-trees are finite sets, and regular trees are the sets with finitely many residuals.
+subtype order is inclusion, `⊥` is the empty set and the constructor adds the empty word. Regular
+trees are the sets with finitely many residuals.
 
 ## Main declarations
 
 - `PrefixSet`: prefix-closed sets of constructor positions, ordered by inclusion.
 - `PrefixSet.bot`, `PrefixSet.node`, `PrefixSet.residual`: the tree `⊥`, the constructor and
   residuals.
-- `IsFiniteTree`, `IsRegularTree`: finite and regular trees.
+- `IsRegularTree`: regular trees.
 - `isRegularTree_bot`, `isRegularTree_node`: regular trees are closed under the constructors.
 -/
 
@@ -64,8 +64,6 @@ instance : PartialOrder (PrefixSet n) where
     | nil => trivial
     | cons i w => exact h i hw
 
-@[simp] theorem bot_le (t : PrefixSet n) : bot ≤ t := Set.empty_subset _
-
 theorem not_node_le_bot (a : Fin n → PrefixSet n) : ¬ node a ≤ bot := by
   intro h
   exact mem_bot [] (h (nil_mem_node a))
@@ -81,10 +79,18 @@ def residual (t : PrefixSet n) (w : List (Fin n)) : PrefixSet n where
 /-- The `i`-th child of a tree. -/
 def subtree (t : PrefixSet n) (i : Fin n) : PrefixSet n := t.residual [i]
 
-end PrefixSet
+/-- The tree all of whose paths are constructor positions. -/
+def univ : PrefixSet n := ⟨Set.univ, fun _ _ _ => trivial⟩
 
-/-- A finite tree: finitely many constructor positions. -/
-def IsFiniteTree (t : PrefixSet n) : Prop := t.carrier.Finite
+theorem le_univ (P : PrefixSet n) : P ≤ univ := Set.subset_univ _
+
+/-- The tree `univ` is the fixed point `f(univ, …, univ)`. -/
+@[simp] theorem node_univ : (node fun _ => univ : PrefixSet n) = univ :=
+  PrefixSet.ext (Set.ext fun π => by cases π <;> simp [univ])
+
+@[simp] theorem mem_univ (w : List (Fin n)) : w ∈ (univ : PrefixSet n).carrier := trivial
+
+end PrefixSet
 
 /-- A regular tree: finitely many residuals. -/
 def IsRegularTree (t : PrefixSet n) : Prop :=
@@ -104,5 +110,11 @@ theorem isRegularTree_node (a : Fin n → PrefixSet n) (ha : ∀ i, IsRegularTre
   cases w with
   | nil => exact Or.inl (by simp [PrefixSet.residual])
   | cons i w => exact Or.inr (Set.mem_iUnion.mpr ⟨i, w, rfl⟩)
+
+/-- The tree `PrefixSet.univ` is regular. -/
+theorem isRegularTree_univ : IsRegularTree (PrefixSet.univ : PrefixSet n) := by
+  apply (Set.finite_singleton (Set.univ : Set (List (Fin n)))).subset
+  rintro _ ⟨w, rfl⟩
+  simp [PrefixSet.residual, PrefixSet.univ]
 
 end DeciSigma1.Semantics

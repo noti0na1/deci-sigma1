@@ -1,5 +1,6 @@
+import DeciSigma1.Semantics.PrefixSet
 import DeciSigma1.Constraints.Basic
-import DeciSigma1.Constraints.TopFree.Basic
+import DeciSigma1.Semantics.Classes
 
 /-! # Observations of trees and ground bounds
 
@@ -50,10 +51,8 @@ def nonBottomPrefixes (t : Semantics.Tree n) : PrefixSet n where
     nonBottomPrefixes (Tree.bot : Semantics.Tree n) = PrefixSet.bot := by ext w; simp
 
 /-- The prefix-closed set of all paths. -/
-def fullPrefixSet : PrefixSet n := ⟨Set.univ, by simp⟩
-@[simp] theorem mem_fullPrefixSet (w : List (Fin n)) : w ∈ fullPrefixSet.carrier := trivial
 @[simp] theorem nonBottomPrefixes_top :
-    nonBottomPrefixes (Tree.top : Semantics.Tree n) = fullPrefixSet := by ext w; simp
+    nonBottomPrefixes (Tree.top : Semantics.Tree n) = PrefixSet.univ := by ext w; simp
 
 @[simp] theorem nonBottomPrefixes_node (a : Fin n → Semantics.Tree n) :
     nonBottomPrefixes (Semantics.Tree.node a) = PrefixSet.node (nonBottomPrefixes ∘ a) := by
@@ -217,20 +216,20 @@ open DeciSigma1.Semantics
 variable {n : ℕ}
 
 /-- The finite tree with `g` at the path `w` and `⊥` at every other child along `w`. -/
-def pathPin : List (Fin n) → FTree n → FTree n
+def pathBound : List (Fin n) → FTree n → FTree n
   | [], g => g
-  | i :: w, g => .node (fun j => if j = i then pathPin w g else .bot)
+  | i :: w, g => .node (fun j => if j = i then pathBound w g else .bot)
 
-theorem pathPin_le_iff (w : List (Fin n)) (g : FTree n) (hg : g.toTree ≠ Tree.bot)
+theorem pathBound_le_iff (w : List (Fin n)) (g : FTree n) (hg : g.toTree ≠ Tree.bot)
     (t : Semantics.Tree n) :
-    (pathPin w g).toTree ≤ t ↔ g.toTree ≤ Semantics.Tree.trace t w := by
+    (pathBound w g).toTree ≤ t ↔ g.toTree ≤ Semantics.Tree.trace t w := by
   induction w generalizing t with
   | nil => rfl
   | cons i w ih =>
     rcases t.eq_bot_or_eq_top_or_node with rfl | rfl | ⟨a, rfl⟩
-    · simp [pathPin, hg]
-    · simp [pathPin]
-    · simp only [pathPin, FTree.toTree_node, Tree.node_le_node_iff,
+    · simp [pathBound, hg]
+    · simp [pathBound]
+    · simp only [pathBound, FTree.toTree_node, Tree.node_le_node_iff,
         Semantics.Tree.trace_cons, Semantics.Tree.descend_node]
       rw [← ih]
       constructor
@@ -244,16 +243,16 @@ theorem node_bot_le_iff (t : Semantics.Tree n) :
   rcases t.eq_bot_or_eq_top_or_node with rfl | rfl | ⟨a, rfl⟩ <;>
     simp [Tree.node_le_node_iff]
 
-theorem pathPin_le_iff_mem_nonBottomPrefixes (t : Semantics.Tree n) (w : List (Fin n)) :
-    (pathPin w (.node (fun _ => .bot))).toTree ≤ t ↔ w ∈ (nonBottomPrefixes t).carrier := by
-  rw [pathPin_le_iff w _ (by simp), FTree.toTree_node, FTree.toTree_bot,
+theorem pathBound_le_iff_mem_nonBottomPrefixes (t : Semantics.Tree n) (w : List (Fin n)) :
+    (pathBound w (.node (fun _ => .bot))).toTree ≤ t ↔ w ∈ (nonBottomPrefixes t).carrier := by
+  rw [pathBound_le_iff w _ (by simp), FTree.toTree_node, FTree.toTree_bot,
     node_bot_le_iff]
   simp only [ne_eq, Semantics.Tree.trace_eq_bot_iff]
   rfl
 
-theorem pathPin_top_le_iff_hasTopPrefix (t : Semantics.Tree n) (w : List (Fin n)) :
-    (pathPin w .top).toTree ≤ t ↔ HasTopPrefix t w := by
-  rw [pathPin_le_iff w _ (by simp), FTree.toTree_top, Tree.top_le_iff,
+theorem pathBound_top_le_iff_hasTopPrefix (t : Semantics.Tree n) (w : List (Fin n)) :
+    (pathBound w .top).toTree ≤ t ↔ HasTopPrefix t w := by
+  rw [pathBound_le_iff w _ (by simp), FTree.toTree_top, Tree.top_le_iff,
     Semantics.Tree.trace_eq_top_iff]
   rfl
 
@@ -261,13 +260,21 @@ theorem le_dual_iff (t : Semantics.Tree n) (g : FTree n) :
     t ≤ g.dual.toTree ↔ g.toTree ≤ Tree.dual t := by
   rw [FTree.toTree_dual, ← dual_le_iff, dual_involutive]
 
+/-- The ground bound with its variable renamed along `f`. -/
+def GroundBound.map {V W : Type*} (f : V → W) (b : GroundBound n V) : GroundBound n W :=
+  ⟨f b.var, b.lower, b.tree⟩
+
+@[simp] theorem GroundBound.holds_map {V W : Type*} (f : V → W)
+    (b : GroundBound n V) (ρ : W → Semantics.Tree n) :
+    (b.map f).Holds ρ ↔ b.Holds (ρ ∘ f) := Iff.rfl
+
 /-- The ground bound equivalent to an observation. -/
 def Observation.bound {V : Type*} (o : Observation n V) : GroundBound n V :=
   match o.dual, o.value with
-  | false, true => ⟨o.var, true, pathPin o.word (.node (fun _ => .bot))⟩
-  | false, false => ⟨o.var, false, (pathPin o.word .top).dual⟩
-  | true, true => ⟨o.var, false, (pathPin o.word (.node (fun _ => .bot))).dual⟩
-  | true, false => ⟨o.var, true, pathPin o.word .top⟩
+  | false, true => ⟨o.var, true, pathBound o.word (.node (fun _ => .bot))⟩
+  | false, false => ⟨o.var, false, (pathBound o.word .top).dual⟩
+  | true, true => ⟨o.var, false, (pathBound o.word (.node (fun _ => .bot))).dual⟩
+  | true, false => ⟨o.var, true, pathBound o.word .top⟩
 
 /-- An observation holds exactly when its ground bound holds. -/
 theorem observation_bound {V : Type*} (ρ : V → Semantics.Tree n) (o : Observation n V) :
@@ -277,14 +284,14 @@ theorem observation_bound {V : Type*} (ρ : V → Semantics.Tree n) (o : Observa
   cases s <;> cases b <;>
     simp only [Observation.bound, GroundBound.Holds, Observation.Holds,
       Bool.false_eq_true, ite_false, ite_true]
-  · rw [le_dual_iff, pathPin_top_le_iff_hasTopPrefix]
+  · rw [le_dual_iff, pathBound_top_le_iff_hasTopPrefix]
     have hh := mem_nonBottomPrefixes_dual (Tree.dual (ρ v)) w
     simpa only [dual_involutive, not_not] using hh.not.symm
-  · exact pathPin_le_iff_mem_nonBottomPrefixes _ _
+  · exact pathBound_le_iff_mem_nonBottomPrefixes _ _
   · rw [mem_nonBottomPrefixes_dual, not_not]
-    exact pathPin_top_le_iff_hasTopPrefix _ _
+    exact pathBound_top_le_iff_hasTopPrefix _ _
   · rw [le_dual_iff]
-    exact pathPin_le_iff_mem_nonBottomPrefixes _ _
+    exact pathBound_le_iff_mem_nonBottomPrefixes _ _
 
 end DeciSigma1.Full.Models
 
@@ -293,8 +300,8 @@ open DeciSigma1.Constraints DeciSigma1.Semantics
 
 variable {n : ℕ}
 
-/-- A regular tree: the unfolding of a finite graph. -/
-def RegularTop (t : Semantics.Tree n) : Prop := ∃ g : RGraph n, g.unfold = t
+/-- A regular tree has finitely many distinct subtrees. -/
+def RegularTop (t : Semantics.Tree n) : Prop := (Characterization.subtrees t).Finite
 /-- A finite tree: the tree of a finite term. -/
 def FiniteTop (t : Semantics.Tree n) : Prop := ∃ g : FTree n, g.toTree = t
 
@@ -302,6 +309,20 @@ def FiniteTop (t : Semantics.Tree n) : Prop := ∃ g : FTree n, g.toTree = t
 def SatisfiableIn {V : Type*} (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
     (χ : List (LitT n V)) : Prop :=
   ∃ ρ, (∀ v, C (ρ v)) ∧ SatT c ρ χ
+
+/-- A flat constraint has a finite solution with variance `c`. -/
+abbrev SatFin {V : Type*} (c : Fin n → Bool) (χ : List (LitT n V)) : Prop :=
+  SatisfiableIn FiniteTop c χ
+
+/-- Finite satisfiability can be witnessed by an assignment of finite trees. -/
+theorem satFin_iff_finite_assignment {V : Type*} (c : Fin n → Bool) (χ : List (LitT n V)) :
+    SatFin c χ ↔ ∃ σ : V → FTree n, SatT c (FTree.toTree ∘ σ) χ := by
+  constructor
+  · rintro ⟨ρ, hf, hs⟩
+    choose σ hσ using hf
+    exact ⟨σ, (show FTree.toTree ∘ σ = ρ from funext hσ).symm ▸ hs⟩
+  · rintro ⟨σ, hs⟩
+    exact ⟨FTree.toTree ∘ σ, fun v => ⟨σ v, rfl⟩, hs⟩
 
 /-- Finitely many ground bounds that hold together in some covariant solution of `χ` hold together
 in a finite covariant solution, provided `χ` has a finite covariant solution. -/

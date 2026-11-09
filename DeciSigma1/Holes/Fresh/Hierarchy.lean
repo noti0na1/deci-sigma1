@@ -3,14 +3,14 @@ import DeciSigma1.Readers.Basic
 /-! # The marker hierarchy of a tuple
 
 The bound on minimal fresh tuples deletes repeated blocks from a fresh tuple `W`. The blocks
-come from a hierarchy of *markers*, words built from `W` itself. At level `1` every coordinate
-is active and its marker is the last letter of its word. An *anchor* of level `t` in a text is a
-cut at which an active marker of level `t` ends; the anchors cut a text into level-`t` blocks.
-A coordinate stays active at level `t + 1` if its word has an anchor before its end, and its new
-marker is the suffix of its word that starts where the longest marker ending at the last such
-anchor starts. Every marker is a suffix of its word, and a marker of level `t + 1` has exactly
-two level-`t` anchors: the end of the marker it starts with, and its own end
-(`contextAnchors_marker_succ`).
+come from a hierarchy of *markers*, words built from `W` itself. At level `1` the coordinates
+with a nonempty word are active, and the marker of each is the last letter of its word; empty
+words are never active. An *anchor* of level `t` in a text is a cut at which an active marker of
+level `t` ends; the anchors cut a text into level-`t` blocks. A coordinate stays active at level
+`t + 1` if its word has an anchor before its end, and its marker of level `t + 1` is the suffix
+of its word that starts where the longest marker ending at the last such anchor starts. Every
+marker is a suffix of its word, and a marker of level `t + 1` has exactly two level-`t` anchors:
+the end of the marker it starts with, and its own end (`contextAnchors_marker_succ`).
 
 The active markers of one level form a factor antichain: none is a proper factor of another
 (`marker_eq_of_infix`). Hence an occurrence of an active marker inside an occurrence of another
@@ -46,7 +46,7 @@ variable {α : Type} {k : ℕ}
 
 /-! ## Occurrences in words -/
 
-section Occ
+section Occurrences
 
 variable {x u v : List α}
 
@@ -105,7 +105,7 @@ theorem suffix_of_suffix_of_le {w : List α} (hu : u <:+ w) (hv : v <:+ w)
 theorem occ_of_suffix {w : List α} (hu : u <:+ w) : u <+: w.drop (w.length - u.length) := by
   rw [← List.suffix_iff_eq_drop.mp hu]
 
-end Occ
+end Occurrences
 
 /-! ## Levels -/
 
@@ -363,15 +363,15 @@ end Level
 
 variable [DecidableEq α]
 
-/-- The hierarchy of a tuple. Level `0` is a placeholder without markers (its
-anchors are all cuts, see `contextAnchors`); at level `1` every coordinate is active and its
-marker is its last letter. -/
+/-- The hierarchy of a tuple. Level `0` is a placeholder without markers (its anchors are all
+cuts, see `contextAnchors`). At levels `0` and `1` the active coordinates are those with a
+nonempty word, and the marker of level `1` is the last letter of the word. -/
 def level (W : Fin k → List α) : ℕ → Level α k
-  | 0 => ⟨univ, fun _ => []⟩
-  | 1 => ⟨univ, fun l => (W l).drop ((W l).length - 1)⟩
+  | 0 => ⟨univ.filter (fun l => W l ≠ []), fun _ => []⟩
+  | 1 => ⟨univ.filter (fun l => W l ≠ []), fun l => (W l).drop ((W l).length - 1)⟩
   | t + 2 => (level W (t + 1)).next W
 
-/-- Active coordinates at level `t` (`active W 1 = univ`). -/
+/-- Active coordinates at level `t`; at levels `0` and `1`, those with a nonempty word. -/
 def active (W : Fin k → List α) (t : ℕ) : Finset (Fin k) := (level W t).active
 
 /-- The markers of level `t`; only those of active coordinates are used. -/
@@ -388,7 +388,7 @@ def anchors (W : Fin k → List α) (t : ℕ) (l : Fin k) : Finset ℕ :=
   insert (W l).length (contextAnchors W t (W l))
 
 /-- The top level: the least `t` with no active coordinate at level `t + 1`. The search is
-capped at `totalLength W`; the cap never binds when all words are nonempty (`topLevel_spec`). -/
+capped at `totalLength W`; the cap never binds (`topLevel_spec`). -/
 def topLevel (W : Fin k → List α) : ℕ :=
   Nat.find (⟨totalLength W, Or.inr le_rfl⟩ : ∃ t, active W (t + 1) = ∅ ∨ totalLength W ≤ t)
 
@@ -396,9 +396,13 @@ section Basic
 
 variable (W : Fin k → List α)
 
-@[simp] theorem active_zero : active W 0 = univ := rfl
+/-- The coordinates active at level `0` are those with a nonempty word. -/
+@[simp] theorem mem_active_zero {l : Fin k} : l ∈ active W 0 ↔ W l ≠ [] := by
+  simp [active, level]
 
-@[simp] theorem active_one : active W 1 = univ := rfl
+/-- The coordinates active at level `1` are those with a nonempty word. -/
+@[simp] theorem mem_active_one {l : Fin k} : l ∈ active W 1 ↔ W l ≠ [] := by
+  simp [active, level]
 
 @[simp] theorem marker_zero (l : Fin k) : marker W 0 l = [] := rfl
 
@@ -435,6 +439,10 @@ theorem active_anti {s t : ℕ} (h : s ≤ t) : active W t ⊆ active W s := by
   | refl => exact subset_refl _
   | step _ ih => exact (active_succ_subset W _).trans ih
 
+/-- The word of an active coordinate is nonempty. -/
+theorem ne_nil_of_mem_active {t : ℕ} {l : Fin k} (hl : l ∈ active W t) : W l ≠ [] :=
+  (mem_active_zero W).mp (active_anti W (Nat.zero_le t) hl)
+
 /-- A coordinate stays active iff it has an internal anchor. -/
 theorem mem_active_succ_succ {t : ℕ} {l : Fin k} :
     l ∈ active W (t + 2) ↔
@@ -452,94 +460,96 @@ section Antichain
 
 variable {W : Fin k → List α}
 
-theorem level_one_anti (hne : ∀ i, W i ≠ []) : (level W 1).FactorAntichain := by
-  have hlen : ∀ l, ((level W 1).marker l).length = 1 := fun l => by
-    have := List.length_pos_iff.mpr (hne l)
-    simp only [level, List.length_drop]; omega
-  refine ⟨fun l _ h => ?_, fun m _ m' _ h => h.eq_of_length (by rw [hlen, hlen])⟩
-  have := hlen l; rw [h] at this; simp at this
+/-- The marker of a nonempty word at level `1` is a single letter. -/
+theorem length_marker_one {l : Fin k} (hl : l ∈ active W 1) : (marker W 1 l).length = 1 := by
+  have := List.length_pos_iff.mpr ((mem_active_one W).mp hl)
+  rw [marker_one, List.length_drop]; omega
 
-/-- Every level `t + 1` of the hierarchy of a tuple of nonempty words is a factor antichain. -/
-theorem level_anti (hne : ∀ i, W i ≠ []) : ∀ t, (level W (t + 1)).FactorAntichain
-  | 0 => level_one_anti hne
-  | t + 1 => Level.next_anti (level_anti hne t) (markers_are_suffixes W (t + 1))
+theorem level_one_anti : (level W 1).FactorAntichain := by
+  refine ⟨fun l hl h => ?_, fun m hm m' hm' h =>
+    h.eq_of_length ((length_marker_one hm).trans (length_marker_one hm').symm)⟩
+  have := length_marker_one hl
+  rw [show marker W 1 l = [] from h] at this
+  simp at this
+
+/-- Every level `t + 1` of the hierarchy of a tuple is a factor antichain. -/
+theorem level_anti : ∀ t, (level W (t + 1)).FactorAntichain
+  | 0 => level_one_anti
+  | t + 1 => Level.next_anti (level_anti t) (markers_are_suffixes W (t + 1))
 
 /-- Active markers of one level are never proper factors of each other. -/
-theorem marker_eq_of_infix (hne : ∀ i, W i ≠ []) (t : ℕ) (m m' : Fin k) (hm : m ∈ active W t)
+theorem marker_eq_of_infix (t : ℕ) (m m' : Fin k) (hm : m ∈ active W t)
     (hm' : m' ∈ active W t) : marker W t m <:+: marker W t m' → marker W t m = marker W t m' := by
   rcases t with _ | t
   · intro _; rfl
-  · exact (level_anti hne t).2 m hm m' hm'
+  · exact (level_anti t).2 m hm m' hm'
 
-theorem marker_ne_nil (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) {m : Fin k}
+theorem marker_ne_nil {t : ℕ} (ht : 1 ≤ t) {m : Fin k}
     (hm : m ∈ active W t) : marker W t m ≠ [] := by
   obtain ⟨t, rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
-  exact (level_anti hne t).1 m hm
+  exact (level_anti t).1 m hm
 
 /-- Markers of one level ending at one cut have the same text. -/
-theorem marker_eq_of_suffix (hne : ∀ i, W i ≠ []) {t : ℕ} {m m' : Fin k}
+theorem marker_eq_of_suffix {t : ℕ} {m m' : Fin k}
     (hm : m ∈ active W t) (hm' : m' ∈ active W t) {u : List α} (h : marker W t m <:+ u)
     (h' : marker W t m' <:+ u) : marker W t m = marker W t m' := by
   rcases t with _ | t
   · rfl
-  · exact Level.FactorAntichain.eq_of_suffix (level_anti hne t) hm hm' h h'
+  · exact Level.FactorAntichain.eq_of_suffix (level_anti t) hm hm' h h'
 
 /-- Each next marker has the current marker of its word as a proper suffix. -/
-theorem marker_suffix_succ (hne : ∀ i, W i ≠ []) {t : ℕ} {l : Fin k}
+theorem marker_suffix_succ {t : ℕ} {l : Fin k}
     (hl : l ∈ active W (t + 1)) : marker W t l <:+ marker W (t + 1) l := by
   rcases t with _ | t
   · exact List.nil_suffix
-  · exact (Level.next_suffix (level_anti hne t) (markers_are_suffixes W (t + 1)) hl).1
+  · exact (Level.next_suffix (level_anti t) (markers_are_suffixes W (t + 1)) hl).1
 
 /-- The marker of a coordinate that stays active grows strictly. -/
-theorem marker_grows (hne : ∀ i, W i ≠ []) {t : ℕ} {l : Fin k} (hl : l ∈ active W (t + 1)) :
+theorem marker_grows {t : ℕ} {l : Fin k} (hl : l ∈ active W (t + 1)) :
     (marker W t l).length < (marker W (t + 1) l).length := by
   rcases t with _ | t
-  · have := List.length_pos_iff.mpr (hne l)
-    show 0 < ((W l).drop ((W l).length - 1)).length
-    rw [List.length_drop]; omega
-  · exact (Level.next_suffix (level_anti hne t) (markers_are_suffixes W (t + 1)) hl).2
+  · rw [length_marker_one hl]; exact Nat.one_pos
+  · exact (Level.next_suffix (level_anti t) (markers_are_suffixes W (t + 1)) hl).2
 
-theorem le_length_marker (hne : ∀ i, W i ≠ []) {t : ℕ} {l : Fin k} (hl : l ∈ active W t) :
+theorem le_length_marker {t : ℕ} {l : Fin k} (hl : l ∈ active W t) :
     t ≤ (marker W t l).length := by
   induction t with
   | zero => exact Nat.zero_le _
   | succ t ih =>
     have := ih (active_succ_subset W t hl)
-    have := marker_grows hne hl
+    have := marker_grows hl
     omega
 
-theorem active_eq_empty_of_totalLength_lt (hne : ∀ i, W i ≠ []) {t : ℕ} (h : totalLength W < t) :
+theorem active_eq_empty_of_totalLength_lt {t : ℕ} (h : totalLength W < t) :
     active W t = ∅ := by
   rw [eq_empty_iff_forall_notMem]
   intro l hl
-  have h1 := le_length_marker hne hl
+  have h1 := le_length_marker hl
   have h2 := (marker_suffix W t l).length_le
   have h3 := length_le_totalLength W l
   omega
 
 /-- Read as a text, a marker of level `t + 1` has exactly two anchors of level `t`: the end of
 the level-`t` marker it starts with, and its own end. -/
-theorem contextAnchors_marker_succ (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) {l : Fin k}
-    (hl : l ∈ active W (t + 1)) :
+theorem contextAnchors_marker_succ {t : ℕ} (ht : 1 ≤ t) {l : Fin k} (hl : l ∈ active W (t + 1)) :
     ∃ m ∈ active W t, marker W t m <+: marker W (t + 1) l ∧
       (marker W t m).length < (marker W (t + 1) l).length ∧
       contextAnchors W t (marker W (t + 1) l) =
         {(marker W t m).length, (marker W (t + 1) l).length} := by
   obtain ⟨t, rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
-  exact Level.next_markerEndCuts_eq (level_anti hne t) (markers_are_suffixes W (t + 1)) hl
+  exact Level.next_markerEndCuts_eq (level_anti t) (markers_are_suffixes W (t + 1)) hl
 
 /-- The complete occurrences of level-`t` markers in a marker of level `t + 1` are exactly one
 prefix occurrence and one suffix occurrence. -/
-theorem marker_occurrences_in_next_marker (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) {l : Fin k}
+theorem marker_occurrences_in_next_marker {t : ℕ} (ht : 1 ≤ t) {l : Fin k}
     (hl : l ∈ active W (t + 1)) :
     (∃ m ∈ active W t, marker W t m <+: marker W (t + 1) l) ∧
       marker W t l <:+ marker W (t + 1) l ∧
       ∀ h ∈ active W t, ∀ i, marker W t h <+: (marker W (t + 1) l).drop i →
         i = 0 ∨ i + (marker W t h).length = (marker W (t + 1) l).length := by
-  obtain ⟨m, hm, hpre, -, hset⟩ := contextAnchors_marker_succ hne ht hl
-  refine ⟨⟨m, hm, hpre⟩, marker_suffix_succ hne hl, fun h hh i hocc => ?_⟩
-  have hhne := marker_ne_nil hne ht hh
+  obtain ⟨m, hm, hpre, -, hset⟩ := contextAnchors_marker_succ ht hl
+  refine ⟨⟨m, hm, hpre⟩, marker_suffix_succ hl, fun h hh i hocc => ?_⟩
+  have hhne := marker_ne_nil ht hh
   have hle := occ_le_length hocc hhne
   have hmem : i + (marker W t h).length ∈ contextAnchors W t (marker W (t + 1) l) := by
     obtain ⟨t', rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
@@ -550,33 +560,33 @@ theorem marker_occurrences_in_next_marker (hne : ∀ i, W i ≠ []) {t : ℕ} (h
     have hs1 : marker W t h <:+ (marker W (t + 1) l).take (marker W t m).length := by
       rw [← h1]; exact suffix_take_of_occ hocc
     rw [← List.prefix_iff_eq_take.mp hpre] at hs1
-    have heq := marker_eq_of_suffix hne hh hm hs1 List.suffix_rfl
+    have heq := marker_eq_of_suffix hh hm hs1 List.suffix_rfl
     have : (marker W t h).length = (marker W t m).length := by rw [heq]
     omega
   · right; exact h1
 
 /-- Anchors of level `t + 1` are anchors of level `t`, in every context. -/
-theorem contextAnchors_succ_subset (hne : ∀ i, W i ≠ []) (t : ℕ) (u : List α) :
+theorem contextAnchors_succ_subset (t : ℕ) (u : List α) :
     contextAnchors W (t + 1) u ⊆ contextAnchors W t u := by
   intro e he
   rw [mem_contextAnchors_succ] at he
   obtain ⟨hle, m, hm, hs⟩ := he
   rcases t with _ | t
   · have h1 : 1 ≤ (marker W (0 + 1) m).length :=
-      List.length_pos_iff.mpr (marker_ne_nil hne le_rfl hm)
+      List.length_pos_iff.mpr (marker_ne_nil le_rfl hm)
     have h2 := hs.length_le
     simp only [List.length_take] at h2
     simp only [contextAnchors, mem_Icc]
     omega
   · rw [mem_contextAnchors_succ]
-    exact ⟨hle, m, active_succ_subset W _ hm, (marker_suffix_succ hne hm).trans hs⟩
+    exact ⟨hle, m, active_succ_subset W _ hm, (marker_suffix_succ hm).trans hs⟩
 
-theorem anchors_succ_subset (hne : ∀ i, W i ≠ []) (t : ℕ) (l : Fin k) :
+theorem anchors_succ_subset (t : ℕ) (l : Fin k) :
     anchors W (t + 1) l ⊆ anchors W t l :=
-  insert_subset_insert _ (contextAnchors_succ_subset hne t _)
+  insert_subset_insert _ (contextAnchors_succ_subset t _)
 
 /-- A coordinate that is not active at level `t + 1` is a single level-`t` block. -/
-theorem anchors_eq_singleton (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) {l : Fin k}
+theorem anchors_eq_singleton {t : ℕ} (ht : 1 ≤ t) {l : Fin k}
     (hl : l ∉ active W (t + 1)) : anchors W t l = {(W l).length} := by
   induction t with
   | zero => omega
@@ -596,9 +606,15 @@ theorem anchors_eq_singleton (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) 
       · exact hl (Level.next_active.mpr ⟨hl', e, (mem_insert.mp he).resolve_left hne', by omega⟩)
       · exact hl ((mem_active_succ_succ W).mpr ⟨hl', e, he, by omega⟩)
     · rcases t with _ | t
-      · exact absurd (mem_univ l) hl'
+      · intro e he
+        have hnil : W l = [] := not_not.mp (fun h => hl' ((mem_active_one W).mpr h))
+        rcases mem_insert.mp he with rfl | he
+        · exact mem_singleton_self _
+        · have := (Level.mem_markerEndCuts.mp he).1
+          rw [hnil] at this ⊢
+          exact mem_singleton.mpr (by simpa using this)
       · rw [← ih (by omega) hl']
-        exact anchors_succ_subset hne _ l
+        exact anchors_succ_subset _ l
 
 end Antichain
 
@@ -608,12 +624,12 @@ variable {W : Fin k → List α}
 
 /-- An occurrence of an active level-`t` marker inside an occurrence of another one, in any
 text, is the same occurrence of the same marker text. -/
-theorem marker_occurrences_eq_of_nested (hne : ∀ i, W i ≠ []) {t : ℕ} {m m' : Fin k}
+theorem marker_occurrences_eq_of_nested {t : ℕ} {m m' : Fin k}
     (hm : m ∈ active W t) (hm' : m' ∈ active W t) {u : List α} {i j : ℕ}
     (h : marker W t m <+: u.drop i) (h' : marker W t m' <+: u.drop j) (hij : i ≤ j)
     (hlen : j + (marker W t m').length ≤ i + (marker W t m).length) :
     i = j ∧ marker W t m' = marker W t m := by
-  have heq := marker_eq_of_infix hne t m' m hm' hm (infix_of_occ h h' hij hlen)
+  have heq := marker_eq_of_infix t m' m hm' hm (infix_of_occ h h' hij hlen)
   have : (marker W t m').length = (marker W t m).length := by rw [heq]
   exact ⟨by omega, heq⟩
 
@@ -662,28 +678,20 @@ section Top
 variable {W : Fin k → List α}
 
 /-- `topLevel W` is the least `t` with no active coordinate at level `t + 1`. -/
-theorem topLevel_spec (hne : ∀ i, W i ≠ []) :
+theorem topLevel_spec :
     active W (topLevel W + 1) = ∅ ∧ ∀ t < topLevel W, active W (t + 1) ≠ ∅ := by
   refine ⟨?_, fun t ht h => ?_⟩
   · rcases Nat.find_spec
       (⟨totalLength W, Or.inr le_rfl⟩ : ∃ t, active W (t + 1) = ∅ ∨ totalLength W ≤ t)
       with h | h
     · exact h
-    · exact active_eq_empty_of_totalLength_lt hne (by unfold topLevel; omega)
+    · exact active_eq_empty_of_totalLength_lt (by unfold topLevel; omega)
   · exact Nat.find_min _ ht (Or.inl h)
 
-theorem active_nonempty_of_le_topLevel (hne : ∀ i, W i ≠ []) (hk : 0 < k) {t : ℕ}
-    (h : t ≤ topLevel W) : (active W t).Nonempty := by
-  rcases t with _ | t
-  · exact ⟨⟨0, hk⟩, mem_univ _⟩
-  · exact nonempty_iff_ne_empty.mpr ((topLevel_spec hne).2 t (by omega))
-
-theorem one_le_topLevel (hne : ∀ i, W i ≠ []) (hk : 0 < k) : 1 ≤ topLevel W := by
-  by_contra h
-  have h0 : topLevel W = 0 := by omega
-  have := (topLevel_spec hne).1
-  rw [h0, zero_add, active_one, univ_eq_empty_iff] at this
-  exact this.false ⟨0, hk⟩
+theorem active_nonempty_of_le_topLevel {t : ℕ} (ht : 1 ≤ t) (h : t ≤ topLevel W) :
+    (active W t).Nonempty := by
+  obtain ⟨t, rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
+  exact nonempty_iff_ne_empty.mpr (topLevel_spec.2 t (by omega))
 
 end Top
 
@@ -774,15 +782,12 @@ theorem card_prefixOccurrenceCuts_le {T : Table α S k} {W : Fin k → List α} 
   refine ⟨j, (W j).length - p, mem_suffixOccurrenceCuts.mpr ⟨by omega, ?_⟩, by omega⟩
   rw [hdrop]; exact List.take_prefix _ _
 
-theorem le_card_prefixOccurrenceCuts {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
-    (ht : 1 ≤ t) :
+theorem le_card_prefixOccurrenceCuts {W : Fin k → List α} {t : ℕ} (ht : 1 ≤ t) :
     ∀ l ∈ active W t, t ≤ (prefixOccurrenceCuts W (marker W t l)).card := by
   induction t, ht using Nat.le_induction with
   | base =>
-    intro l _
-    have hlen : (marker W 1 l).length = 1 := by
-      have := List.length_pos_iff.mpr (hne l)
-      rw [marker_one, List.length_drop]; omega
+    intro l hl
+    have hlen : (marker W 1 l).length = 1 := length_marker_one hl
     have h1 : 1 ∈ prefixOccurrenceCuts W (marker W 1 l) := by
       simp only [prefixOccurrenceCuts, mem_filter, mem_Icc, hlen]
       refine ⟨⟨le_rfl, le_rfl⟩, l, ?_⟩
@@ -791,7 +796,7 @@ theorem le_card_prefixOccurrenceCuts {W : Fin k → List α} (hne : ∀ i, W i �
     exact card_pos.mpr ⟨1, h1⟩
   | succ t ht ih =>
     intro l hl
-    obtain ⟨m, hm, hpre, hlt, -⟩ := contextAnchors_marker_succ hne ht hl
+    obtain ⟨m, hm, hpre, hlt, -⟩ := contextAnchors_marker_succ ht hl
     have hsub : insert (marker W (t + 1) l).length (prefixOccurrenceCuts W (marker W t m)) ⊆
         prefixOccurrenceCuts W (marker W (t + 1) l) := by
       intro p hp
@@ -809,35 +814,29 @@ theorem le_card_prefixOccurrenceCuts {W : Fin k → List α} (hne : ∀ i, W i �
     have := ih m hm
     omega
 
-/-- The hierarchy of a fresh tuple of nonempty words has at most `k (N - 1)` levels. -/
-theorem topLevel_le {T : Table α S k} {W : Fin k → List α} (hfr : ∀ i, T.Fresh W i)
-    (hne : ∀ i, W i ≠ []) : topLevel W ≤ k * (Fintype.card S - 1) := by
-  rcases Nat.eq_zero_or_pos k with rfl | hk
-  · have h0 : topLevel W ≤ 0 := Nat.find_min' _ (Or.inl (by
-      rw [eq_empty_iff_forall_notMem]; exact fun l => l.elim0))
-    omega
-  · obtain ⟨l, hl⟩ := active_nonempty_of_le_topLevel hne hk le_rfl
-    exact (le_card_prefixOccurrenceCuts hne (one_le_topLevel hne hk) l hl).trans
-        (card_prefixOccurrenceCuts_le hfr _)
+/-- The hierarchy of a fresh tuple has at most `k (N - 1)` levels. -/
+theorem topLevel_le {T : Table α S k} {W : Fin k → List α} (hfr : ∀ i, T.Fresh W i) :
+    topLevel W ≤ k * (Fintype.card S - 1) := by
+  rcases Nat.eq_zero_or_pos (topLevel W) with h0 | hpos
+  · omega
+  · obtain ⟨l, hl⟩ := active_nonempty_of_le_topLevel (W := W) hpos le_rfl
+    exact (le_card_prefixOccurrenceCuts hpos l hl).trans (card_prefixOccurrenceCuts_le hfr _)
 
 /-! ## Anchors inside a marker of the next level -/
 
 /-- In a fresh tuple, an occurrence of a marker of level `t + 1` in any text has at most
 `k (N - 1) + 1` anchors of level `t` strictly inside. -/
 theorem card_anchors_inside_marker_le {T : Table α S k} {W : Fin k → List α}
-    (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ []) (t : ℕ) {l : Fin k} (hl : l ∈ active W (t + 1))
+    (hfr : ∀ i, T.Fresh W i) (t : ℕ) {l : Fin k} (hl : l ∈ active W (t + 1))
     (ctx : List α) {a : ℕ} (hocc : marker W (t + 1) l <+: ctx.drop a) :
     ((contextAnchors W t ctx).filter
         (fun p => a < p ∧ p < a + (marker W (t + 1) l).length)).card ≤
       k * (Fintype.card S - 1) + 1 := by
   rcases Nat.eq_zero_or_pos t with rfl | ht
-  · have hlen : (marker W (0 + 1) l).length = 1 := by
-      have := List.length_pos_iff.mpr (hne l)
-      show ((W l).drop ((W l).length - 1)).length = 1
-      rw [List.length_drop]; omega
+  · have hlen : (marker W (0 + 1) l).length = 1 := length_marker_one hl
     rw [hlen, filter_false_of_mem (fun p _ => by omega), card_empty]
     exact Nat.zero_le _
-  obtain ⟨m, hm, hpre, hlt, hset⟩ := contextAnchors_marker_succ hne ht hl
+  obtain ⟨m, hm, hpre, hlt, hset⟩ := contextAnchors_marker_succ ht hl
   set σ := marker W (t + 1) l with hσ
   have hsub : (contextAnchors W t ctx).filter (fun p => a < p ∧ p < a + σ.length) ⊆
       insert (a + (marker W t m).length)
@@ -848,7 +847,7 @@ theorem card_anchors_inside_marker_le {T : Table α S k} {W : Fin k → List α}
     obtain ⟨hpa, hap, hpσ⟩ := hp
     obtain ⟨t', rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
     obtain ⟨hpc, h, hh, hsuf⟩ := (mem_contextAnchors_succ W).mp hpa
-    have hσle := occ_le_length hocc (marker_ne_nil hne (by omega) hl)
+    have hσle := occ_le_length hocc (marker_ne_nil (by omega) hl)
     have htake : ctx.take p = ctx.take a ++ σ.take (p - a) := by
       have h1 : (ctx.drop a).take (p - a) = σ.take (p - a) := by
         rw [List.prefix_iff_eq_take.mp hocc, List.take_take, Nat.min_eq_left (by omega)]
@@ -888,7 +887,7 @@ theorem card_anchors_inside_marker_le {T : Table α S k} {W : Fin k → List α}
 /-- The same bound counting the right end: at most `k (N - 1) + 2` anchors of level `t` in the
 half-open window `(a, a + |σ|]` of an occurrence of `σ` at `a`. -/
 theorem card_anchors_Ioc_marker_le {T : Table α S k} {W : Fin k → List α}
-    (hfr : ∀ i, T.Fresh W i) (hne : ∀ i, W i ≠ []) (t : ℕ) {l : Fin k} (hl : l ∈ active W (t + 1))
+    (hfr : ∀ i, T.Fresh W i) (t : ℕ) {l : Fin k} (hl : l ∈ active W (t + 1))
     (ctx : List α) {a : ℕ} (hocc : marker W (t + 1) l <+: ctx.drop a) :
     ((contextAnchors W t ctx).filter
         (fun p => a < p ∧ p ≤ a + (marker W (t + 1) l).length)).card ≤
@@ -903,7 +902,7 @@ theorem card_anchors_Ioc_marker_le {T : Table α S k} {W : Fin k → List α}
     rcases lt_or_eq_of_le hp.2.2 with h | h
     · exact Or.inr ⟨hp.1, hp.2.1, h⟩
     · exact Or.inl h
-  have := card_anchors_inside_marker_le hfr hne t hl ctx hocc
+  have := card_anchors_inside_marker_le hfr t hl ctx hocc
   have := card_le_card hsub
   have := card_insert_le (a + (marker W (t + 1) l).length) ((contextAnchors W t ctx).filter
         (fun p => a < p ∧ p < a + (marker W (t + 1) l).length))

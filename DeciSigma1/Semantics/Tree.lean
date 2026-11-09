@@ -9,8 +9,7 @@ constructor `f` of arity `n`. A tree is represented by its labeling function: a 
 paths (words over `Fin n`) to labels that is defined at the root and defined at `π ++ [i]` exactly
 when `π` is labeled `f`. This module defines these trees, their constructors and subtrees, the
 covariant non-structural order `Tree.CovLe` (for every path in both domains the labels are ordered
-by `⊥ < f < ⊤`), finite trees as finite terms (`FTree`) and regular trees as unfoldings of finite
-rooted graphs (`RGraph`).
+by `⊥ < f < ⊤`), and finite trees as finite terms (`FTree`).
 
 ## Main declarations
 
@@ -19,7 +18,6 @@ rooted graphs (`RGraph`).
 - `Tree`, `Tree.bot`, `Tree.top`, `Tree.node`, `Tree.subtree`: trees and their constructors.
 - `Tree.CovLe`: the covariant non-structural order, a partial order on `Tree n`.
 - `FTree`, `FTree.toTree`: finite trees.
-- `RGraph`, `RGraph.unfold`: finite rooted graphs and the regular trees they unfold to.
 -/
 
 namespace DeciSigma1.Semantics
@@ -432,122 +430,4 @@ def toTree : FTree n → Tree n
     toTree (node a) = Tree.node (fun i => toTree (a i)) := rfl
 
 end FTree
-end DeciSigma1.Semantics
-
-namespace DeciSigma1.Semantics
-
-/-! ## Graphs and unfolding -/
-
-/-- A finite rooted graph with nodes `Fin size`, labeled by `label`, where the `i`-th successor of
-a node is `child q i`. Its unfolding is a regular tree; successors of nodes not labeled `f` are
-ignored. -/
-structure RGraph (n : ℕ) where
-  size : ℕ
-  root : Fin size
-  label : Fin size → Sym
-  child : Fin size → Fin n → Fin size
-
-namespace RGraph
-
-variable {n : ℕ}
-
-/-- Follow a path starting at an arbitrary graph node. -/
-def walkFrom (g : RGraph n) (p : Fin g.size) : List (Fin n) → Option (Fin g.size)
-  | [] => some p
-  | i :: π => if g.label p = Sym.f then walkFrom g (g.child p i) π else none
-
-/-- Follow a path from the distinguished root. -/
-def walk (g : RGraph n) (π : List (Fin n)) : Option (Fin g.size) :=
-  g.walkFrom g.root π
-
-theorem walkFrom_append (g : RGraph n) (p : Fin g.size) (π ρ : List (Fin n)) :
-    g.walkFrom p (π ++ ρ) = (g.walkFrom p π).bind (fun q => g.walkFrom q ρ) := by
-  induction π generalizing p with
-  | nil => rfl
-  | cons i π ih =>
-    simp only [List.cons_append, walkFrom]
-    split <;> simp_all
-
-theorem walk_append_singleton (g : RGraph n) (π : List (Fin n)) (i : Fin n) :
-    g.walk (π ++ [i]) = (g.walk π).bind
-      (fun p => if g.label p = Sym.f then some (g.child p i) else none) := by
-  simp [walk, walkFrom_append, walkFrom]
-
-/-- The unfolding of a graph: the label of a path is the label of the node reached by following it
-from the root. -/
-def unfold (g : RGraph n) : Tree n where
-  fn π := (g.walk π).map g.label
-  wf := by
-    constructor
-    · simp [walk, walkFrom]
-    · intro π i
-      rw [walk_append_singleton]
-      cases h : g.walk π with
-      | none => simp
-      | some p => by_cases hf : g.label p = Sym.f <;> simp [hf]
-
-@[simp] theorem unfold_fn (g : RGraph n) (π : List (Fin n)) :
-    g.unfold.fn π = (g.walk π).map g.label := rfl
-
-/-- The same graph with the root moved to `p`. -/
-def reroot (g : RGraph n) (p : Fin g.size) : RGraph n := { g with root := p }
-
-@[simp] theorem unfold_root (g : RGraph n) :
-    g.unfold.fn [] = some (g.label g.root) := rfl
-
-theorem unfold_bot (g : RGraph n) (h : g.label g.root = Sym.bot) :
-    g.unfold = Tree.bot := (Tree.root_eq_bot_iff _).mp (congrArg some h)
-
-theorem unfold_top (g : RGraph n) (h : g.label g.root = Sym.top) :
-    g.unfold = Tree.top := (Tree.root_eq_top_iff _).mp (congrArg some h)
-
-theorem walkFrom_reroot (g : RGraph n) (p q : Fin g.size) (w : List (Fin n)) :
-    (g.reroot p).walkFrom q w = g.walkFrom q w := by
-  induction w generalizing q with
-  | nil => rfl
-  | cons i w ih =>
-    change (if g.label q = Sym.f then (g.reroot p).walkFrom (g.child q i) w else none) =
-      (if g.label q = Sym.f then g.walkFrom (g.child q i) w else none)
-    split
-    · exact ih _
-    · rfl
-
-theorem unfold_node (g : RGraph n) (h : g.label g.root = Sym.f) :
-    g.unfold = Tree.node (fun i => (g.reroot (g.child g.root i)).unfold) := by
-  apply Tree.ext
-  funext w
-  cases w with
-  | nil => exact congrArg some h
-  | cons i w =>
-    change (g.walkFrom g.root (i :: w)).map g.label =
-      ((g.reroot (g.child g.root i)).walkFrom (g.child g.root i) w).map g.label
-    rw [walkFrom, ite_eq_left h, walkFrom_reroot]
-
-/-- The graph with one node labeled `f` whose successors are all itself; it unfolds to the infinite
-tree `f(f(…), …)`. -/
-def allF (n : ℕ) : RGraph n where
-  size := 1
-  root := 0
-  label := fun _ => Sym.f
-  child := fun _ _ => 0
-
-@[simp] theorem allF_walkFrom (p : Fin 1) (w : List (Fin n)) :
-    (allF n).walkFrom p w = some (0 : Fin 1) := by
-  induction w generalizing p with
-  | nil => exact congrArg some (Subsingleton.elim p 0)
-  | cons i w ih => simpa [walkFrom, allF] using ih 0
-
-@[simp] theorem allF_unfold_fn (w : List (Fin n)) :
-    (allF n).unfold.fn w = some Sym.f := by
-  change ((allF n).walkFrom (0 : Fin 1) w).map _ = _
-  rw [allF_walkFrom]
-  rfl
-
-theorem allF_unfold_node :
-    (allF n).unfold = Tree.node (fun _ => (allF n).unfold) := by
-  apply Tree.ext
-  funext w
-  cases w <;> simp only [Tree.node_fn_nil, Tree.node_fn_cons, allF_unfold_fn]
-
-end RGraph
 end DeciSigma1.Semantics

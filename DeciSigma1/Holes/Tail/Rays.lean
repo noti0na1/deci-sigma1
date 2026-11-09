@@ -94,7 +94,7 @@ theorem windowStateBound_mono (σ N : ℕ) : Monotone (windowStateBound σ N) :=
 /-- The window state of cut `c` at window `b`: the state before the last `b` letters before `c`,
 and those letters (the whole prefix if `c < b`). -/
 def windowState (T : Table α S k) (q0 : S) (x : List α) (b c : ℕ) : S × List α :=
-  (T.runFrom q0 (x.take (c - b)), (x.take c).drop (c - b))
+  (runFrom T.step q0 (x.take (c - b)), (x.take c).drop (c - b))
 
 /-- The factor `x[c, c')` is closed at window `B`: the cuts `B ≤ c < c'` have the same window
 state. -/
@@ -263,7 +263,7 @@ end PumpFactor
 
 /-- One step of a run along a prefix. -/
 theorem runFrom_take_succ (T : Table α S k) (q : S) (w : List α) {p : ℕ} (h : p < w.length) :
-    T.runFrom q (w.take (p + 1)) = T.step (T.runFrom q (w.take p)) w[p] := by
+    runFrom T.step q (w.take (p + 1)) = T.step (runFrom T.step q (w.take p)) w[p] := by
   rw [List.take_add_one, List.getElem?_eq_getElem h, Option.toList_some, runFrom_snoc]
 
 section Closed
@@ -278,7 +278,7 @@ theorem ClosedAt.window (hcl : ClosedAt T q0 x B c c') {j : ℕ} (hj : j < B) :
   rwa [ite_eq_left (by omega), ite_eq_left (by omega)] at h2
 
 theorem ClosedAt.state (hcl : ClosedAt T q0 x B c c') :
-    T.runFrom q0 (x.take (c - B)) = T.runFrom q0 (x.take (c' - B)) :=
+    runFrom T.step q0 (x.take (c - B)) = runFrom T.step q0 (x.take (c' - B)) :=
   congrArg Prod.fst hcl.2.2.2
 
 /-- The letters of the pumped factor repeat with period `c' - c` from `c - B` on. -/
@@ -297,8 +297,8 @@ theorem pumpFactor_letter_period (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤
 /-- The states along the pumped factor repeat with period `c' - c` from `c - B` on. -/
 theorem pumpFactor_state_period (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) {p : ℕ}
     (hp : c - B ≤ p) (hpL : p + (c' - c) ≤ c + L) :
-    T.runFrom q0 ((pumpFactor x c c' L).take (p + (c' - c))) =
-        T.runFrom q0 ((pumpFactor x c c' L).take p) := by
+    runFrom T.step q0 ((pumpFactor x c c' L).take (p + (c' - c))) =
+        runFrom T.step q0 ((pumpFactor x c c' L).take p) := by
   have ⟨hB, hcc, hc', _⟩ := hcl
   have hlen := length_pumpFactor (L := L) hcc hc'
   induction p, hp using Nat.le_induction with
@@ -333,8 +333,8 @@ theorem pumpFactor_occurrence_reduce (hcl : ClosedAt T q0 x B c c') (hL : c' - c
     {u : List α} (hu : u.length = ℓ) :
     ∀ a, a + ℓ ≤ c + L → c < a + ℓ → u <+: (pumpFactor x c c' L).drop a →
       ∃ a', c < a' + ℓ ∧ a' + ℓ ≤ c' ∧ u <+: (pumpFactor x c c' L).drop a' ∧
-        T.runFrom q0 ((pumpFactor x c c' L).take a') =
-            T.runFrom q0 ((pumpFactor x c c' L).take a) := by
+        runFrom T.step q0 ((pumpFactor x c c' L).take a') =
+            runFrom T.step q0 ((pumpFactor x c c' L).take a) := by
   intro a
   induction a using Nat.strong_induction_on with
   | _ a ih =>
@@ -354,7 +354,7 @@ theorem pumpFactor_occurrence_reduce (hcl : ClosedAt T q0 x B c c') (hL : c' - c
 least `c` if the cut of the pumped factor is at least `c`. -/
 theorem pumpFactor_state_reduce (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) :
     ∀ p ≤ c + L, ∃ p' ≤ c', (c ≤ p → c ≤ p') ∧
-      T.runFrom q0 ((pumpFactor x c c' L).take p) = T.runFrom q0 (x.take p') := by
+      runFrom T.step q0 ((pumpFactor x c c' L).take p) = runFrom T.step q0 (x.take p') := by
   intro p
   induction p using Nat.strong_induction_on with
   | _ p ih =>
@@ -389,7 +389,8 @@ theorem comparison_of_pumpFactor [DecidableEq α] [DecidableEq S] {T : Table α 
   rw [hu] at hpre'
   -- reduce to an occurrence ending at or before `c'`
   suffices key : ∃ a', a' + ℓ ≤ c' ∧ t.drop b <+: (pumpFactor x c c' L).drop a' ∧
-      T.runFrom q0 ((pumpFactor x c c' L).take a') = T.runFrom q0 ((pumpFactor x c c' L).take a) by
+      runFrom T.step q0 ((pumpFactor x c c' L).take a') =
+        runFrom T.step q0 ((pumpFactor x c c' L).take a) by
     obtain ⟨a', h1, h2, h3⟩ := key
     refine ⟨a', by omega, b, hb, ?_, ?_⟩
     · have h2' := (prefix_drop_iff (by omega)).mp h2
@@ -482,10 +483,11 @@ theorem pumpFactor_eligible [DecidableEq S] (M : StructuralReader α S k) {W W' 
         M.firstRejection W i := by
   have ⟨hB, hcc, hc', _⟩ := hcl
   have hlen := length_pumpFactor (L := L) hcc hc'
-  have hq : ∀ a, M.runPrefix W' i a = M.runFrom (M.start i) ((pumpFactor (W i) c c' L).take a) := by
+  have hq : ∀ a, M.runPrefix W' i a =
+      runFrom M.step (M.start i) ((pumpFactor (W i) c c' L).take a) := by
     intro a; simp only [Table.runPrefix, hW']
   have hlive : ∀ L', c' - c ≤ L' → ∀ p ≤ c + L',
-      M.runFrom (M.start i) ((pumpFactor (W i) c c' L').take p) ≠ M.dead := by
+      runFrom M.step (M.start i) ((pumpFactor (W i) c c' L').take p) ≠ M.dead := by
     intro L' hL' p hp
     obtain ⟨p', hp', _, he⟩ := pumpFactor_state_reduce (T := M.toTable) ⟨hB, hcc, hc', hcl.2.2.2⟩
       hL' p hp
@@ -510,9 +512,9 @@ theorem pumpFactor_eligible [DecidableEq S] (M : StructuralReader α S k) {W W' 
     have hz : (pumpFactor (W i) c c' (L + n)).take (c + L) = pumpFactor (W i) c c' L := by
       obtain ⟨r, hr⟩ := hpre
       rw [← hr, List.take_left' hlen]
-    have hend : M.endState W' i = M.runFrom (M.start i) (pumpFactor (W i) c c' L) := by
+    have hend : M.endState W' i = runFrom M.step (M.start i) (pumpFactor (W i) c c' L) := by
       simp only [Table.endState, hq, hW', List.take_length]
-    rw [hend, ← Table.runFrom_append, ← hz, ← List.take_add]
+    rw [hend, ← runFrom_append, ← hz, ← List.take_add]
     exact hlive (L + n) (by omega) _ (by omega)
   · apply StructuralReader.firstRejection_eq_of_rejected helig
     · rw [hq, pumpFactor_take hcc hc' hL (by omega)]
@@ -532,15 +534,15 @@ section Runs
 variable (M : StructuralReader α S k)
 
 /-- The state at cut `a` of the run along the ray `Ω` from `q`. -/
-def rayState (q : S) (Ω : Ray α) (a : ℕ) : S := M.runFrom q (streamPrefix Ω.stream a)
+def rayState (q : S) (Ω : Ray α) (a : ℕ) : S := runFrom M.step q (streamPrefix Ω.stream a)
 
 variable {M}
 
 theorem rayState_add (q : S) (Ω : Ray α) (x t : ℕ) :
     rayState M q Ω (x + t) =
-        M.runFrom (rayState M q Ω x) (streamPrefix (fun i => Ω.stream (x + i)) t) := by
+        runFrom M.step (rayState M q Ω x) (streamPrefix (fun i => Ω.stream (x + i)) t) := by
   simp only [rayState]
-  rw [streamPrefix_add, Table.runFrom_append]
+  rw [streamPrefix_add, runFrom_append]
 
 /-- A state loop along a stretch whose text repeats loops forever. -/
 theorem rayState_loop (q : S) (Ω : Ray α) {x d : ℕ}

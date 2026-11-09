@@ -1,23 +1,23 @@
 import DeciSigma1.Holes.Periodic.Basic
+import DeciSigma1.Words.Deletion
 
 /-! # Admissible deletions in periodic pieces
 
 Inside a piece of period `d`, the run of a table with `N` states is periodic with period
 `statePeriodModulus N d = d · N!` after `stateTransientLength N d = N · d` letters
-(`Arithmetic.runFrom_take_periodic`). Deleting blocks of `statePeriodModulus N d` letters from
-the middle of a piece therefore keeps the states at all later cuts. An `AdmissibleDeletion` of
-the class of a primitive word `ρ` deletes `x P` such blocks from every piece `P` of the class,
-starting `boundaryMargin N d` letters after the start of the piece. The counts vanish on pieces
-shorter than `fixedMargin N d`, leave at least `fixedMargin N d` letters, and treat pieces
-joined by a follower edge consistently: pieces whose lengths differ by less than
+(`Arithmetic.runFrom_take_periodic`). Deleting blocks of `statePeriodModulus N d` letters from the
+middle of a piece therefore keeps the states at all later cuts. An `AdmissibleDeletion` of the class
+of a primitive word `ρ` deletes `x P` such blocks from every piece `P` of the class, starting
+`boundaryMargin N d` letters after the start of the piece. The counts vanish on pieces shorter than
+`fixedMargin N d`, leave at least `fixedMargin N d` letters of every piece they shorten, and treat
+pieces joined by a follower edge consistently: pieces whose lengths differ by less than
 `comparisonGap N d` lose the same number of blocks, and a piece shorter than another by at least
-`comparisonGap N d` stays shorter by at least that much. These conditions make the deletion
-preserve the comparisons recorded by channels (`Holes.Periodic.Transport`).
+`comparisonGap N d` stays shorter by at least that much. These conditions make the deletion preserve
+the comparisons recorded by channels (`Holes.Periodic.Transport`). The deletion of positions and its
+cut map are those of `Words.Deletion`.
 
 ## Main declarations
 
-- `deletePositions`, `retainedCount`: deletion of a finite set of positions from a word, and
-  the map from original to edited cuts.
 - `stateTransientLength`, `statePeriodModulus`, `boundaryMargin`, `comparisonGap`,
   `fixedMargin`, `pieceLengthBound`: the constants of the deletion.
 - `AdmissibleDeletion`, `editedTuple`, `keepCut`: admissible deletions, the edited tuple and
@@ -26,173 +26,9 @@ preserve the comparisons recorded by channels (`Holes.Periodic.Transport`).
 
 namespace DeciSigma1.Holes.Periodic
 
-open DeciSigma1.Readers
+open DeciSigma1.Readers DeciSigma1.Words
 
 variable {α S : Type} {k : ℕ}
-
-/-! ## Deleting a finite set of positions from a word -/
-
-section DelPos
-
-/-- Delete the positions in `D` from `w`. -/
-def deletePositions (w : List α) (D : Finset ℕ) : List α :=
-  (w.zipIdx.filter (fun p => p.2 ∉ D)).map Prod.fst
-
-/-- The number of retained positions below the cut `a`: the cut map of the deletion. -/
-def retainedCount (D : Finset ℕ) (a : ℕ) : ℕ := ((Finset.range a).filter (· ∉ D)).card
-
-variable {D : Finset ℕ}
-
-@[simp] theorem retainedCount_zero : retainedCount D 0 = 0 := by simp [retainedCount]
-
-theorem retainedCount_succ (a : ℕ) :
-    retainedCount D (a + 1) = retainedCount D a + if a ∈ D then 0 else 1 := by
-  unfold retainedCount
-  rw [Finset.range_add_one, Finset.filter_insert]
-  by_cases h : a ∈ D
-  · simp [h]
-  · simp [h, Finset.card_insert_of_notMem]
-
-theorem retainedCount_succ_of_not_mem {a : ℕ} (h : a ∉ D) :
-    retainedCount D (a + 1) = retainedCount D a + 1 := by
-  rw [retainedCount_succ, ite_eq_right h]
-
-theorem retainedCount_succ_of_mem {a : ℕ} (h : a ∈ D) :
-    retainedCount D (a + 1) = retainedCount D a := by
-  rw [retainedCount_succ, ite_eq_left h, Nat.add_zero]
-
-theorem retainedCount_mono {a b : ℕ} (h : a ≤ b) : retainedCount D a ≤ retainedCount D b :=
-  Finset.card_le_card (Finset.filter_subset_filter _ (Finset.range_subset_range.mpr h))
-
-theorem retainedCount_add_of_not_mem {a n : ℕ} (h : ∀ i < n, a + i ∉ D) :
-    retainedCount D (a + n) = retainedCount D a + n := by
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    rw [← Nat.add_assoc, retainedCount_succ_of_not_mem (h n (by omega)),
-        ih (fun i hi => h i (by omega))]
-    ring
-
-theorem retainedCount_add_of_mem {a n : ℕ} (h : ∀ i < n, a + i ∈ D) :
-    retainedCount D (a + n) = retainedCount D a := by
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    rw [← Nat.add_assoc, retainedCount_succ_of_mem (h n (by omega)),
-        ih (fun i hi => h i (by omega))]
-
-theorem retainedCount_lt_of_not_mem {a b : ℕ} (h : a ∉ D) (hab : a < b) :
-    retainedCount D a < retainedCount D b := by
-  have := retainedCount_succ_of_not_mem h
-  have := retainedCount_mono (D := D) (show a + 1 ≤ b by omega)
-  omega
-
-theorem deletePositions_append (xs ys : List α) :
-    deletePositions (xs ++ ys) D = deletePositions xs D ++
-      ((ys.zipIdx xs.length).filter (fun p => p.2 ∉ D)).map Prod.fst := by
-  unfold deletePositions
-  rw [List.zipIdx_append, List.filter_append, List.map_append, Nat.zero_add]
-
-theorem deletePositions_snoc (w : List α) (c : α) :
-    deletePositions (w ++ [c]) D = deletePositions w D ++ if w.length ∈ D then [] else [c] := by
-  rw [deletePositions_append]
-  congr 1
-  simp only [List.zipIdx_singleton]
-  split_ifs with h <;> simp [h]
-
-@[simp] theorem deletePositions_nil : deletePositions ([] : List α) D = [] := rfl
-
-theorem deletePositions_take_succ (w : List α) (c : ℕ) :
-    deletePositions (w.take (c + 1)) D = deletePositions (w.take c) D ++ if c ∈
-        D then [] else (w[c]?).toList := by
-  rw [List.take_add_one]
-  rcases Nat.lt_or_ge c w.length with hc | hc
-  · rw [List.getElem?_eq_getElem hc, Option.toList_some, deletePositions_snoc, List.length_take,
-      min_eq_left hc.le]
-  · rw [List.getElem?_eq_none hc, Option.toList_none, List.append_nil]
-    split_ifs <;> simp
-
-theorem length_deletePositions_take (w : List α) {c : ℕ} (hc : c ≤ w.length) :
-    (deletePositions (w.take c) D).length = retainedCount D c := by
-  induction c with
-  | zero => simp
-  | succ c ih =>
-    rw [deletePositions_take_succ, List.length_append, ih (by omega), retainedCount_succ,
-      List.getElem?_eq_getElem (by omega)]
-    split_ifs <;> simp
-
-theorem length_deletePositions (w : List α) :
-    (deletePositions w D).length = retainedCount D w.length := by
-  have := length_deletePositions_take (D := D) w (le_refl w.length)
-  rwa [List.take_length] at this
-
-theorem deletePositions_take (w : List α) {a : ℕ} (ha : a ≤ w.length) :
-    (deletePositions w D).take (retainedCount D a) = deletePositions (w.take a) D := by
-  conv_lhs => rw [← List.take_append_drop a w, deletePositions_append]
-  rw [List.take_left' (by rw [length_deletePositions, List.length_take, min_eq_left ha])]
-
-theorem getElem?_deletePositions (w : List α) {a : ℕ} (hD : a ∉ D) (ha : a < w.length) :
-    (deletePositions w D)[retainedCount D a]? = w[a]? := by
-  have h1 := deletePositions_take w (D := D) (show a + 1 ≤ w.length by omega)
-  rw [deletePositions_take_succ, ite_eq_right hD, List.getElem?_eq_getElem ha, Option.toList_some,
-    retainedCount_succ_of_not_mem hD] at h1
-  have h2 : (deletePositions (w.take a) D).length = retainedCount D a := by
-    rw [length_deletePositions, List.length_take, min_eq_left ha.le]
-  have := congrArg (fun u : List α => u[retainedCount D a]?) h1
-  rw [List.getElem?_take_of_lt (by omega), List.getElem?_append_right (by omega), h2,
-    Nat.sub_self] at this
-  rw [this, List.getElem?_eq_getElem ha]
-  rfl
-
-theorem deletePositions_take_of_mem (w : List α) {j c : ℕ} (hjc : j ≤ c)
-    (h : ∀ p, j ≤ p → p < c → p ∈ D) : deletePositions (w.take c) D =
-        deletePositions (w.take j) D := by
-  obtain ⟨n, rfl⟩ := Nat.exists_eq_add_of_le hjc
-  induction n with
-  | zero => rfl
-  | succ n ih =>
-    rw [← Nat.add_assoc, deletePositions_take_succ, ite_eq_left (h _ (by omega) (by omega)),
-        List.append_nil,
-      ih (by omega) (fun p hp hpc => h p hp (by omega))]
-
-/-- Deleting maximal blocks whose two end cuts carry the same state preserves the state at
-every cut that is not interior to a block. -/
-theorem runFrom_deletePositions_take (T : Table α S k) (q : S) (w : List α)
-    (hblock : ∀ j c, j < c → c ≤ w.length → (∀ p, j ≤ p → p < c → p ∈ D) →
-      (j = 0 ∨ j - 1 ∉ D) → c ∉ D → T.runFrom q (w.take j) = T.runFrom q (w.take c))
-    (c : ℕ) (hc : c ≤ w.length) (hint : c = 0 ∨ c ∉ D ∨ c - 1 ∉ D) :
-    T.runFrom q (deletePositions (w.take c) D) = T.runFrom q (w.take c) := by
-  classical
-  induction c using Nat.strong_induction_on with
-  | _ c ih =>
-    rcases c with _ | c₀
-    · simp
-    by_cases hc₀ : c₀ ∈ D
-    · have hcD : c₀ + 1 ∉ D := by
-        rcases hint with h | h | h
-        · omega
-        · exact h
-        · exact absurd hc₀ (by simpa using h)
-      have hex : ∃ j, j ≤ c₀ ∧ ∀ p, j ≤ p → p < c₀ + 1 → p ∈ D :=
-        ⟨c₀, le_rfl, fun p hp hpc => by rwa [show p = c₀ by omega]⟩
-      obtain ⟨hjc, hjD⟩ := Nat.find_spec hex
-      set j := Nat.find hex
-      have hjmin : j = 0 ∨ j - 1 ∉ D := by
-        by_contra hcon
-        push Not at hcon
-        have := Nat.find_min' hex (m := j - 1) ⟨by omega, fun p hp hpc => by
-          rcases Nat.eq_or_lt_of_le hp with h | h
-          · rw [← h]; exact hcon.2
-          · exact hjD p (by omega) hpc⟩
-        omega
-      rw [deletePositions_take_of_mem w (show j ≤ c₀ + 1 by omega) hjD,
-        ih j (by omega) (by omega) (by rcases hjmin with h | h; · left; exact h
-                                       · right; right; exact h),
-        hblock j (c₀ + 1) (by omega) hc hjD hjmin hcD]
-    · rw [deletePositions_take_succ, ite_eq_right hc₀, List.take_add_one, Table.runFrom_append,
-        Table.runFrom_append, ih c₀ (by omega) (by omega) (Or.inr (Or.inl hc₀))]
-
-end DelPos
 
 /-! ## The constants of the deletion -/
 
@@ -241,14 +77,13 @@ section Edit
 variable [DecidableEq α]
 
 /-- An admissible deletion of the class of `ρ` for `N` states: `x P` blocks of length
-`statePeriodModulus` are deleted from each piece `P`. The counts vanish outside the class and on
-short pieces, leave at least `fixedMargin` letters, are equal on comparable pieces of nearly
-equal length (`near`), and keep the order and a gap of `comparisonGap` between comparable pieces
-of different lengths (`far`). -/
+`statePeriodModulus` are deleted from each piece `P`. The counts vanish outside the class, leave at
+least `fixedMargin` letters of every piece they shorten (so they vanish on shorter pieces), are
+equal on comparable pieces of nearly equal length (`near`), and keep the order and a gap of
+`comparisonGap` between comparable pieces of different lengths (`far`). -/
 structure AdmissibleDeletion (W : Fin k → List α) (ρ : List α) (N : ℕ) (x : Piece W ρ.length → ℕ) :
     Prop where
   supp : ∀ P, x P ≠ 0 → P ∈ piecesOf W ρ
-  short : ∀ P ∈ piecesOf W ρ, P.len < Periodic.fixedMargin N ρ.length → x P = 0
   long : ∀ P ∈ piecesOf W ρ, x P ≠ 0 → Periodic.fixedMargin N ρ.length +
       Periodic.statePeriodModulus N ρ.length * x P ≤ P.len
   near : ∀ P ∈ piecesOf W ρ, ∀ Q ∈ piecesOf W ρ, FollowerEdge P Q →

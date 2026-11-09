@@ -57,7 +57,6 @@ structure LevelBounds (σ k N : ℕ) where
   startWindow : ℕ → ℕ
   fixedChainBudget : ℕ → ℕ
   pieceCountBase_eq : pieceCountBase = 4 + 2 * (k - 1) * (N - 1)
-  periodBound_pos : ∀ l, 1 ≤ periodBound l
   periodBound_mono : Monotone periodBound
   terminalLengthBound_mono : Monotone terminalLengthBound
   uncoveredBound_mono : Monotone uncoveredBound
@@ -223,7 +222,6 @@ def levelBounds (σ k N : ℕ) : LevelBounds σ k N where
   startWindow l := (N + 1) * (levelState σ k N l).periodBound + 1
   fixedChainBudget l := (levelState σ k N l).previousChainLengthBound + N
   pieceCountBase_eq := rfl
-  periodBound_pos l := levelState_periodBound_pos (l + 1)
   periodBound_mono := by
     apply monotone_nat_of_le_succ
     intro l

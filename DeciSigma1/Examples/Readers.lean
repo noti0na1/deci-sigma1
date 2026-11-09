@@ -1,6 +1,6 @@
 import Mathlib.Data.Fin.VecNotation
 import Mathlib.Data.Fintype.Basic
-import DeciSigma1.Entailment.Compile
+import DeciSigma1.Full.Reduction.Compile
 
 /-! # Examples of readers, holes and fresh domination
 
@@ -16,14 +16,14 @@ has instances, all checked by the kernel on small tables.
 - `freshTable_has_shorter_fresh_dominator`: a one-start table where the word `01` has the
   strictly shorter fresh dominator `1`.
 - `pairTable_isMinimalFresh`: a minimal fresh pair with an empty coordinate.
-- `crossReader_not_hole`, `crossReader_hole`, `cross_not_entails`: the reader compiled from a
-  disjunctive entailment with two queries, an admitted pair on the channel between its two
-  coordinates, and a hole, which refutes the entailment.
+- `crossReader`, `crossReader_not_hole`, `crossReader_hole`, `cross_not_entails`: the reader
+  compiled from a disjunctive entailment with two queries, an admitted pair on the channel
+  between its two coordinates, and a hole, which refutes the entailment.
 -/
 
 namespace DeciSigma1.Examples
 
-open DeciSigma1.Readers DeciSigma1.Entailment DeciSigma1.Constraints.TopFree
+open DeciSigma1.Readers DeciSigma1.Constraints DeciSigma1.Full DeciSigma1.Full.Reduction
 
 /-- Transitions over the alphabet `{0, 1}`: dead state `0`; start `1` with `1 -0→ 2` and
 `1 -1→ 3`; rejected immortal state `2` with the loop `2 -0→ 2`; rejected mortal state `3`. -/
@@ -74,31 +74,35 @@ theorem pairTable_isMinimalFresh : IsMinimalFresh pairTable ![[1], []] := by dec
 
 /-! ## The reader of a disjunctive entailment
 
-The decision procedure compiles a constraint and its queries into a structural reader. When the
-constraint is satisfiable, the entailment fails exactly when the reader has a hole
-(`Entailment.not_disjEntails_iff_hole`), while an unsatisfiable constraint entails every
-disjunction (`Entailment.disjEntails_of_unsat`). -/
+The decision procedure compiles a constraint, its queries and a mode into a structural reader.
+When the constraint is satisfiable, the entailment fails exactly when the reader of some mode has
+a hole (`Full.Reduction.not_disjEntails_iff_hole`). In the mode used below, a word of coordinate
+`i` is a path on which `y_i` is `⊥` and `x_i` is not. -/
 
 /-- The constraint `x₀ ≤ y₁` over binary trees, on the variables `x₀ = 0`, `y₀ = 1`, `x₁ = 2` and
 `y₁ = 3`. -/
-def crossSystem : List (Lit 2 (Fin 4)) := [.le 0 3]
+def crossSystem : List (LitT 2 (Fin 4)) := [.le 0 3]
 
 /-- The queries `x₀ ≤ y₀` and `x₁ ≤ y₁`. -/
 def crossQueries : Fin 2 → Fin 4 × Fin 4 := ![(0, 1), (2, 3)]
 
+/-- The reader of `crossSystem` and `crossQueries` with a covariant constructor, in the mode that
+refutes each query at a path where its right side is `⊥`. -/
+def crossReader : StructuralReader (Fin 2) (State (Fin 4)) 2 :=
+  compile (fun _ => false) crossSystem crossQueries (fun _ => true)
+
 /-- The pair of empty words is not a hole: since `x₀ ≤ y₁`, the channel from the first coordinate
 to the second carries an admitted pair at the empty word. -/
-theorem crossReader_not_hole : ¬ (compile crossSystem crossQueries).IsHole ![[], []] := by
-  decide +kernel
+theorem crossReader_not_hole : ¬ crossReader.IsHole ![[], []] := by decide +kernel
 
 /-- The pair of words `([], [0])` is a hole. -/
-theorem crossReader_hole : (compile crossSystem crossQueries).IsHole ![[], [0]] := by
-  decide +kernel
+theorem crossReader_hole : crossReader.IsHole ![[], [0]] := by decide +kernel
 
 /-- Hence `x₀ ≤ y₁` does not entail `x₀ ≤ y₀ ∨ x₁ ≤ y₁`. -/
-theorem cross_not_entails : ¬ DisjEntailsIn (fun _ => True) crossSystem crossQueries :=
-  (not_disjEntails_iff_hole ⟨fun _ => Semantics.PrefixSet.bot,
-      by simp [Sat, Lit.Holds, crossSystem]⟩).mpr
-    ⟨_, crossReader_hole⟩
+theorem cross_not_entails :
+    ¬ DisjEntailsIn (fun _ => True) (fun _ => false) crossSystem crossQueries :=
+  (not_disjEntails_iff_hole
+      ⟨fun _ => Semantics.Tree.bot, by simp [Covariant.Sat, Covariant.Holds, crossSystem]⟩).mpr
+    ⟨_, _, crossReader_hole⟩
 
 end DeciSigma1.Examples

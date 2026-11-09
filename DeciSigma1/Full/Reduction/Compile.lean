@@ -45,8 +45,8 @@ namespace Compile
 
 /-- One step of the compiled reader: both runs advance, guarded by `Good`. -/
 def step (c : Fin n → Bool) (χ : List (LitT n V)) : State V → Fin n → State V :=
-  Automata.guardedStep (Automata.upperStep (signedMoveSystem c χ))
-      (Automata.lowerStep (signedMoveSystem c χ))
+  Automata.guardedStep (Automata.upperStep (signed c χ))
+      (Automata.lowerStep (signed c χ))
     (Good c χ)
 
 /-- A state is rejected when its upper state contains no signed variable below a negative fact. -/
@@ -89,8 +89,8 @@ def compile (c : Fin n → Bool) (χ : List (LitT n V))
     (q : Fin k → V × V) (m : Fin k → Bool) : Readers.StructuralReader (Fin n) (State V) k where
   step := Compile.step c χ
   start := fun i => mkState c χ
-    (Automata.up (signedMoveSystem c χ) (seedName (q i) (m i)))
-    (Automata.down (signedMoveSystem c χ) (exclusionName (q i) (m i)))
+    (Automata.up (signed c χ) (seedName (q i) (m i)))
+    (Automata.down (signed c χ) (exclusionName (q i) (m i)))
   dead := none
   rejected := Compile.rejected c χ
   admitted := Compile.admitted
@@ -118,23 +118,8 @@ variable {n k : Nat} {V : Type} [Fintype V] [DecidableEq V]
 /-- The guard of the compiled reader at the path `w`. -/
 def EligibleWord (c : Fin n → Bool) (χ : List (LitT n V)) (x y : V × Bool) (w : List (Fin n)) :
     Prop :=
-  Disjoint (Automata.lowerRun (signedMoveSystem c χ) y w ∪
-    (Automata.upperRun (signedMoveSystem c χ) x w).map flipEmb) (factReachableVariables c χ)
-
-instance (c : Fin n → Bool) (χ : List (LitT n V)) (x y : V × Bool) (w : List (Fin n)) :
-    Decidable (EligibleWord c χ x y w) :=
-  inferInstanceAs (Decidable (Disjoint _ _))
-
-/-- The compiled run of query `i` is the pair of the upper run of its seed and the lower run of its
-exclusion while every prefix satisfies the guard, and dead afterward. -/
-theorem compile_runFrom_start (c : Fin n → Bool) (χ : List (LitT n V)) (q : Fin k → V × V)
-    (m : Fin k → Bool) (i : Fin k) (u : List (Fin n)) :
-    (compile c χ q m).runFrom ((compile c χ q m).start i) u =
-      if ∀ a ≤ u.length,
-          EligibleWord c χ (seedName (q i) (m i)) (exclusionName (q i) (m i)) (u.take a) then
-        some (Automata.upperRun (signedMoveSystem c χ) (seedName (q i) (m i)) u,
-            Automata.lowerRun (signedMoveSystem c χ) (exclusionName (q i) (m i)) u) else none :=
-  Automata.foldl_guardedStep _ _ _ _ _ u
+  Disjoint (Automata.lowerRun (signed c χ) y w ∪
+    (Automata.upperRun (signed c χ) x w).map flipEmb) (factReachableVariables c χ)
 
 theorem compile_live_iff (c : Fin n → Bool) (χ : List (LitT n V)) (q : Fin k → V × V)
     (m : Fin k → Bool) (W : Fin k → List (Fin n)) (i : Fin k) {a : ℕ}
@@ -148,8 +133,8 @@ theorem compile_runPrefix (c : Fin n → Bool) (χ : List (LitT n V)) (q : Fin k
     (m : Fin k → Bool) (W : Fin k → List (Fin n)) (i : Fin k) {a : ℕ}
     (h : (compile c χ q m).runPrefix W i a ≠ none) :
     (compile c χ q m).runPrefix W i a =
-      some (Automata.upperRun (signedMoveSystem c χ) (seedName (q i) (m i)) ((W i).take a),
-          Automata.lowerRun (signedMoveSystem c χ) (exclusionName (q i) (m i)) ((W i).take a)) :=
+      some (Automata.upperRun (signed c χ) (seedName (q i) (m i)) ((W i).take a),
+          Automata.lowerRun (signed c χ) (exclusionName (q i) (m i)) ((W i).take a)) :=
   Automata.foldl_guardedStep_eq_some _ _ _ _ _ h
 
 variable {c : Fin n → Bool} {χ : List (LitT n V)}
@@ -182,13 +167,13 @@ theorem compile_liveAlong_iff (W : Fin k → List (Fin n)) (i : Fin k) :
 theorem compile_runPrefix_of_eligible {W : Fin k → List (Fin n)} {i : Fin k}
     (h : (compile c χ q m).Eligible W i) (a : Nat) :
     (compile c χ q m).runPrefix W i a =
-      some (Automata.upperRun (signedMoveSystem c χ) (seedName (q i) (m i)) ((W i).take a),
-        Automata.lowerRun (signedMoveSystem c χ) (exclusionName (q i) (m i)) ((W i).take a)) :=
+      some (Automata.upperRun (signed c χ) (seedName (q i) (m i)) ((W i).take a),
+        Automata.lowerRun (signed c χ) (exclusionName (q i) (m i)) ((W i).take a)) :=
   compile_runPrefix c χ q m W i (h.runPrefix_ne a)
 
 theorem compile_eligible_iff (W : Fin k → List (Fin n)) (i : Fin k) :
     (compile c χ q m).Eligible W i ↔
-      Disjoint (Automata.upperRun (signedMoveSystem c χ) (seedName (q i) (m i)) (W i))
+      Disjoint (Automata.upperRun (signed c χ) (seedName (q i) (m i)) (W i))
           (forbiddenPredecessors c χ) ∧
       exclusion (q i) (m i) (W i) ∉ leastClosure c χ ∧
         flipC (seed (q i) (m i) (W i)) ∉ leastClosure c χ := by
@@ -229,18 +214,18 @@ theorem channel_iff_events {W : Fin k → List (Fin n)} (i j : Fin k)
       Event c χ (seed (q j) (m j) (W j)) (exclusion (q i) (m i) (W i)) ∨
       Event c χ (seed (q j) (m j) (W j)) (flipC (seed (q i) (m i) (W i))) := by
   have hflip (b : Nat) :
-      Automata.lowerRun (signedMoveSystem c χ) (flipV (seedName (q i) (m i))) ((W i).take b) =
-      (Automata.upperRun (signedMoveSystem c χ) (seedName (q i) (m i))
+      Automata.lowerRun (signed c χ) (flipV (seedName (q i) (m i))) ((W i).take b) =
+      (Automata.upperRun (signed c χ) (seedName (q i) (m i))
           ((W i).take b)).map flipEmb :=
     lowerRun_flip _ _
   change _ ↔
     (∃ a ≤ (W j).length, ∃ b ≤ (W i).length, (W j).drop a <+: (W i).drop b ∧
-      (Automata.upperRun (signedMoveSystem c χ) (seedName (q j) (m j)) ((W j).take a) ∩
-        Automata.lowerRun (signedMoveSystem c χ) (exclusionName (q i) (m i))
+      (Automata.upperRun (signed c χ) (seedName (q j) (m j)) ((W j).take a) ∩
+        Automata.lowerRun (signed c χ) (exclusionName (q i) (m i))
             ((W i).take b)).Nonempty) ∨
     (∃ a ≤ (W j).length, ∃ b ≤ (W i).length, (W j).drop a <+: (W i).drop b ∧
-      (Automata.upperRun (signedMoveSystem c χ) (seedName (q j) (m j)) ((W j).take a) ∩
-        Automata.lowerRun (signedMoveSystem c χ) (flipV (seedName (q i) (m i)))
+      (Automata.upperRun (signed c χ) (seedName (q j) (m j)) ((W j).take a) ∩
+        Automata.lowerRun (signed c χ) (flipV (seedName (q i) (m i)))
             ((W i).take b)).Nonempty)
   simp only [hflip]
   constructor
@@ -255,9 +240,9 @@ theorem channel_iff_events {W : Fin k → List (Fin n)} (i j : Fin k)
       refine ⟨((compile c χ q m).runPrefix W i b, (compile c χ q m).runPrefix W j a),
         pair_mem_channel hb ha hp, ?_⟩
       rw [compile_runPrefix_of_eligible hi, compile_runPrefix_of_eligible hj]
-    · exact (admitted_some_iff _ _ _ (Automata.lowerRun (signedMoveSystem c χ)
+    · exact (admitted_some_iff _ _ _ (Automata.lowerRun (signed c χ)
         (exclusionName (q j) (m j)) ((W j).take a))).mpr (Or.inl h)
-    · exact (admitted_some_iff _ _ _ (Automata.lowerRun (signedMoveSystem c χ)
+    · exact (admitted_some_iff _ _ _ (Automata.lowerRun (signed c χ)
         (exclusionName (q j) (m j)) ((W j).take a))).mpr (Or.inr h)
 
 /-- A tuple is a hole of the reader of mode `m` exactly when its seeds and exclusions satisfy

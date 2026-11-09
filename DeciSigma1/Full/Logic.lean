@@ -20,7 +20,7 @@ has the same truth value (`booleanSentence_regular_iff`); over finite trees it m
 - `TermClosed`: classes of trees that contain `⊥` and `⊤` and are closed under `f`.
 - `TreeClass`, `TreeClass.Contains`: arbitrary, regular or finite trees.
 - `flattening`: flat literals that name subterms.
-- `decideBooleanSentenceOfTailBound`: the decision procedure, given the rejected-tail bound.
+- `decideBooleanSentence`: the decision procedure.
 - `booleanSentence_regular_iff`: truth over regular trees equals truth over arbitrary trees.
 -/
 
@@ -207,14 +207,13 @@ theorem termClosed_fin : TermClosed (@FiniteTop n) := by
 
 theorem regularTop_of_finiteTop {t : Tree n} (ht : FiniteTop t) : RegularTop t := by
   obtain ⟨s, rfl⟩ := ht
-  exact (Characterization.unfold_range_iff _).mpr
-    (Characterization.subtrees_finite_of_dom_finite _ (Characterization.dom_toTree_finite s))
+  exact Characterization.subtrees_finite_of_dom_finite _ (Characterization.dom_toTree_finite s)
 
 theorem regularTop_node (a : Fin n → Tree n) (ha : ∀ i, RegularTop (a i)) :
     RegularTop (Semantics.Tree.node a) := by
-  apply (Characterization.unfold_range_iff _).mpr
+  change (Characterization.subtrees (Semantics.Tree.node a)).Finite
   apply ((Set.finite_singleton (Semantics.Tree.node a)).union
-    (Set.finite_iUnion fun i => (Characterization.unfold_range_iff _).mp (ha i))).subset
+    (Set.finite_iUnion ha)).subset
   rintro u ⟨w, hw⟩
   cases w with
   | nil =>
@@ -256,22 +255,19 @@ theorem TreeClass.termClosed : (C : TreeClass) → TermClosed (C.Contains (n := 
 
 /-! ## Decision procedures -/
 
-variable {Λ : ℕ → ℕ → ℕ}
-
 /-- The procedures for disjunctive entailment over arbitrary, regular and finite trees. -/
-@[instance_reducible] def disjEntailmentDeciderOfTailBound
-    (hT : Holes.RejectedTailBound (Fin n) Λ) :
+@[instance_reducible] def disjEntailmentDecider :
     (C : TreeClass) → DeciSigma1.Logic.DisjEntailmentDecider (flattening c) C.Contains
-  | .arbitrary => fun χ q => decideDisjEntailsOfTailBound hT c χ q
-  | .regular => fun χ q => decideDisjEntailsRegOfTailBound hT c χ q
-  | .finite => fun χ q => decideDisjEntailsFinOfTailBound hT c χ q
+  | .arbitrary => fun χ q => decideDisjEntails c χ q
+  | .regular => fun χ q => decideDisjEntailsReg c χ q
+  | .finite => fun χ q => decideDisjEntailsFin c χ q
 
-/-- Boolean sentences over `{⊥, f, ⊤}` are decidable over arbitrary, regular and finite trees,
-given the rejected-tail bound of the small-hole theorem. -/
-def decideBooleanSentenceOfTailBound (hT : Holes.RejectedTailBound (Fin n) Λ) (C : TreeClass)
-    (φ : BooleanSentence n) : Decidable (φ.HoldsIn C.Contains c) :=
+/-- Boolean sentences over `{⊥, f, ⊤}` are decidable over arbitrary, regular and finite
+trees. -/
+def decideBooleanSentence (C : TreeClass) (φ : BooleanSentence n) :
+    Decidable (φ.HoldsIn C.Contains c) :=
   DeciSigma1.Logic.decideBooleanSentence (flattening c) (C.termClosed.eval c)
-    (disjEntailmentDeciderOfTailBound c hT C) φ
+    (disjEntailmentDecider c C) φ
 
 /-- A sentence over `{⊥, f, ⊤}` has the same truth value over regular and over arbitrary
 trees. -/

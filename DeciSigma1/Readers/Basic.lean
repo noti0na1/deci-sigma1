@@ -22,8 +22,9 @@ import DeciSigma1.Automata.Basic
 
 The decision procedures compile a constraint and a family of `k` query inequalities into a
 finite automaton with `k` start states, one for each query, and look for a *hole*: a tuple
-`W : Fin k → List α` of words, one for each start. When the constraint is satisfiable, the
-automaton has a hole exactly when all queries can fail in one solution. This module defines
+`W : Fin k → List α` of words, one for each start. One automaton is built for each choice of
+witness modes; when the constraint is satisfiable, all queries fail in one solution exactly when
+one of these automata has a hole. This module defines
 these automata and holes, and the comparison of tuples that the shortening arguments use.
 
 A `Table` is a deterministic complete automaton with `k` (not necessarily distinct) start
@@ -36,7 +37,8 @@ A `StructuralReader` adds an absorbing dead state, a set of rejected states that
 under steps that stay alive, and an admission relation on pairs (host state, target state)
 that never admits a live successor of a rejected state. A tuple is a hole if every run stays
 alive and ends in a rejected state (`Eligible`) and no channel carries an admitted pair
-(`IsHole`). The small-hole theorem (`Holes.Bound`) bounds the total length of a shortest hole.
+(`IsHole`). The small-hole theorem (`Holes.exists_small_hole`) bounds the total length of a
+shortest hole.
 
 A tuple `U` *dominates* `W` if it has the same endpoints, visits only states that `W` visits on
 the same coordinate, and has smaller channels. Holes are closed under domination
@@ -53,7 +55,6 @@ rejected tails `Holes.Tail` shortens.
 - `totalLength`, `wordTuplesUpTo`: the size of a tuple and the finite set of short tuples.
 - `Dominates`, `FreshDominates`, `IsMinimalFresh`: domination and minimal fresh tuples.
 - `exists_isMinimalFresh_freshDominates`: every fresh tuple has a minimal fresh dominator.
-- `freshDominates_extendEmpty`, `isMinimalFresh_restrict`: empty coordinates can be removed.
 - `StructuralReader`, `StructuralReader.Eligible`, `StructuralReader.IsHole`: structural
   readers and holes.
 - `StructuralReader.Immortal`, `StructuralReader.immortal_iff_card`: immortal states, decided
@@ -83,25 +84,10 @@ namespace Table
 
 variable (T : Table α S k)
 
-/-- The state reached from `q` by reading `w`. -/
-def runFrom (q : S) (w : List α) : S := w.foldl T.step q
-
-@[simp] theorem runFrom_nil (q : S) : T.runFrom q [] = q := rfl
-
-@[simp] theorem runFrom_cons (q : S) (c : α) (w : List α) :
-    T.runFrom q (c :: w) = T.runFrom (T.step q c) w := rfl
-
-theorem runFrom_append (q : S) (u v : List α) :
-    T.runFrom q (u ++ v) = T.runFrom (T.runFrom q u) v := List.foldl_append
-
-@[simp] theorem runFrom_snoc (q : S) (u : List α) (c : α) :
-    T.runFrom q (u ++ [c]) = T.step (T.runFrom q u) c := by
-  rw [runFrom_append]; rfl
-
 /-- The state of coordinate `i` at cut `a`: the state reached from the start of `i` by reading
 the first `a` letters of `W i` (all of `W i` if `a` exceeds its length). -/
 def runPrefix (W : Fin k → List α) (i : Fin k) (a : ℕ) : S :=
-  T.runFrom (T.start i) ((W i).take a)
+  runFrom T.step (T.start i) ((W i).take a)
 
 /-- The endpoint of coordinate `i`: the state reached after reading all of `W i`. -/
 def endState (W : Fin k → List α) (i : Fin k) : S := T.runPrefix W i (W i).length
@@ -122,7 +108,7 @@ def pathChannel [DecidableEq α] [DecidableEq S] (p : S) (x : List α) (q : S) (
     Finset (S × S) :=
   (((Finset.range (x.length + 1)) ×ˢ (Finset.range (y.length + 1))).filter
       (fun ab => y.drop ab.2 <+: x.drop ab.1)).image
-    (fun ab => (T.runFrom p (x.take ab.1), T.runFrom q (y.take ab.2)))
+    (fun ab => (runFrom T.step p (x.take ab.1), runFrom T.step q (y.take ab.2)))
 
 /-- The channel from host coordinate `i` to target coordinate `j`; `i = j` is allowed. -/
 def channel [DecidableEq α] [DecidableEq S] (W : Fin k → List α) (i j : Fin k) : Finset (S × S) :=
@@ -135,9 +121,6 @@ def Fresh [DecidableEq S] (W : Fin k → List α) (i : Fin k) : Prop :=
 
 instance [DecidableEq S] (W : Fin k → List α) (i : Fin k) : Decidable (T.Fresh W i) :=
   inferInstanceAs (Decidable (_ ∉ _))
-
-/-- The table with the starts re-indexed along `e`. -/
-def restrict {k' : ℕ} (e : Fin k' → Fin k) : Table α S k' := ⟨T.step, T.start ∘ e⟩
 
 /-! ## Basic run and cut lemmas -/
 
@@ -157,13 +140,13 @@ theorem runPrefix_of_le (W : Fin k → List α) (i : Fin k) {a : ℕ} (h : (W i)
   simp [endState, runPrefix, List.take_of_length_le h]
 
 theorem runPrefix_add (W : Fin k → List α) (i : Fin k) (a t : ℕ) :
-    T.runPrefix W i (a + t) = T.runFrom (T.runPrefix W i a) (((W i).drop a).take t) := by
+    T.runPrefix W i (a + t) = runFrom T.step (T.runPrefix W i a) (((W i).drop a).take t) := by
   simp only [runPrefix]
   rw [List.take_add, runFrom_append]
 
 /-- Reading the whole suffix from cut `a` reaches the endpoint. -/
 theorem runFrom_runPrefix_drop (W : Fin k → List α) (i : Fin k) (a : ℕ) :
-    T.runFrom (T.runPrefix W i a) ((W i).drop a) = T.endState W i := by
+    runFrom T.step (T.runPrefix W i a) ((W i).drop a) = T.endState W i := by
   simp only [endState, runPrefix]
   rw [← runFrom_append, List.take_length]
   by_cases h : a ≤ (W i).length
@@ -184,7 +167,7 @@ theorem runPrefix_mem_visitedStates [DecidableEq S] (W : Fin k → List α) (i :
 
 theorem mem_pathChannel [DecidableEq α] [DecidableEq S] {p q : S} {x y : List α} {pq : S × S} :
     pq ∈ T.pathChannel p x q y ↔ ∃ a ≤ x.length, ∃ b ≤ y.length,
-      y.drop b <+: x.drop a ∧ pq = (T.runFrom p (x.take a), T.runFrom q (y.take b)) := by
+      y.drop b <+: x.drop a ∧ pq = (runFrom T.step p (x.take a), runFrom T.step q (y.take b)) := by
   simp only [pathChannel, Finset.mem_image, Finset.mem_filter, Finset.mem_product,
     Finset.mem_range, Nat.lt_succ_iff, Prod.exists]
   constructor
@@ -207,12 +190,6 @@ theorem pair_mem_channel [DecidableEq α] [DecidableEq S] {W : Fin k → List α
 theorem fresh_iff [DecidableEq S] {W : Fin k → List α} {i : Fin k} :
     T.Fresh W i ↔ ∀ a < (W i).length, T.runPrefix W i a ≠ T.endState W i := by
   simp only [Fresh, mem_properVisitedStates, not_exists, not_and]
-
-/-- Two coordinates with the same start and the same word have the same states. -/
-theorem runPrefix_congr {k' : ℕ} {T' : Table α S k'} {W : Fin k → List α} {W' : Fin k' → List α}
-    {i : Fin k} {i' : Fin k'} (hs : T.step = T'.step) (h0 : T.start i = T'.start i')
-    (hw : W i = W' i') (a : ℕ) : T.runPrefix W i a = T'.runPrefix W' i' a := by
-  simp only [runPrefix, runFrom, hs, h0, hw]
 
 /-- The endpoint of a coordinate depends only on its word. -/
 theorem endState_congr {U W : Fin k → List α} {i : Fin k} (h : U i = W i) :
@@ -323,184 +300,6 @@ theorem exists_isMinimalFresh_freshDominates (hW : ∀ i, T.Fresh W i) :
   rw [hn]
   exact Nat.find_min' hex ⟨V, hV.trans hU, rfl⟩
 
-/-! ## Empty coordinates
-
-Coordinates carrying the empty word can be removed from a fresh tuple and added back: a
-fresh dominator of the remaining coordinates, padded with empty words, freshly dominates the
-whole tuple. -/
-
-/-- Extend a tuple on `k'` coordinates to `k` coordinates along the embedding `e`, with the
-empty word off the image of `e`. -/
-def extendEmpty {k' : ℕ} (e : Fin k' ↪ Fin k) (U' : Fin k' → List α) : Fin k → List α :=
-  fun i => match (List.finRange k').find? (fun j => decide (e j = i)) with
-    | some j => U' j
-    | none => []
-
-omit [DecidableEq α] [DecidableEq S] in
-theorem extendEmpty_apply {k' : ℕ} (e : Fin k' ↪ Fin k) (U' : Fin k' → List α) (j : Fin k') :
-    extendEmpty e U' (e j) = U' j := by
-  unfold extendEmpty
-  split
-  · next j' h =>
-    have := List.find?_some h
-    simp only [decide_eq_true_eq] at this
-    rw [e.injective this]
-  · next h =>
-    rw [List.find?_eq_none] at h
-    exact absurd (by simp) (h j (List.mem_finRange j))
-
-omit [DecidableEq α] [DecidableEq S] in
-theorem extendEmpty_of_notMem {k' : ℕ} (e : Fin k' ↪ Fin k) (U' : Fin k' → List α)
-    {i : Fin k} (hi : i ∉ Set.range e) : extendEmpty e U' i = [] := by
-  unfold extendEmpty
-  split
-  · next j h =>
-    have := List.find?_some h
-    simp only [decide_eq_true_eq] at this
-    exact absurd ⟨j, this⟩ hi
-  · rfl
-
-omit [DecidableEq α] [DecidableEq S] in
-/-- The total length of a tuple that is empty off the image of `e` is that of its
-restriction. -/
-theorem totalLength_comp_of_empty {k' : ℕ} (e : Fin k' ↪ Fin k) (W : Fin k → List α)
-    (he : ∀ i, i ∉ Set.range e → W i = []) : totalLength (W ∘ e) = totalLength W := by
-  unfold totalLength
-  show ∑ j, (W (e j)).length = _
-  rw [← Finset.sum_map Finset.univ e (fun i => (W i).length)]
-  apply Finset.sum_subset (Finset.subset_univ _)
-  intro i _ hi
-  have : i ∉ Set.range e := by
-    rintro ⟨j, rfl⟩
-    exact hi (Finset.mem_map_of_mem e (Finset.mem_univ j))
-  simp [he i this]
-
-omit [DecidableEq α] [DecidableEq S] in
-theorem totalLength_extendEmpty {k' : ℕ} (e : Fin k' ↪ Fin k) (U' : Fin k' → List α) :
-    totalLength (extendEmpty e U') = totalLength U' := by
-  rw [← totalLength_comp_of_empty e _ (fun i hi => extendEmpty_of_notMem e U' hi)]
-  unfold totalLength
-  simp [extendEmpty_apply]
-
-section EmptyCoordinates
-
-variable {k' : ℕ} (e : Fin k' ↪ Fin k)
-
-omit [DecidableEq α] [DecidableEq S] in
-private theorem runPrefix_extendEmpty (T : Table α S k) (U' : Fin k' → List α) (j : Fin k')
-    (a : ℕ) : T.runPrefix (extendEmpty e U') (e j) a = (T.restrict e).runPrefix U' j a :=
-  runPrefix_congr (T := T) (T' := T.restrict e) rfl rfl (extendEmpty_apply e U' j) a
-
-omit [DecidableEq α] [DecidableEq S] in
-private theorem runPrefix_restrict (T : Table α S k) (W : Fin k → List α) (j : Fin k') (a : ℕ) :
-    T.runPrefix W (e j) a = (T.restrict e).runPrefix (W ∘ e) j a := rfl
-
-omit [DecidableEq α] [DecidableEq S] in
-/-- On an empty coordinate every state is the start. -/
-private theorem runPrefix_of_nil {T : Table α S k} {W : Fin k → List α} {i : Fin k}
-    (h : W i = []) (a : ℕ) : T.runPrefix W i a = T.start i := by
-  simp [runPrefix, h]
-
-omit [DecidableEq α] in
-private theorem visitedStates_of_nil {T : Table α S k} {W : Fin k → List α} {i : Fin k}
-    (h : W i = []) : T.visitedStates W i = {T.start i} := by
-  ext s; simp [mem_visitedStates, h, runPrefix_of_nil h, eq_comm]
-
-private theorem channel_of_target_nil {T : Table α S k} {W : Fin k → List α} {i j : Fin k}
-    (h : W j = []) : T.channel W i j = (T.visitedStates W i).image (fun s => (s, T.start j)) := by
-  ext pq
-  simp only [mem_channel, Finset.mem_image, mem_visitedStates]
-  constructor
-  · rintro ⟨a, ha, b, _, _, rfl⟩
-    exact ⟨_, ⟨a, ha, rfl⟩, by rw [runPrefix_of_nil h]⟩
-  · rintro ⟨s, ⟨a, ha, rfl⟩, rfl⟩
-    exact ⟨a, ha, 0, by simp [h], by simp [h], by rw [runPrefix_of_nil h]⟩
-
-private theorem channel_of_host_nil {T : Table α S k} {W : Fin k → List α} {i j : Fin k}
-    (h : W i = []) : T.channel W i j = {(T.start i, T.endState W j)} := by
-  ext pq
-  simp only [mem_channel, Finset.mem_singleton]
-  constructor
-  · rintro ⟨a, ha, b, hb, hp, rfl⟩
-    have hd : (W j).drop b = [] := by
-      rw [h, List.drop_nil] at hp
-      exact List.prefix_nil.mp hp
-    have hb' : (W j).length ≤ b := by simpa using hd
-    rw [runPrefix_of_nil h, runPrefix_of_le W j hb']
-  · rintro rfl
-    exact ⟨0, by simp [h], (W j).length, le_rfl, by simp, by rw [runPrefix_of_nil h]; rfl⟩
-
-/-- If `W` is empty off the image of `e`, a fresh dominator of its restriction to the image,
-extended by empty words, freshly dominates `W`. -/
-theorem freshDominates_extendEmpty {T : Table α S k} {W : Fin k → List α} {U' : Fin k' → List α}
-    (he : ∀ i, i ∉ Set.range e → W i = [])
-    (h : FreshDominates (T.restrict e) U' (W ∘ e)) : FreshDominates T (extendEmpty e U') W := by
-  have hoff : ∀ i, i ∉ Set.range e → extendEmpty e U' i = [] :=
-    fun i hi => extendEmpty_of_notMem e U' hi
-  have hvis : ∀ i, T.visitedStates (extendEmpty e U') i ⊆ T.visitedStates W i := by
-    intro i
-    by_cases hi : i ∈ Set.range e
-    · obtain ⟨j, rfl⟩ := hi
-      intro s hs
-      obtain ⟨a, ha, rfl⟩ := mem_visitedStates.mp hs
-      rw [extendEmpty_apply] at ha
-      obtain ⟨b, hb, hq⟩ :=
-          mem_visitedStates.mp (h.1.visitedStates_subset j (runPrefix_mem_visitedStates U' j ha))
-      exact mem_visitedStates.mpr ⟨b, hb, by rw [runPrefix_restrict, hq, runPrefix_extendEmpty]⟩
-    · rw [visitedStates_of_nil (hoff i hi), visitedStates_of_nil (he i hi)]
-  have hends : ∀ i, T.endState (extendEmpty e U') i = T.endState W i := by
-    intro i
-    by_cases hi : i ∈ Set.range e
-    · obtain ⟨j, rfl⟩ := hi
-      have := h.1.endState_eq j
-      simp only [endState] at this ⊢
-      rw [runPrefix_extendEmpty, extendEmpty_apply, this]; rfl
-    · simp only [endState]; rw [runPrefix_of_nil (hoff i hi), runPrefix_of_nil (he i hi)]
-  refine ⟨⟨hends, hvis, ?_⟩, ?_⟩
-  · intro i j
-    by_cases hi : i ∈ Set.range e
-    · by_cases hj : j ∈ Set.range e
-      · obtain ⟨i, rfl⟩ := hi
-        obtain ⟨j, rfl⟩ := hj
-        intro pq hpq
-        obtain ⟨a, ha, b, hb, hp, rfl⟩ := mem_channel.mp hpq
-        rw [extendEmpty_apply] at ha hb hp
-        rw [extendEmpty_apply] at hp
-        have := h.1.channel_subset i j (pair_mem_channel ha hb hp)
-        obtain ⟨a', ha', b', hb', hp', he'⟩ := mem_channel.mp this
-        rw [runPrefix_extendEmpty, runPrefix_extendEmpty, he']
-        exact pair_mem_channel ha' hb' hp'
-      · rw [channel_of_target_nil (hoff j hj), channel_of_target_nil (he j hj)]
-        exact Finset.image_subset_image (hvis i)
-    · rw [channel_of_host_nil (hoff i hi), channel_of_host_nil (he i hi), hends j]
-  · intro i
-    by_cases hi : i ∈ Set.range e
-    · obtain ⟨j, rfl⟩ := hi
-      have := h.2 j
-      rw [fresh_iff] at this ⊢
-      intro a ha
-      rw [extendEmpty_apply] at ha
-      simp only [endState] at this ⊢
-      rw [runPrefix_extendEmpty, runPrefix_extendEmpty, extendEmpty_apply]
-      exact this a ha
-    · rw [fresh_iff, hoff i hi]
-      simp
-
-/-- The restriction of a minimal fresh tuple to coordinates that carry all its nonempty words
-is minimal fresh. -/
-theorem isMinimalFresh_restrict {T : Table α S k} {W : Fin k → List α}
-    (he : ∀ i, i ∉ Set.range e → W i = []) (h : IsMinimalFresh T W) :
-    IsMinimalFresh (T.restrict e) (W ∘ e) := by
-  refine ⟨fun j => ?_, fun U' hU' => ?_⟩
-  · have := h.1 (e j)
-    rw [fresh_iff] at this ⊢
-    exact this
-  · have h1 := h.2 _ (freshDominates_extendEmpty e he hU')
-    rw [totalLength_extendEmpty, ← totalLength_comp_of_empty e W he] at h1
-    exact h1
-
-end EmptyCoordinates
-
 end Domination
 
 /-! ## Structural readers -/
@@ -545,10 +344,10 @@ instance [DecidableEq α] [DecidableEq S] (W : Fin k → List α) : Decidable (M
 /-- A state is immortal if words of every length can be read from it without reaching the dead
 state. -/
 def Immortal (q : S) : Prop :=
-  ∀ n, ∃ u : List α, u.length = n ∧ ∀ a ≤ n, M.runFrom q (u.take a) ≠ M.dead
+  ∀ n, ∃ u : List α, u.length = n ∧ ∀ a ≤ n, runFrom M.step q (u.take a) ≠ M.dead
 
 /-- Reading `u` from `q` never reaches the dead state, at any cut. -/
-def LiveAlong (q : S) (u : List α) : Prop := ∀ a ≤ u.length, M.runFrom q (u.take a) ≠ M.dead
+def LiveAlong (q : S) (u : List α) : Prop := ∀ a ≤ u.length, runFrom M.step q (u.take a) ≠ M.dead
 
 instance [DecidableEq S] (q : S) (u : List α) : Decidable (M.LiveAlong q u) :=
   inferInstanceAs (Decidable (∀ a ≤ u.length, _))
@@ -561,11 +360,6 @@ def firstRejection (W : Fin k → List α) (i : Fin k) : ℕ :=
 
 /-- The length of the rejected tail `(W i).drop (firstRejection W i)` of coordinate `i`. -/
 def rejectedTailLength (W : Fin k → List α) (i : Fin k) : ℕ := (W i).length - M.firstRejection W i
-
-/-- `U` and `W` have the same endpoint mortality: on every coordinate, the endpoint of `U` is
-immortal if and only if that of `W` is. -/
-def SameEndpointMortality (U W : Fin k → List α) : Prop :=
-  ∀ i, M.Immortal (M.endState U i) ↔ M.Immortal (M.endState W i)
 
 /-- A tuple has mixed mortality if it has an immortal endpoint and a mortal endpoint. -/
 def HasMixedMortality (W : Fin k → List α) : Prop :=
@@ -584,7 +378,7 @@ private theorem liveAlong_iff_pathSafe (q : S) (u : List α) :
   rw [Automata.Semiautomaton.pathSafe_iff]; rfl
 
 theorem liveAlong_append (q : S) (u v : List α) :
-    M.LiveAlong q (u ++ v) ↔ M.LiveAlong q u ∧ M.LiveAlong (M.runFrom q u) v := by
+    M.LiveAlong q (u ++ v) ↔ M.LiveAlong q u ∧ M.LiveAlong (runFrom M.step q u) v := by
   simp only [liveAlong_iff_pathSafe]
   exact Automata.Semiautomaton.pathSafe_append _ _ q u v
 
@@ -600,7 +394,7 @@ theorem liveAlong_nil {q : S} (h : q ≠ M.dead) : M.LiveAlong q [] := by
   intro a _; simpa using h
 
 private theorem liveAlong_flatten_replicate {p : S} {v : List α} (hv : M.LiveAlong p v)
-    (hc : M.runFrom p v = p) (m : ℕ) : M.LiveAlong p (List.replicate m v).flatten := by
+    (hc : runFrom M.step p v = p) (m : ℕ) : M.LiveAlong p (List.replicate m v).flatten := by
   induction m with
   | zero => exact liveAlong_nil hv.self
   | succ m ih =>
@@ -618,7 +412,7 @@ theorem immortal_of_long {q : S} (h : ∀ n, ∃ u : List α, n ≤ u.length ∧
 
 /-- A state from which a live cycle can be reached is immortal. -/
 theorem immortal_of_cycle {q : S} {u v : List α} (hv : v ≠ []) (hl : M.LiveAlong q (u ++ v))
-    (hc : M.runFrom (M.runFrom q u) v = M.runFrom q u) : M.Immortal q := by
+    (hc : runFrom M.step (runFrom M.step q u) v = runFrom M.step q u) : M.Immortal q := by
   rw [liveAlong_append] at hl
   apply immortal_of_long
   intro n
@@ -632,14 +426,14 @@ theorem immortal_of_cycle {q : S} {u v : List α} (hv : v ≠ []) (hl : M.LiveAl
 
 /-- A state is immortal if and only if one live word of length `|S|` can be read from it. -/
 theorem immortal_iff_card [Fintype S] {q : S} : M.Immortal q ↔ ∃ u : List α,
-    u.length = Fintype.card S ∧ ∀ a ≤ u.length, M.runFrom q (u.take a) ≠ M.dead := by
+    u.length = Fintype.card S ∧ ∀ a ≤ u.length, runFrom M.step q (u.take a) ≠ M.dead := by
   constructor
   · intro h
     obtain ⟨u, hu, hl⟩ := h (Fintype.card S)
     exact ⟨u, hu, hu ▸ hl⟩
   · rintro ⟨u, hu, hl⟩
     have hl' : M.LiveAlong q u := hl
-    let f : Fin (Fintype.card S + 1) → S := fun a => M.runFrom q (u.take a)
+    let f : Fin (Fintype.card S + 1) → S := fun a => runFrom M.step q (u.take a)
     obtain ⟨a, b, hab, he⟩ := Fintype.exists_ne_map_eq_of_card_lt f (by simp)
     wlog hlt : a < b generalizing a b
     · exact this b a hab.symm he.symm (lt_of_le_of_ne (not_lt.mp hlt) hab.symm)
@@ -654,7 +448,7 @@ theorem immortal_iff_card [Fintype S] {q : S} : M.Immortal q ↔ ∃ u : List α
 
 /-- Along a live word read from a rejected state every state is rejected. -/
 theorem rejected_along {q : S} {u : List α} (hq : M.rejected q = true) (hl : M.LiveAlong q u) :
-    ∀ a ≤ u.length, M.rejected (M.runFrom q (u.take a)) = true := by
+    ∀ a ≤ u.length, M.rejected (runFrom M.step q (u.take a)) = true := by
   intro a ha
   induction a with
   | zero => simpa using hq

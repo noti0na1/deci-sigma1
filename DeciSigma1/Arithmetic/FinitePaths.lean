@@ -5,7 +5,7 @@ import Mathlib.Data.List.Nodup
 import Mathlib.Order.Preorder.Chain
 import Mathlib.Order.RelClasses
 import DeciSigma1.Readers.Basic
-import DeciSigma1.Words.Periods
+import DeciSigma1.Words.Basic
 
 /-! # Simple paths in forests and periodic runs
 
@@ -246,7 +246,7 @@ theorem simplePath_le_pow_prefix {γ : Type*} (f : β → List γ) (H : ℕ) (p 
 
 section Runs
 
-open DeciSigma1.Readers DeciSigma1.Automata
+open DeciSigma1.Readers DeciSigma1.Words
 
 variable {α S : Type} {k : ℕ}
 
@@ -291,19 +291,19 @@ theorem streamPeriod_mul {ξ : ℕ → α} {d : ℕ} (h : StreamPeriod ξ d) (a 
 repeat with period `d · |S|!`. -/
 theorem periodic_run_stable [Fintype S] (T : Table α S k) (q : S) (ξ : ℕ → α) {d p : ℕ}
     (_hd : 0 < d) (hξ : StreamPeriod ξ d) (hp : Fintype.card S * d ≤ p) (m : ℕ) :
-    T.runFrom q (streamPrefix ξ (p + m * (d * (Fintype.card S).factorial))) =
-      T.runFrom q (streamPrefix ξ p) := by
+    runFrom T.step q (streamPrefix ξ (p + m * (d * (Fintype.card S).factorial))) =
+      runFrom T.step q (streamPrefix ξ p) := by
   set N := Fintype.card S
   set r := p - N * d
-  let F : S → S := fun s => T.runFrom s (streamPrefix (fun i => ξ (r + i)) d)
-  have hblock : ∀ j, T.runFrom q (streamPrefix ξ (r + j * d)) =
-      F^[j] (T.runFrom q (streamPrefix ξ r)) := by
+  let F : S → S := fun s => runFrom T.step s (streamPrefix (fun i => ξ (r + i)) d)
+  have hblock : ∀ j, runFrom T.step q (streamPrefix ξ (r + j * d)) =
+      F^[j] (runFrom T.step q (streamPrefix ξ r)) := by
     intro j
     induction j with
     | zero => simp
     | succ j ih =>
       rw [show r + (j + 1) * d = (r + j * d) + d by ring, streamPrefix_add,
-        Table.runFrom_append, ih, Function.iterate_succ_apply']
+        runFrom_append, ih, Function.iterate_succ_apply']
       congr 2
       funext i
       rw [show r + j * d + i = (r + i) + j * d by ring, streamPeriod_mul hξ]
@@ -317,7 +317,8 @@ with period `d · |S|!`, as long as the cuts stay inside the word. -/
 theorem runFrom_take_periodic [Fintype S] (T : Table α S k) (q : S) {u : List α} {d o : ℕ}
     (hd : 0 < d) (hper : Words.PeriodicOn u d 0 u.length) (ho : Fintype.card S * d ≤ o) (m : ℕ)
     (hlen : o + m * (d * (Fintype.card S).factorial) ≤ u.length) :
-    T.runFrom q (u.take (o + m * (d * (Fintype.card S).factorial))) = T.runFrom q (u.take o) := by
+    runFrom T.step q (u.take (o + m * (d * (Fintype.card S).factorial))) =
+      runFrom T.step q (u.take o) := by
   have hN : 0 < Fintype.card S := Fintype.card_pos_iff.mpr ⟨q⟩
   have hdu : d ≤ u.length := by
     have : d ≤ Fintype.card S * d := Nat.le_mul_of_pos_left d hN

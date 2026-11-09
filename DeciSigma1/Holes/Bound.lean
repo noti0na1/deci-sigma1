@@ -1,31 +1,44 @@
-import DeciSigma1.Holes.Statements
+import DeciSigma1.Holes.Fresh.Bound
+import DeciSigma1.Holes.Tail.Compression
 
-/-! # Composition of the two bounds
+/-! # The small-hole theorem
 
-Let `W` be a hole of a structural reader `M` whose immortal coordinates have rejected tails of
-length at most `L`. The *cover* of `W` is a table whose states are the states of `M` together
-with a counter `0, …, L` for each coordinate. On coordinate `i` it runs `M` up to the first
-rejected cut of `W i`; if the rejected tail of `W i` has length at most `L`, it then reads
-exactly that tail, counting its letters, and moves to an absorbing state on every other
-continuation. All coordinates of `W` are fresh in the cover (`cover_fresh`): a coordinate with a
-mortal endpoint is fresh in `M`, and the counter makes a bounded tail fresh. Mapping the counter
-back to the corresponding state of `W i` projects runs of the cover to runs of `M`, so a tuple
-that dominates `W` in the cover is a hole of `M` with the same endpoints
-(`cover_project_of_dom`).
+A structural reader that has a hole has one of total length at most `smallHoleBound σ k N`,
+where `σ` is the size of the alphabet, `k` the number of starts and `N` the number of states.
+The proof composes two bounds.
 
-The cover has `k · (N + L + 1) + 1` states. A fresh-tuple bound `J` applied to it gives a hole
-of total length at most `J k (k · (N + L + 1) + 1)` (`hole_of_tails`), and a rejected-tail
-bound `Λ` supplies `L = Λ k N`. This is the small-hole theorem `exists_hole_totalLength_le`;
-since the bound is computable, the existence of a hole is decided by searching all tuples up to
-it (`decideHoleOfBounds`).
+* The *rejected-tail bound* (`Tail.exists_hole_rejectedTailLength_le`): a reader with a hole
+  has a hole whose immortal coordinates have rejected tails of length at most
+  `L = tailLengthBound σ k N`. `Holes.Tail` proves it by replacing tails with periodic
+  continuations and compressing their periodic factors.
+* The *fresh-tuple bound* (`Fresh.exists_freshDominates_totalLength_le`): every tuple of fresh
+  words of a table with `k` starts and `N'` states has a fresh dominator of total length at
+  most `freshTupleBound k N'`. `Holes.Fresh` proves it by deleting repeated blocks from a
+  minimal fresh tuple.
+
+They are connected by the *cover* of a hole `W` of a reader `M` whose immortal coordinates have
+rejected tails of length at most `L`: a table whose states are the states of `M` together with
+a counter `0, …, L` for each coordinate. On coordinate `i` it runs `M` up to the first rejected
+cut of `W i`; if the rejected tail of `W i` has length at most `L`, it then reads exactly that
+tail, counting its letters, and moves to an absorbing state on every other continuation. All
+coordinates of `W` are fresh in the cover (`cover_fresh`): a coordinate with a mortal endpoint
+is fresh in `M`, and the counter makes a bounded tail fresh. Mapping the counter back to the
+corresponding state of `W i` projects runs of the cover to runs of `M`, so a tuple that
+dominates `W` in the cover is a hole of `M` with the same endpoints (`cover_project_of_dom`).
+
+The cover has `k · (N + L + 1) + 1` states, so the fresh-tuple bound applied to it gives a hole
+of total length at most `freshTupleBound k (k · (N + L + 1) + 1)`
+(`exists_hole_totalLength_le_of_tails`). With `L = tailLengthBound σ k N` this is
+`exists_small_hole`. Since the bound is computable, the existence of a hole is decided by
+searching all tuples up to it (`decideHole`).
 
 ## Main declarations
 
 - `cover`, `coverProjection`: the cover of a hole and its projection to the reader.
 - `cover_fresh`, `cover_project_of_dom`: the hole is fresh in its cover, and dominators in the
   cover are holes.
-- `composedHoleBound`, `exists_hole_totalLength_le`: the small-hole theorem for given bounds.
-- `decideHoleOfBounds`: the decision procedure for the existence of a hole.
+- `smallHoleBound`, `exists_small_hole`: the small-hole theorem.
+- `decideHole`: the decision procedure for the existence of a hole.
 -/
 
 namespace DeciSigma1.Holes
@@ -223,16 +236,16 @@ theorem coverProjection_start (i : Fin k) :
 
 /-- Along a run that avoids `none`, the projection follows the reader. -/
 theorem coverProjection_runFrom (c : CoverState S k L) (u : List α)
-    (h : ∀ a ≤ u.length, (cover M W L).runFrom c (u.take a) ≠ none) :
-    coverProjection M W L ((cover M W L).runFrom c u) = M.runFrom (coverProjection M W L c) u := by
+    (h : ∀ a ≤ u.length, runFrom (cover M W L).step c (u.take a) ≠ none) :
+    coverProjection M W L (runFrom (cover M W L).step c u) =
+      runFrom M.step (coverProjection M W L c) u := by
   induction u generalizing c with
   | nil => rfl
   | cons x u ih =>
     have h1 : Cover.step M W L c x ≠ none := by simpa [cover] using h 1 (by simp)
-    simp only [runFrom_cons]
-    rw [show (cover M W L).step = Cover.step M W L from rfl]
-    rw [ih (Cover.step M W L c x) (fun a ha => by simpa [cover] using h (a + 1) (by simp; omega))]
-    rw [coverProjection_step h1]
+    rw [runFrom_cons, runFrom_cons,
+      ih _ (fun a ha => by simpa [cover] using h (a + 1) (by simp; omega))]
+    exact congrArg (fun s => runFrom M.step s u) (coverProjection_step h1)
 
 /-- A tuple that dominates a hole in its cover is a hole of the reader with the same
 endpoints. -/
@@ -292,55 +305,52 @@ theorem cover_project (hW : M.IsHole W) {U : Fin k → List α}
 
 /-! ## The small-hole theorem -/
 
-section Composition
+section SmallHole
 
-variable [Fintype α]
-
-/-- The bound on shortest holes obtained from a fresh-tuple bound `J` and a rejected-tail bound
-`Λ`, for `k` coordinates and `N` states. -/
-def composedHoleBound (J Λ : ℕ → ℕ → ℕ) (k N : ℕ) : ℕ := J k (k * (N + Λ k N + 1) + 1)
-
-variable [Fintype S]
+variable [Fintype α] [Fintype S]
 
 /-- A hole whose immortal rejected tails have length at most `L` gives a hole of total length
-at most `J k (k · (N + L + 1) + 1)`: a fresh dominator of the hole in its cover. -/
-theorem hole_of_tails {J : ℕ → ℕ → ℕ} (hJ : FreshDominatorBound α J) (M : StructuralReader α S k)
-    {W : Fin k → List α} (hW : M.IsHole W) {L : ℕ}
+at most `freshTupleBound k (k · (N + L + 1) + 1)`: a fresh dominator of the hole in its
+cover. -/
+theorem exists_hole_totalLength_le_of_tails (M : StructuralReader α S k) {W : Fin k → List α}
+    (hW : M.IsHole W) {L : ℕ}
     (hL : ∀ i, M.Immortal (M.endState W i) → M.rejectedTailLength W i ≤ L) :
-    ∃ U, M.IsHole U ∧ totalLength U ≤ J k (k * (Fintype.card S + L + 1) + 1) := by
-  obtain ⟨U, hU, hb⟩ := hJ (CoverState S k L) k (cover M W L) W (cover_fresh hW hL)
+    ∃ U, M.IsHole U ∧
+      totalLength U ≤ Fresh.freshTupleBound k (k * (Fintype.card S + L + 1) + 1) := by
+  obtain ⟨U, hU, hb⟩ := Fresh.exists_freshDominates_totalLength_le (cover_fresh hW hL)
   rw [cover_card] at hb
   exact ⟨U, (cover_project hW hU).1, hb⟩
 
-/-- The small-hole theorem for given bounds: a structural reader with a hole has a hole of total
-length at most `composedHoleBound J Λ k N`. -/
-theorem exists_hole_totalLength_le {J Λ : ℕ → ℕ → ℕ} (hJ : FreshDominatorBound α J)
-    (hT : RejectedTailBound α Λ)
-    (M : StructuralReader α S k) (h : ∃ W, M.IsHole W) :
-    ∃ W, M.IsHole W ∧ totalLength W ≤ composedHoleBound J Λ k (Fintype.card S) := by
-  obtain ⟨W, hW⟩ := h
-  by_cases hi : ∃ i, M.Immortal (M.endState W i)
-  · obtain ⟨W', hW', _, hL⟩ := hT S k M W hW hi
-    exact hole_of_tails hJ M hW' hL
-  · push Not at hi
-    exact hole_of_tails hJ M hW (fun i h => absurd h (hi i))
+/-- The small-hole bound for a reader over an alphabet of size `σ` with `k` starts and `N`
+states: the fresh-tuple bound for the cover of a hole whose immortal rejected tails have
+length at most `tailLengthBound σ k N`. -/
+def smallHoleBound (σ k N : ℕ) : ℕ :=
+  Fresh.freshTupleBound k (k * (N + Tail.tailLengthBound σ k N + 1) + 1)
 
-omit [Fintype S] in
-theorem exists_hole_iff_bounded {G : ℕ} (M : StructuralReader α S k)
-    (hG : (∃ W, M.IsHole W) → ∃ W, M.IsHole W ∧ totalLength W ≤ G) :
-    (∃ W ∈ wordTuplesUpTo k G, M.IsHole W) ↔ ∃ W, M.IsHole W := by
+/-- The small-hole theorem: a structural reader with `N` states and `k` starts over an alphabet
+of size `σ` that has a hole has one of total length at most `smallHoleBound σ k N`. -/
+theorem exists_small_hole (M : StructuralReader α S k) (h : ∃ W, M.IsHole W) :
+    ∃ W, M.IsHole W ∧ totalLength W ≤ smallHoleBound (Fintype.card α) k (Fintype.card S) := by
+  obtain ⟨W, hW⟩ := h
+  obtain ⟨W', hW', hL⟩ := Tail.exists_hole_rejectedTailLength_le M hW
+  exact exists_hole_totalLength_le_of_tails M hW' hL
+
+/-- A reader has a hole exactly when it has one among the tuples of total length at most
+`smallHoleBound σ k N`. -/
+theorem exists_hole_iff_bounded (M : StructuralReader α S k) :
+    (∃ W ∈ wordTuplesUpTo k (smallHoleBound (Fintype.card α) k (Fintype.card S)), M.IsHole W) ↔
+      ∃ W, M.IsHole W := by
   constructor
   · rintro ⟨W, _, hW⟩; exact ⟨W, hW⟩
   · intro h
-    obtain ⟨W, hW, hb⟩ := hG h
+    obtain ⟨W, hW, hb⟩ := exists_small_hole M h
     exact ⟨W, mem_wordTuplesUpTo.mpr hb, hW⟩
 
 /-- The existence of a hole is decidable: by the small-hole theorem it suffices to search the
-tuples of total length at most `composedHoleBound J Λ k N`. -/
-def decideHoleOfBounds {J Λ : ℕ → ℕ → ℕ} (hJ : FreshDominatorBound α J) (hT : RejectedTailBound α Λ)
-    (M : StructuralReader α S k) : Decidable (∃ W, M.IsHole W) :=
-  decidable_of_iff _ (exists_hole_iff_bounded M (exists_hole_totalLength_le hJ hT M))
+tuples of total length at most `smallHoleBound σ k N`. -/
+def decideHole (M : StructuralReader α S k) : Decidable (∃ W, M.IsHole W) :=
+  decidable_of_iff _ (exists_hole_iff_bounded M)
 
-end Composition
+end SmallHole
 
 end DeciSigma1.Holes

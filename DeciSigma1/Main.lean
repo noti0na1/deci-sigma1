@@ -1,6 +1,5 @@
 import DeciSigma1.Entailment.Logic
 import DeciSigma1.Full.Logic
-import DeciSigma1.Holes.Tail.Compression
 
 /-! # Decidability of disjunctive subtype entailment
 
@@ -23,9 +22,10 @@ such sentences have the same truth value (`booleanSentence_regular_iff`,
 `booleanSentenceTopFree_regular_iff`); over finite trees they may differ.
 
 The deciders are computable definitions with no hypotheses beyond a finite type of variables
-with decidable equality. Each runs a satisfiability test and then a bounded search for a hole of
-a structural reader compiled from the constraints; the search is complete by the small-hole
-theorem `exists_small_hole`, with the computable bound `smallHoleBound`.
+with decidable equality. Over `{⊥, f, ⊤}` each runs a satisfiability test and then a bounded
+search for a hole of a structural reader compiled from the constraints; the search is complete
+by the small-hole theorem `exists_small_hole`, with the computable bound `smallHoleBound`. Over
+`{⊥, f}` the same procedures are applied to a constraint with a guard that excludes `⊤`.
 
 ## Proof map
 
@@ -33,19 +33,26 @@ theorem `exists_small_hole`, with the computable bound `smallHoleBound`.
    `Semantics.Tree.Le` (`Semantics/Order`); trees over `{⊥, f}` are sets of constructor
    positions, `Semantics.PrefixSet`, ordered by inclusion. The entailments are
    `Full.DisjEntailsIn` (`Full/Basic`) and `Entailment.DisjEntailsIn` (`Entailment/Basic`).
-2. Satisfiability. Solutions are sets of configurations closed under Horn clauses
-   (`Constraints.TopFree.sat_iff_isSolution`, `Full.Closure.sat_iff_isSolution`); upper and
-   lower run automata decide membership in least closures (`Automata.leastClosure_membership`,
-   `Full.Closure.leastClosure_membership`), which gives `Automata.decideSat` and
-   `Full.Closure.decideSat`.
-3. Holes over `{⊥, f}`. `Entailment.compile` builds a structural reader with one start for
-   each query. On a satisfiable constraint the entailment fails exactly when the reader has a
-   hole (`Entailment.not_disjEntails_iff_hole`): the least solution containing the seeds of a
-   hole is a countermodel (`Entailment.holeModel_spec`).
+2. Satisfiability and closures. A constraint with variance is translated into a covariant
+   constraint on two signed copies of each variable (`Constraints.signed`,
+   `Constraints.sat_iff_signed`); it is satisfiable exactly when the translation has no label
+   clash (`Satisfiability.sat_iff_signed_not_labelClash`), which gives `Full.Closure.decideSat`.
+   Solutions are sets of signed configurations closed under Horn clauses
+   (`Full.Closure.sat_iff_isSolution`), and the upper and lower run automata of the translation
+   (`Automata.upperRun`, `Automata.lowerRun`) decide membership in least closures
+   (`Full.Closure.leastClosure_membership`).
+3. From `{⊥, f}` to `{⊥, f, ⊤}`. A set of constructor positions is embedded as the tree with
+   these positions labeled `f` and `⊥` below (`Semantics.PrefixSet.toTree`); the embedding
+   preserves the order and the constructors, and its image consists of the trees without `⊤`.
+   No tree below a tree `u ≤ f(u, …, u)` contains `⊤`
+   (`Semantics.Tree.isTopFree_of_le_of_le_node`), so a constraint over `{⊥, f}` entails a
+   disjunction exactly when the constraint `Entailment.guarded`, with a fresh variable `u`, the
+   inequality `u ≤ f(u, …, u)` and `x ≤ u` for every variable `x`, entails it over `{⊥, f, ⊤}`
+   with a covariant constructor (`Entailment.disjEntailsIn_iff_guarded`).
 4. Witnesses over `{⊥, f, ⊤}`. In the leaf representation of `Full.Closure`, each failed
    inequality has a mode and a path giving a seed in the solution and an exclusion outside it
-   (`Full.failures_iff_exists_leaf_witnesses`); a family of seeds and exclusions is realized by
-   one solution exactly under `Full.Reduction.SeedConsistency`
+   (`Full.failures_iff_exists_leaf_witnesses`); for a satisfiable constraint, a family of seeds
+   and exclusions is realized by one solution exactly under `Full.Reduction.SeedConsistency`
    (`Full.Reduction.hasCountermodelIn_iff_exists_seedConsistency`), equivalently
    `Full.Reduction.TerminalRootConditions`.
 5. Holes over `{⊥, f, ⊤}`. For each mode `Full.Reduction.compile` builds a reader whose holes
@@ -53,32 +60,42 @@ theorem `exists_small_hole`, with the computable bound `smallHoleBound`.
    (`Full.Reduction.hole_iff_terminalRootConditions`), so on a satisfiable constraint the
    entailment fails exactly when the reader of some mode has a hole
    (`Full.Reduction.not_disjEntails_iff_hole`).
-6. The small-hole theorem. `Holes.exists_hole_totalLength_le` composes a fresh-tuple bound,
-   `Holes.Fresh.freshDominatorBound_freshTupleBound` (deletion of repeated blocks), with a
-   rejected-tail bound, `Holes.Tail.rejectedTailBound_tailLengthBound` (periodic continuations
-   and compression); this is `exists_small_hole`, and `Holes.decideHoleOfBounds` searches the
-   bounded tuples.
-7. Deciders over arbitrary trees. `Entailment.decideDisjEntailsOfBounds` and
-   `Full.decideDisjEntailsOfBounds` combine the satisfiability test with the bounded search,
-   the latter for each of the finitely many modes (`Full.decideExistsModeHole`).
-8. Regular trees. The countermodel of a hole over `{⊥, f}` is regular
-   (`Entailment.holeModel_regular`, through `Semantics.hull_regular`), so
-   `Entailment.disjEntailsReg_iff`; over `{⊥, f, ⊤}` the observations of a countermodel are
-   realized by a regular solution (`Full.Models.Signed.boundRealization_regularTop`), so
-   `Full.Reduction.disjEntails_regular_iff`.
+6. The small-hole theorem. `Holes.exists_small_hole` composes a rejected-tail bound,
+   `Holes.Tail.exists_hole_rejectedTailLength_le` (periodic continuations and compression),
+   with a fresh-tuple bound, `Holes.Fresh.exists_freshDominates_totalLength_le` (deletion of
+   repeated blocks), applied to the cover of a hole (`Holes.cover`); `Holes.decideHole`
+   searches the bounded tuples.
+7. Deciders over arbitrary trees. `Full.decideDisjEntails` combines the satisfiability test
+   with the bounded search for each of the finitely many modes
+   (`Full.decideExistsModeHole`). This is the only reduction to holes:
+   `Entailment.decideDisjEntails` applies the same procedure to the guarded constraint.
+8. Regular trees. Over `{⊥, f, ⊤}` the hull of the seeds of a countermodel is again a
+   countermodel, and each of its leaf cones is a finite union of regular languages; a tree with
+   regular leaf cones has finitely many subtrees (`Full.Closure.regular_of_leaf`,
+   `Full.Reduction.SeedConsistency.regular_realizes`). Hence a constraint with a countermodel
+   has a regular one (`Full.Reduction.hasCountermodelIn_regularTop_iff`), so
+   `Full.Reduction.disjEntails_regular_iff`. The embedding preserves and reflects regularity
+   (`Semantics.PrefixSet.subtrees_toTree_finite_iff`), so the guarded constraint also
+   characterizes entailment over regular trees over `{⊥, f}`
+   (`Entailment.disjEntailsIn_regular_iff_guarded`), which gives
+   `Entailment.disjEntailsIn_regular_iff`.
 9. Finite trees. Finite satisfiability is the absence of label and cycle clashes in the signed
    translation (`Satisfiability.satFin_iff`, `Satisfiability.satFinB_iff`,
-   `Full.Models.Signed.decideSatFin`); the observations of a countermodel are realized by a
-   finite solution whenever one exists (`Full.Models.Signed.boundRealization_finiteTop`, from
-   `Full.Models.finiteBoundPinning`), so `Full.Reduction.disjEntails_finite_iff` and
-   `Full.decideDisjEntailsFinOfBounds`.
+   `Full.Models.Signed.decideSatFin`). The observations of a countermodel are bounds by finite
+   trees (`Full.Models.Signed.observation_bound`). A bound by a finite tree is compiled into
+   one-sided constructor literals on fresh variables (`Constraints.GroundCompiler.compile`); this
+   is a ranked extension of the constraint, which creates no cycle clash
+   (`Constraints.Ranked.Extension.satFin_iff`). Hence finitely many compatible bounds are
+   realized by a finite solution whenever the constraint has one
+   (`Full.Models.finiteBoundPinning`, `Full.Models.Signed.boundRealization_finiteTop`), so
+   `Full.Reduction.disjEntails_finite_iff` and `Full.decideDisjEntailsFin`.
 10. Boolean sentences. A quantifier-free formula is a disjunction of conjunctive clauses
     (`Logic.QuantifierFreeFormula.holds_iff_dnf`); a clause is realizable exactly when the
     disjunctive entailment of its negated inequalities by the flat constraints naming its
     subterms fails (`Logic.ConjunctiveClause.realizable_iff_not_disjEntailsIn`).
     `Logic.decideBooleanSentence` decides the sentences from any disjunctive-entailment
-    decider, instantiated by `Entailment.Logic.decideBooleanSentenceOfBounds` and
-    `Full.Logic.decideBooleanSentenceOfTailBound`; truth transfers between regular and
+    decider, instantiated by `Entailment.Logic.decideBooleanSentence` and
+    `Full.Logic.decideBooleanSentence`; truth transfers between regular and
     arbitrary trees by `Logic.BooleanSentence.holdsIn_iff_of_disjEntailsIn_iff`.
 
 ## Main declarations
@@ -100,8 +117,7 @@ namespace DeciSigma1
 
 /-- The small-hole bound for a reader over an alphabet of size `σ` with `k` starts and `N`
 states. -/
-def smallHoleBound (σ k N : ℕ) : ℕ :=
-  Holes.composedHoleBound Holes.Fresh.freshTupleBound (Holes.Tail.tailLengthBound σ) k N
+def smallHoleBound (σ k N : ℕ) : ℕ := Holes.smallHoleBound σ k N
 
 /-- Every structural reader with `N` states and `k` starts over a finite alphabet that has a
 hole has one of total length at most `smallHoleBound σ k N`. -/
@@ -109,8 +125,7 @@ theorem exists_small_hole {α S : Type} [Fintype α] [DecidableEq α] [Fintype S
     [DecidableEq S] {k : ℕ} (M : Readers.StructuralReader α S k) (h : ∃ W, M.IsHole W) :
     ∃ W, M.IsHole W ∧
       Readers.totalLength W ≤ smallHoleBound (Fintype.card α) k (Fintype.card S) :=
-  Holes.exists_hole_totalLength_le (Holes.Fresh.freshDominatorBound_freshTupleBound α)
-    Holes.Tail.rejectedTailBound_tailLengthBound M h
+  Holes.exists_small_hole M h
 
 /-! ## The signature `{⊥, f, ⊤}` with any variance -/
 
@@ -136,20 +151,20 @@ abbrev DisjEntailsFin (c : Fin n → Bool) (χ : List (Constraints.LitT n V))
 
 variable [Fintype V] [DecidableEq V]
 
-/-- Disjunctive entailment with top and any variance is decidable over arbitrary trees. -/
+/-- Disjunctive entailment over `{⊥, f, ⊤}` with any variance is decidable over arbitrary trees. -/
 def decideDisjEntails (c : Fin n → Bool) (χ : List (Constraints.LitT n V))
     (q : Fin k → V × V) : Decidable (DisjEntails c χ q) :=
-  Full.decideDisjEntailsOfTailBound Holes.Tail.rejectedTailBound_tailLengthBound c χ q
+  Full.decideDisjEntails c χ q
 
 /-- `decideDisjEntails` returns `true` exactly when the entailment holds. -/
 theorem decideDisjEntails_correct (c : Fin n → Bool) (χ : List (Constraints.LitT n V))
     (q : Fin k → V × V) : @decide _ (decideDisjEntails c χ q) = true ↔ DisjEntails c χ q :=
   @decide_eq_true_iff _ (decideDisjEntails c χ q)
 
-/-- Disjunctive entailment with top and any variance is decidable over regular trees. -/
+/-- Disjunctive entailment over `{⊥, f, ⊤}` with any variance is decidable over regular trees. -/
 def decideDisjEntailsReg (c : Fin n → Bool) (χ : List (Constraints.LitT n V))
     (q : Fin k → V × V) : Decidable (DisjEntailsReg c χ q) :=
-  Full.decideDisjEntailsRegOfTailBound Holes.Tail.rejectedTailBound_tailLengthBound c χ q
+  Full.decideDisjEntailsReg c χ q
 
 /-- `decideDisjEntailsReg` returns `true` exactly when the entailment holds over regular
 trees. -/
@@ -158,10 +173,10 @@ theorem decideDisjEntailsReg_correct (c : Fin n → Bool) (χ : List (Constraint
     @decide _ (decideDisjEntailsReg c χ q) = true ↔ DisjEntailsReg c χ q :=
   @decide_eq_true_iff _ (decideDisjEntailsReg c χ q)
 
-/-- Disjunctive entailment with top and any variance is decidable over finite trees. -/
+/-- Disjunctive entailment over `{⊥, f, ⊤}` with any variance is decidable over finite trees. -/
 def decideDisjEntailsFin (c : Fin n → Bool) (χ : List (Constraints.LitT n V))
     (q : Fin k → V × V) : Decidable (DisjEntailsFin c χ q) :=
-  Full.decideDisjEntailsFinOfTailBound Holes.Tail.rejectedTailBound_tailLengthBound c χ q
+  Full.decideDisjEntailsFin c χ q
 
 /-- `decideDisjEntailsFin` returns `true` exactly when the entailment holds over finite
 trees. -/
@@ -194,9 +209,7 @@ variable [Fintype V] [DecidableEq V] {k : ℕ}
 /-- Disjunctive entailment over `{⊥, f}` is decidable over arbitrary trees. -/
 def decideDisjEntailsTopFree (χ : List (Constraints.TopFree.Lit n V)) (q : Fin k → V × V) :
     Decidable (DisjEntailsTopFree χ q) :=
-  Entailment.decideDisjEntailsOfBounds
-    (Holes.Fresh.freshDominatorBound_freshTupleBound (Fin n))
-    Holes.Tail.rejectedTailBound_tailLengthBound χ q
+  Entailment.decideDisjEntails χ q
 
 /-- `decideDisjEntailsTopFree` returns `true` exactly when the entailment holds. -/
 theorem decideDisjEntailsTopFree_correct (χ : List (Constraints.TopFree.Lit n V))
@@ -207,9 +220,7 @@ theorem decideDisjEntailsTopFree_correct (χ : List (Constraints.TopFree.Lit n V
 /-- Disjunctive entailment over `{⊥, f}` is decidable over regular trees. -/
 def decideDisjEntailsTopFreeReg (χ : List (Constraints.TopFree.Lit n V))
     (q : Fin k → V × V) : Decidable (DisjEntailsTopFreeReg χ q) :=
-  Entailment.decideDisjEntailsRegOfBounds
-    (Holes.Fresh.freshDominatorBound_freshTupleBound (Fin n))
-    Holes.Tail.rejectedTailBound_tailLengthBound χ q
+  Entailment.decideDisjEntailsReg χ q
 
 /-- `decideDisjEntailsTopFreeReg` returns `true` exactly when the entailment holds over
 regular trees. -/
@@ -221,7 +232,7 @@ theorem decideDisjEntailsTopFreeReg_correct (χ : List (Constraints.TopFree.Lit 
 /-- Over `{⊥, f}`, regular and arbitrary disjunctive entailment agree. -/
 theorem disjEntailsTopFreeReg_iff (χ : List (Constraints.TopFree.Lit n V))
     (q : Fin k → V × V) : DisjEntailsTopFreeReg χ q ↔ DisjEntailsTopFree χ q :=
-  Entailment.disjEntailsReg_iff χ q
+  Entailment.disjEntailsIn_regular_iff χ q
 
 end TopFree
 
@@ -235,7 +246,7 @@ variable {n : ℕ}
 regular and finite trees. -/
 def decideBooleanSentence (c : Fin n → Bool) (C : Full.Logic.TreeClass)
     (φ : Full.Logic.BooleanSentence n) : Decidable (φ.HoldsIn C.Contains c) :=
-  Full.Logic.decideBooleanSentenceOfTailBound c Holes.Tail.rejectedTailBound_tailLengthBound C φ
+  Full.Logic.decideBooleanSentence c C φ
 
 /-- `decideBooleanSentence` returns `true` exactly when the sentence holds in the class. -/
 theorem decideBooleanSentence_correct (c : Fin n → Bool) (C : Full.Logic.TreeClass)
@@ -252,9 +263,7 @@ theorem booleanSentence_regular_iff (c : Fin n → Bool) (φ : Full.Logic.Boolea
 /-- The Boolean Σ₁/Π₁ theory of `{⊥, f}` is decidable over arbitrary and regular trees. -/
 def decideBooleanSentenceTopFree (C : Entailment.Logic.TreeClass)
     (φ : Entailment.Logic.BooleanSentence n) : Decidable (φ.HoldsIn C.Contains) :=
-  Entailment.Logic.decideBooleanSentenceOfBounds
-    (Holes.Fresh.freshDominatorBound_freshTupleBound (Fin n))
-    Holes.Tail.rejectedTailBound_tailLengthBound C φ
+  Entailment.Logic.decideBooleanSentence C φ
 
 /-- `decideBooleanSentenceTopFree` returns `true` exactly when the sentence holds in the
 class. -/

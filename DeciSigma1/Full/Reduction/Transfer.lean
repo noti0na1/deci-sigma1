@@ -1,20 +1,20 @@
+import DeciSigma1.Full.Reduction.Realization
 import DeciSigma1.Full.Basic
 import DeciSigma1.Full.Models.Signed.Transfer
 
 /-! # Regular and finite countermodels over `{⊥, f, ⊤}`
 
-A countermodel is witnessed by finitely many observations, the seeds and exclusions of its failures
-(`countermodelObservations`). By the realization results of `DeciSigma1.Full.Models.Signed.Transfer`
-these observations hold in a regular solution, and in a finite solution whenever the constraint has
-one. Hence disjunctive entailment has the same truth value over regular and arbitrary trees
-(`disjEntails_regular_iff`), and it holds over finite trees exactly when the constraint has no
-finite solution or it holds over arbitrary trees (`disjEntails_finite_iff`).
+The hull of the seeds of a countermodel is a countermodel with regular leaf cones, hence a regular
+countermodel. Thus disjunctive entailment agrees over regular and arbitrary trees. Over finite
+trees, the observations of a countermodel are ground bounds, which are realized by a finite
+solution whenever the constraint has one.
 
 ## Main declarations
 
 - `Reduction.countermodelObservations`: the observations witnessing a countermodel.
 - `Reduction.disjEntails_regular_iff`: regular and arbitrary disjunctive entailment agree.
-- `Reduction.disjEntails_finite_iff`: finite disjunctive entailment through finite satisfiability.
+- `Reduction.disjEntails_finite_iff`: entailment over finite trees holds exactly when there is no
+  finite solution or entailment holds over arbitrary trees.
 -/
 
 namespace DeciSigma1.Full.Reduction
@@ -64,9 +64,14 @@ theorem hasCountermodelIn_true_of_hasCountermodelIn {C : Semantics.Tree n → Pr
   exact ⟨ρ, fun _ => trivial, hs, hf⟩
 
 theorem hasCountermodelIn_regularTop_iff [Fintype V] :
-    HasCountermodelIn RegularTop c χ q ↔ HasCountermodelIn (fun _ => True) c χ q :=
-  ⟨hasCountermodelIn_true_of_hasCountermodelIn,
-      hasCountermodelIn_of_boundRealization (Signed.boundRealization_regularTop c χ)⟩
+    HasCountermodelIn RegularTop c χ q ↔ HasCountermodelIn (fun _ => True) c χ q := by
+  classical
+  refine ⟨hasCountermodelIn_true_of_hasCountermodelIn, ?_⟩
+  rintro ⟨ρ, _, hρ, hf⟩
+  obtain ⟨m, W, hm⟩ := (failures_iff_exists_leaf_witnesses c ρ q).mp hf
+  obtain ⟨τ, hr, ht, hw⟩ :=
+    (Realizes.seedConsistency ⟨ρ, hρ, hm⟩).regular_realizes ⟨ρ, hρ⟩
+  exact ⟨τ, hr, ht, (failures_iff_exists_leaf_witnesses c τ q).mpr ⟨m, W, hw⟩⟩
 
 theorem hasCountermodelIn_finiteTop_iff :
     HasCountermodelIn FiniteTop c χ q ↔
@@ -94,7 +99,5 @@ theorem disjEntails_finite_iff :
   classical
   have h := (hasCountermodelIn_finiteTop_iff (c := c) (χ := χ) (q := q)).not
   simpa only [← not_disjEntailsIn_iff, not_and_or, not_not] using h
-
-variable [Fintype V] [DecidableEq V]
 
 end DeciSigma1.Full.Reduction

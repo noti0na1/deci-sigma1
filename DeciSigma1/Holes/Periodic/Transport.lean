@@ -11,11 +11,10 @@ the canonical cuts (`AdmissibleDeletion.canonicalCut_suffixComparison`), every c
 edited tuple is contained in the original channel, and the edited tuple dominates the original
 one (`editedTuple_dominates`).
 
-For a hole, the first rejected cut is never deleted and moves to its image
-(`editedTuple_firstRejection`). A piece of another class whose period is at most `|ρ|` and that
-is long enough survives the deletion unchanged
-(`exists_preserved_piece_of_nonconjugate_root`), which lets the compression of the rejected-tail
-bound treat the classes one at a time.
+For a hole, the first rejected cut moves to its image (`editedTuple_firstRejection`). A piece
+of another class whose period is at most `|ρ|` and that is long enough survives the deletion
+unchanged (`exists_preserved_piece_of_nonconjugate_root`), which lets the compression of the
+rejected-tail bound treat the classes one at a time.
 
 ## Main declarations
 
@@ -810,70 +809,15 @@ section Holes
 variable [DecidableEq α] {S : Type} [Fintype S] [DecidableEq S] {W : Fin k → List α}
   {ρ : List α} {x : Piece W ρ.length → ℕ}
 
-/-- The first rejected cut is not a deleted position. -/
-theorem firstRejection_not_deleted (M : StructuralReader α S k) (hW : M.IsHole W)
-    (hx : AdmissibleDeletion W ρ (Fintype.card S) x) (l : Fin k) :
-    M.firstRejection W l ∉ deletedPositions W ρ (Fintype.card S) x l := by
-  intro hdel
-  obtain ⟨P, _, hl, hlo, hhi⟩ := mem_deletedPositions.mp hdel
-  have hmove : x P ≠ 0 := by intro hz; rw [hz] at hhi; omega
-  have hb := hx.site_bound hmove
-  have hM : 0 < Periodic.statePeriodModulus (Fintype.card S) ρ.length :=
-    lt_of_lt_of_le P.period_pos (Periodic.d_le_statePeriodModulus _ _)
-  let o := M.firstRejection W l - P.start
-  let a := Periodic.stateTransientLength (Fintype.card S) ρ.length
-  let m := Periodic.statePeriodModulus (Fintype.card S) ρ.length
-  let r := a + (o - a) % m
-  have hr : a ≤ r ∧ r < Periodic.boundaryMargin (Fintype.card S) ρ.length := by
-    have hm : (o - a) % m < m := Nat.mod_lt _ hM
-    change a ≤ a + (o - a) % m ∧ a + (o - a) % m < a + m
-    omega
-  have hao : a ≤ o := by dsimp [a, o]; unfold Periodic.boundaryMargin at hlo; omega
-  have heq : M.runPrefix W P.coordinate (P.start + r) =
-      M.runPrefix W P.coordinate (P.start + o) := by
-    apply P.runPrefix_mod M.toTable hr.1 hao
-    · unfold Piece.len; omega
-    · dsimp [o]; unfold Piece.len; omega
-    · dsimp [r, m]
-      rw [Nat.add_mod, Nat.mod_mod, ← Nat.add_mod, Nat.add_sub_of_le hao]
-  have ho : P.start + o = M.firstRejection W l := by dsimp [o]; omega
-  rw [hl, ho] at heq
-  have hspec := M.firstRejection_spec (hW.1 l)
-  have hbefore := hspec.2.2 (P.start + r) (by omega)
-  rw [heq, hspec.2.1] at hbefore
-  exact Bool.noConfusion hbefore
-
 /-- The first rejected cut of the edited tuple is the image of the first rejected cut of the
 hole. -/
 theorem editedTuple_firstRejection (M : StructuralReader α S k) (hW : M.IsHole W)
     (hx : AdmissibleDeletion W ρ (Fintype.card S) x) (l : Fin k) :
     M.firstRejection (editedTuple W ρ (Fintype.card S) x) l =
-      keepCut W ρ (Fintype.card S) x l (M.firstRejection W l) := by
-  have hU : M.Eligible (editedTuple W ρ (Fintype.card S) x) l := by
-    constructor
-    · intro c hc he
-      obtain ⟨a, ha⟩ := hx.exists_canonicalCut l hc
-      have heq := hx.runPrefix_canonicalCut M.toTable rfl ha
-      rw [heq] at he
-      exact (hW.1 l).runPrefix_ne a he
-    · rw [hx.editedTuple_endState M.toTable rfl]; exact (hW.1 l).2
-  have hJ := M.firstRejection_spec (hW.1 l)
-  have hJ' := M.firstRejection_spec hU
-  have hs := hx.runPrefix_editedTuple M.toTable rfl l hJ.1
-    (Or.inr (Or.inl (firstRejection_not_deleted M hW hx l)))
-  have hb : keepCut W ρ (Fintype.card S) x l (M.firstRejection W l) ≤
-      (editedTuple W ρ (Fintype.card S) x l).length := by
-    rw [AdmissibleDeletion.length_editedTuple]; exact retainedCount_mono hJ.1
-  have hle := (M.rejected_iff_firstRejection_le hU hb).mp (by rw [hs]; exact hJ.2.1)
-  apply le_antisymm hle
-  obtain ⟨a, ha⟩ := hx.exists_canonicalCut l hJ'.1
-  have hra : M.rejected (M.runPrefix W l a) = true := by
-    rw [← hx.runPrefix_canonicalCut M.toTable rfl ha]; exact hJ'.2.1
-  have hJa := (M.rejected_iff_firstRejection_le (hW.1 l) ha.1).mp hra
-  have := retainedCount_mono (D := deletedPositions W ρ (Fintype.card S) x l) hJa
-  change keepCut W ρ (Fintype.card S) x l (M.firstRejection W l) ≤
-    keepCut W ρ (Fintype.card S) x l a at this
-  rwa [ha.2.1] at this
+      keepCut W ρ (Fintype.card S) x l (M.firstRejection W l) :=
+  firstRejection_deletePositions M (hW.1 l) rfl
+    (fun h => absurd (hx.deletedPositions_lt_length h) (lt_irrefl _))
+    (hx.runPrefix_editedTuple_greatestPreimage M.toTable rfl l)
 
 section Site
 

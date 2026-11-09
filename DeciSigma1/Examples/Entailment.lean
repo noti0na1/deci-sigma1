@@ -2,7 +2,7 @@ import Mathlib.Data.Fin.VecNotation
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Tactic.FinCases
 import DeciSigma1.Full.Basic
-import DeciSigma1.Holes.Statements
+import DeciSigma1.Entailment.Basic
 
 /-! # Examples of disjunctive entailment
 
@@ -27,7 +27,7 @@ namespace DeciSigma1.Examples
 
 open DeciSigma1.Constraints.TopFree DeciSigma1.Semantics DeciSigma1.Constraints
 
-/-! ## Covariant constructor, no top -/
+/-! ## Signature `{⊥, f}` -/
 
 /-- Over a unary constructor a word is determined by its length, so a tree containing a
 position contains every shorter one. -/
@@ -83,7 +83,7 @@ theorem binary_not_comparable :
   · exact PrefixSet.not_node_le_bot _ ((PrefixSet.node_le_node _ _).mp hj 0)
   · exact PrefixSet.not_node_le_bot _ ((PrefixSet.node_le_node _ _).mp hj 1)
 
-/-! ## A contravariant argument and top
+/-! ## Signature `{⊥, f, ⊤}` with a contravariant argument
 
 The binary constructor `f` below is contravariant in its first argument and covariant in its
 second, like the function type constructor. The variables are `x = 0`, `b = 1`, `t = 2` and

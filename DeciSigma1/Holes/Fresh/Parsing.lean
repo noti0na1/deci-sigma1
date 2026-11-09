@@ -2,11 +2,12 @@ import DeciSigma1.Holes.Fresh.Hierarchy
 
 /-! # Parses of blocks and the reverse trie
 
-Fix a level `t ≥ 1` of the marker hierarchy of a tuple `W` of nonempty words. The anchors of
-level `t + 1` cut each word into *upper blocks*, and the anchors of level `t` cut every upper
-block into *lower blocks*. An upper occurrence `(l, s, e)` is the upper block of word `l` between
-the cuts `s` and `e` (`upperOccurrences`). Its parse is the list of its lower blocks
-(`upperParse`), and `depthCut` is the cut that lies `d` lower blocks to the left of its end.
+Fix a level `t ≥ 1` of the marker hierarchy of a tuple `W`. The anchors of level `t + 1` cut
+each nonempty word into *upper blocks*, and the anchors of level `t` cut every upper block into
+*lower blocks*; an empty word has no blocks. An upper occurrence `(l, s, e)` is the upper block
+of word `l` between the cuts `s` and `e` (`upperOccurrences`). Its parse is the list of its
+lower blocks (`upperParse`), and `depthCut` is the cut that lies `d` lower blocks to the left
+of its end.
 
 The parses of all upper occurrences, read from the right, form a trie. An `Edge` of this trie
 joins two consecutive nodes `a < b` on the path of one parse. The upper occurrences that
@@ -254,35 +255,62 @@ section Upper
 
 variable {α : Type} [DecidableEq α] {k : ℕ}
 
-theorem anchors_bounds {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ} {l : Fin k} {p : ℕ}
-    (hp : p ∈ anchors W t l) : 1 ≤ p ∧ p ≤ (W l).length := by
-  have hl := List.length_pos_iff.mpr (hne l)
+/-- A context anchor is a cut of its text. -/
+theorem contextAnchors_le_length {W : Fin k → List α} {t : ℕ} {u : List α} {e : ℕ}
+    (h : e ∈ contextAnchors W t u) : e ≤ u.length := by
+  rcases t with _ | t
+  · simp only [contextAnchors, mem_Icc] at h; omega
+  · exact ((mem_contextAnchors_succ W).mp h).1
+
+/-- No context anchor lies at the cut `0`. -/
+theorem contextAnchors_pos {W : Fin k → List α} {t : ℕ} {u : List α} {e : ℕ}
+    (h : e ∈ contextAnchors W t u) : 1 ≤ e := by
+  rcases t with _ | t
+  · simp only [contextAnchors, mem_Icc] at h; omega
+  · obtain ⟨-, m, hm, hs⟩ := (mem_contextAnchors_succ W).mp h
+    have h1 := List.length_pos_iff.mpr (marker_ne_nil (by omega) hm)
+    have h2 := hs.length_le
+    simp only [List.length_take] at h2
+    omega
+
+/-- Anchors of a coordinate are cuts of its word. -/
+theorem le_length_of_mem_anchors {W : Fin k → List α} {t : ℕ} {l : Fin k} {p : ℕ}
+    (hp : p ∈ anchors W t l) : p ≤ (W l).length := by
   rcases mem_insert.mp hp with rfl | hp
-  · exact ⟨hl, le_rfl⟩
-  · rcases t with _ | t
-    · simpa [contextAnchors] using hp
-    · obtain ⟨hle, m, hm, hs⟩ := (mem_contextAnchors_succ W).mp hp
-      have h1 := List.length_pos_iff.mpr (marker_ne_nil hne (by omega) hm)
-      have h2 := hs.length_le
-      simp only [List.length_take] at h2
-      exact ⟨by omega, hle⟩
+  · exact le_rfl
+  · exact contextAnchors_le_length hp
+
+/-- The anchors of a nonempty word are cuts `1 ≤ p ≤ |W l|`. -/
+theorem anchors_bounds {W : Fin k → List α} {t : ℕ} {l : Fin k} (hl : W l ≠ []) {p : ℕ}
+    (hp : p ∈ anchors W t l) : 1 ≤ p ∧ p ≤ (W l).length := by
+  refine ⟨?_, le_length_of_mem_anchors hp⟩
+  rcases mem_insert.mp hp with rfl | hp
+  · exact List.length_pos_iff.mpr hl
+  · exact contextAnchors_pos hp
 
 /-- The start of the upper (level-`t + 1`) block of word `l` that ends at the upper anchor `e`. -/
 def upperOccurrenceStart (W : Fin k → List α) (t : ℕ) (l : Fin k) (e : ℕ) : ℕ :=
   previousAnchor (anchors W (t + 1) l) e
 
-/-- The upper occurrences `(l, s, e)`: the upper (level-`t + 1`) blocks of all words. -/
+/-- The upper occurrences `(l, s, e)`: the upper (level-`t + 1`) blocks of all nonempty words.
+An empty word has no blocks. -/
 def upperOccurrences (W : Fin k → List α) (t : ℕ) : Finset (Fin k × ℕ × ℕ) :=
-  univ.biUnion fun l => (anchors W (t + 1) l).image fun e => (l, upperOccurrenceStart W t l e, e)
+  (univ.filter fun l => W l ≠ []).biUnion fun l =>
+    (anchors W (t + 1) l).image fun e => (l, upperOccurrenceStart W t l e, e)
 
 theorem mem_upperOcc {W : Fin k → List α} {t : ℕ} {o : Fin k × ℕ × ℕ} :
-    o ∈ upperOccurrences W t ↔ o.2.2 ∈ anchors W (t + 1) o.1 ∧ o.2.1 =
+    o ∈ upperOccurrences W t ↔ W o.1 ≠ [] ∧ o.2.2 ∈ anchors W (t + 1) o.1 ∧ o.2.1 =
         upperOccurrenceStart W t o.1 o.2.2 := by
   obtain ⟨l, s, e⟩ := o
-  simp only [upperOccurrences, mem_biUnion, mem_univ, true_and, mem_image, Prod.mk.injEq]
+  simp only [upperOccurrences, mem_biUnion, mem_filter, mem_univ, true_and, mem_image,
+    Prod.mk.injEq]
   constructor
-  · rintro ⟨l', e', he', rfl, rfl, rfl⟩; exact ⟨he', rfl⟩
-  · rintro ⟨he, rfl⟩; exact ⟨l, e, he, rfl, rfl, rfl⟩
+  · rintro ⟨l', hl', e', he', rfl, rfl, rfl⟩; exact ⟨hl', he', rfl⟩
+  · rintro ⟨hl, he, rfl⟩; exact ⟨l, hl, e, he, rfl, rfl, rfl⟩
+
+/-- The word of an upper occurrence is nonempty. -/
+theorem ne_nil_of_mem_upperOccurrences {W : Fin k → List α} {t : ℕ} {o : Fin k × ℕ × ℕ}
+    (ho : o ∈ upperOccurrences W t) : W o.1 ≠ [] := (mem_upperOcc.mp ho).1
 
 /-- The number of lower (level-`t`) blocks of an upper occurrence. -/
 def lowerBlockCount (W : Fin k → List α) (t : ℕ) (o : Fin k × ℕ × ℕ) : ℕ :=
@@ -307,14 +335,14 @@ def upperParses (W : Fin k → List α) (t : ℕ) : Finset (List (List α)) :=
 
 /-- Basic facts on an upper occurrence `(l, s, e)`: `s < e ≤ |W l|`, `e` is a lower anchor,
 `s` is `0` or a lower anchor, and no upper anchor lies strictly between `s` and `e`. -/
-theorem upperOcc_spec {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
+theorem upperOcc_spec {W : Fin k → List α} {t : ℕ}
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) :
     o.2.1 < o.2.2 ∧ o.2.2 ≤ (W o.1).length ∧ o.2.2 ∈ anchors W t o.1 ∧
       (o.2.1 = 0 ∨ o.2.1 ∈ anchors W t o.1) ∧
       ∀ p ∈ anchors W (t + 1) o.1, ¬ (o.2.1 < p ∧ p < o.2.2) := by
-  obtain ⟨he, hs⟩ := mem_upperOcc.mp ho
-  obtain ⟨he1, he2⟩ := anchors_bounds hne he
-  have hsub := anchors_succ_subset hne t o.1
+  obtain ⟨hl, he, hs⟩ := mem_upperOcc.mp ho
+  obtain ⟨he1, he2⟩ := anchors_bounds hl he
+  have hsub := anchors_succ_subset (W := W) t o.1
   rw [hs]
   refine ⟨?_, he2, hsub he, ?_, ?_⟩
   · by_cases hex : ∃ q ∈ anchors W (t + 1) o.1, q < o.2.2
@@ -334,18 +362,18 @@ theorem upperOcc_spec {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ
     omega
 
 /-- The depth cuts of an upper occurrence enumerate its lower anchors. -/
-theorem depthCut_spec {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
+theorem depthCut_spec {W : Fin k → List α} {t : ℕ}
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) :
     (∀ d < lowerBlockCount W t o, depthCut W t o d ∈ anchors W t o.1 ∧ o.2.1 < depthCut W t o d ∧
       depthCut W t o d ≤ o.2.2 ∧ anchorCount (anchors W t o.1) (depthCut W t o d) o.2.2 = d) ∧
       depthCut W t o (lowerBlockCount W t o) = o.2.1 := by
-  obtain ⟨hse, -, he, hs, -⟩ := upperOcc_spec hne ho
+  obtain ⟨hse, -, he, hs, -⟩ := upperOcc_spec ho
   exact depthCutAt_spec hse he hs
 
-theorem depthCut_lt {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
+theorem depthCut_lt {W : Fin k → List α} {t : ℕ}
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) {d : ℕ} (hd : d < lowerBlockCount W t o) :
     depthCut W t o (d + 1) < depthCut W t o d := by
-  obtain ⟨hall, hlast⟩ := depthCut_spec hne ho
+  obtain ⟨hall, hlast⟩ := depthCut_spec ho
   obtain ⟨-, hs, -, hcnt⟩ := hall d hd
   by_cases h : d + 1 < lowerBlockCount W t o
   · obtain ⟨-, -, -, hcnt'⟩ := hall (d + 1) h
@@ -368,33 +396,33 @@ theorem getElem_reversedBlocks (W : Fin k → List α) (t : ℕ) (o : Fin k × �
       ((W o.1).drop (depthCut W t o (d + 1))).take (depthCut W t o d - depthCut W t o (d + 1)) := by
   simp [reversedBlocks]
 
-theorem length_getElem_reversedBlocks {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
+theorem length_getElem_reversedBlocks {W : Fin k → List α} {t : ℕ}
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) {d : ℕ}
         (hd : d < (reversedBlocks W t o).length) :
     (reversedBlocks W t o)[d].length = depthCut W t o d - depthCut W t o (d + 1) := by
   rw [getElem_reversedBlocks]
   rw [length_reversedBlocks] at hd
-  have h1 := ((depthCut_spec hne ho).1 d hd).2.2.1
-  have h2 := (upperOcc_spec hne ho).2.1
-  have h3 := depthCut_lt hne ho hd
+  have h1 := ((depthCut_spec ho).1 d hd).2.2.1
+  have h2 := (upperOcc_spec ho).2.1
+  have h3 := depthCut_lt ho hd
   simp only [List.length_take, List.length_drop]
   omega
 
-theorem depthCut_lt_of_lt {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
+theorem depthCut_lt_of_lt {W : Fin k → List α} {t : ℕ}
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) {d d' : ℕ} (hdd : d < d')
     (hd' : d' ≤ lowerBlockCount W t o) : depthCut W t o d' < depthCut W t o d := by
   induction d', hdd using Nat.le_induction with
-  | base => exact depthCut_lt hne ho (by omega)
+  | base => exact depthCut_lt ho (by omega)
   | succ d' hdd ih =>
-    exact (depthCut_lt hne ho (by omega)).trans (ih (by omega))
+    exact (depthCut_lt ho (by omega)).trans (ih (by omega))
 
 /-- An upper occurrence is determined by its word and its end. -/
 theorem upperOcc_ext {W : Fin k → List α} {t : ℕ} {o o' : Fin k × ℕ × ℕ}
     (ho : o ∈ upperOccurrences W t) (ho' : o' ∈ upperOccurrences W t) (h1 : o.1 = o'.1)
         (h2 : o.2.2 = o'.2.2) :
     o = o' := by
-  have hs := (mem_upperOcc.mp ho).2
-  have hs' := (mem_upperOcc.mp ho').2
+  have hs := (mem_upperOcc.mp ho).2.2
+  have hs' := (mem_upperOcc.mp ho').2.2
   obtain ⟨l, s, e⟩ := o
   obtain ⟨l', s', e'⟩ := o'
   simp only at h1 h2 hs hs'
@@ -405,14 +433,14 @@ theorem upperOcc_ext {W : Fin k → List α} {t : ℕ} {o o' : Fin k × ℕ × �
 theorem upperOccurrences_le_start {W : Fin k → List α} {t : ℕ} {o o' : Fin k × ℕ × ℕ}
     (ho : o ∈ upperOccurrences W t) (ho' : o' ∈ upperOccurrences W t) (h1 : o.1 = o'.1)
     (h2 : o.2.2 < o'.2.2) : o.2.2 ≤ o'.2.1 := by
-  rw [(mem_upperOcc.mp ho').2, upperOccurrenceStart, ← h1]
-  exact le_previousAnchor (mem_upperOcc.mp ho).1 h2
+  rw [(mem_upperOcc.mp ho').2.2, upperOccurrenceStart, ← h1]
+  exact le_previousAnchor (mem_upperOcc.mp ho).2.1 h2
 
 /-- The total length, in letters, of the first `d` words of a list of words. -/
 def firstBlocksLength {β : Type} (Z : List (List β)) (d : ℕ) : ℕ := ((Z.take d).map List.length).sum
 
 /-- The cut at depth `d` is the end minus the total length of the last `d` lower blocks. -/
-theorem depthCut_add_baseLen {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {t : ℕ}
+theorem depthCut_add_baseLen {W : Fin k → List α} {t : ℕ}
     {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t) {d : ℕ} (hd : d ≤ lowerBlockCount W t o) :
     depthCut W t o d + firstBlocksLength (reversedBlocks W t o) d = o.2.2 := by
   induction d with
@@ -420,8 +448,8 @@ theorem depthCut_add_baseLen {W : Fin k → List α} (hne : ∀ i, W i ≠ []) {
   | succ d ih =>
     have hd' : d < (reversedBlocks W t o).length := by simp; omega
     have h1 := ih (by omega)
-    have hlen := length_getElem_reversedBlocks hne ho hd'
-    have hlt := depthCut_lt hne ho (by omega : d < lowerBlockCount W t o)
+    have hlen := length_getElem_reversedBlocks ho hd'
+    have hlt := depthCut_lt ho (by omega : d < lowerBlockCount W t o)
     have : firstBlocksLength (reversedBlocks W t o) (d + 1) =
         firstBlocksLength (reversedBlocks W t o) d +
         (reversedBlocks W t o)[d].length := by
@@ -445,7 +473,6 @@ structure Edge (W : Fin k → List α) (t : ℕ) where
   blocks_mem : blocks ∈ upperParses W t
   startDepth : ℕ
   endDepth : ℕ
-  startDepth_mem : startDepth ∈ trieNodes W t blocks
   endDepth_mem : endDepth ∈ trieNodes W t blocks
   startDepth_lt_endDepth : startDepth < endDepth
   no_interior_node : ∀ c ∈ trieNodes W t blocks, ¬ (startDepth < c ∧ c < endDepth)
@@ -519,11 +546,11 @@ theorem firstBlocksLength_eq {o : Fin k × ℕ × ℕ} (h : e.TraversedBy o) {d 
 
 /-- For an occurrence that traverses the edge, the cut at depth `d ≤ endDepth` is its end minus a
 length that depends only on the edge. -/
-theorem depthCut_through (hne : ∀ i, W i ≠ []) {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
+theorem depthCut_through {o : Fin k × ℕ × ℕ} (ho : o ∈ upperOccurrences W t)
     (h : e.TraversedBy o) {d : ℕ} (hd : d ≤ e.endDepth) :
     depthCut W t o d + firstBlocksLength e.blocks.reverse d = o.2.2 := by
   rw [← e.firstBlocksLength_eq h hd]
-  exact depthCut_add_baseLen hne ho (hd.trans (e.through_iff.mp h).1)
+  exact depthCut_add_baseLen ho (hd.trans (e.through_iff.mp h).1)
 
 end Edge
 
@@ -548,7 +575,7 @@ def crossBoundaryMarkerEnds (W : Fin k → List α) (t : ℕ) (u z : List α) : 
 
 /-- In any context, the lower anchors of `z` are the anchors of `z` alone, which do not depend
 on the context, and the ends of markers that start to the left of `z`. -/
-theorem relativeAnchors_eq (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) (u z : List α) :
+theorem relativeAnchors_eq {t : ℕ} (ht : 1 ≤ t) (u z : List α) :
     relativeAnchors W t u z = contextAnchors W t z ∪ crossBoundaryMarkerEnds W t u z := by
   obtain ⟨t, rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
   ext p
@@ -561,7 +588,7 @@ theorem relativeAnchors_eq (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) (u
     · exact Or.inr ⟨⟨hp1, hp2⟩, m, hm, hs, by omega⟩
   · rintro (hp | ⟨⟨hp1, hp2⟩, m, hm, hs, -⟩)
     · obtain ⟨hle, m, hm, hs⟩ := (mem_contextAnchors_succ W).mp hp
-      have h1 := List.length_pos_iff.mpr (marker_ne_nil hne ht hm)
+      have h1 := List.length_pos_iff.mpr (marker_ne_nil ht hm)
       have h2 := hs.length_le
       simp only [List.length_take] at h2
       exact ⟨⟨by omega, hle⟩, contextAnchors_append_right hp⟩
@@ -570,8 +597,7 @@ theorem relativeAnchors_eq (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t) (u
 /-- No anchor of `z` alone lies at or before the end of a marker that starts to the left of `z`:
 its marker would occur strictly inside the other marker, against the factor antichain
 property. -/
-theorem not_inside_le_crossBoundaryMarkerEnds (hne : ∀ i, W i ≠ []) {t : ℕ} (ht : 1 ≤ t)
-    {u z : List α}
+theorem not_inside_le_crossBoundaryMarkerEnds {t : ℕ} (ht : 1 ≤ t) {u z : List α}
     {p q : ℕ} (hp : p ∈ crossBoundaryMarkerEnds W t u z) (hq : q ∈ contextAnchors W t z)
         (hqp : q ≤ p) : False := by
   obtain ⟨t, rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
@@ -585,7 +611,7 @@ theorem not_inside_le_crossBoundaryMarkerEnds (hne : ∀ i, W i ≠ []) {t : ℕ
   obtain ⟨hlμ, hoμ⟩ := (suffix_take_iff (by omega)).mp hsμ'
   have hlμq : (marker W (t + 1) μ).length ≤ q := by
     have := hsμ.length_le; simp only [List.length_take] at this; omega
-  obtain ⟨heq, -⟩ := marker_occurrences_eq_of_nested hne hν hμ hoν hoμ (by omega) (by omega)
+  obtain ⟨heq, -⟩ := marker_occurrences_eq_of_nested hν hμ hoν hoμ (by omega) (by omega)
   omega
 
 /-- In every context, the ends of markers that start to the left of `z` lie in the set of

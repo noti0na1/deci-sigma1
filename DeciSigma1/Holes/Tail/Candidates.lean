@@ -385,18 +385,6 @@ end Selection
 
 /-! ## Comparisons of a ray with itself and positive cycles -/
 
-/-- Equal window states at the ends of a closed factor make `[c - B, c')` periodic with period
-`c' - c`. -/
-theorem ClosedAt.periodicOn {T : Table α S k} {q0 : S} {x : List α} {B c c' : ℕ}
-    (hcl : ClosedAt T q0 x B c c') : PeriodicOn x (c' - c) (c - B) c' := by
-  intro p hp hpe
-  have h1 := hcl.1
-  have h2 := hcl.2.1
-  have := hcl.window (j := p - (c - B)) (by omega)
-  rw [show c - B + (p - (c - B)) = p by omega,
-    show c' - B + (p - (c - B)) = p + (c' - c) by omega] at this
-  exact this
-
 /-- The ray of a candidate has no admitted comparison with itself beyond those of the original
 word: a comparison with `a ≤ b ≤ J` and equal infinite suffixes forces `a = b`, and the pair at
 equal cuts is a pair of the original hole. -/
