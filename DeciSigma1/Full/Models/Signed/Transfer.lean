@@ -1,0 +1,553 @@
+import DeciSigma1.Full.Closure.Basic
+import DeciSigma1.Full.Models.Pinning
+import DeciSigma1.Satisfiability.Nullary
+import DeciSigma1.Semantics.Classes
+import DeciSigma1.Semantics.FiniteMedian
+
+/-! # Regular and finite solutions that keep finitely many observations
+
+A countermodel of a disjunctive entailment is witnessed by finitely many observations of signed
+configurations: for each query a seed that holds and an exclusion that fails. Each observation is
+equivalent to a ground bound by a finite tree, in the order with variance
+(`observation_bound`). This module shows that finitely many ground bounds that hold in some
+solution hold in a regular solution (`boundRealization_regularTop`), and, when the constraint has a
+finite solution, in a finite solution (`boundRealization_finiteTop`). The regular case adds the
+equations of finite graphs presenting the bounds and uses regular satisfiability; the finite case
+uses the signed translation over the variables `V × Bool`, the median with a finite third input, and
+`finiteBoundPinning`. Finite satisfiability is decidable at every arity (`decideSatFin`).
+
+## Main declarations
+
+- `Signed.Observation`, `Signed.Observation.bound`, `Signed.observation_bound`: observations
+  of signed configurations as ground bounds.
+- `Signed.BoundRealization`: finitely many satisfiable ground bounds hold in a solution in a given
+  class.
+- `Signed.boundRealization_regularTop`, `Signed.boundRealization_finiteTop`: regular and finite
+  realization.
+- `Signed.satisfiable_regular`, `Signed.decideSatFin`: regular and finite satisfiability at every
+  arity.
+-/
+
+namespace DeciSigma1.Full.Models.Signed.FinitePinning
+open DeciSigma1.Semantics
+open DeciSigma1.Constraints
+
+variable {n : ℕ} {V : Type*}
+
+/-- The signed translation of a literal over the variables `V × Bool`: its covariant form on the
+positive copies and its dual form on the negative copies. -/
+def signedLit (c : Fin n → Bool) : LitT n V → List (LitT n (V × Bool))
+  | .le u v => [.le (u, false) (v, false), .le (v, true) (u, true)]
+  | .fLe a u => [.fLe (fun i => (a i, c i)) (u, false),
+      .leF (u, true) (fun i => (a i, !(c i)))]
+  | .leF u a => [.leF (u, false) (fun i => (a i, c i)),
+      .fLe (fun i => (a i, !(c i))) (u, true)]
+  | .eqBot u => [.eqBot (u, false), .eqTop (u, true)]
+  | .eqTop u => [.eqTop (u, false), .eqBot (u, true)]
+
+/-- The signed translation of a flat constraint. -/
+def signed (c : Fin n → Bool) (χ : List (LitT n V)) : List (LitT n (V × Bool)) :=
+  χ.flatMap (signedLit c)
+
+/-- The signed assignment of an assignment with variance: the normalizations of each value at both
+polarities. -/
+def normalize (c : Fin n → Bool) (ρ : V → Semantics.Tree n) (z : V × Bool) : Semantics.Tree n :=
+  Tree.normalize c z.2 (ρ z.1)
+
+/-- The sign dual of a signed assignment. -/
+def signDual (A : V × Bool → Semantics.Tree n) (z : V × Bool) : Semantics.Tree n :=
+  Tree.dual (A (z.1, !z.2))
+
+/-- The assignment with variance decoded from the positive copies. -/
+def decode (c : Fin n → Bool) (A : V × Bool → Semantics.Tree n) (v : V) : Semantics.Tree n :=
+  Tree.normalize c false (A (v, false))
+
+theorem normalize_decode (c : Fin n → Bool) {A : V × Bool → Semantics.Tree n}
+    (h : signDual A = A) : normalize c (decode c A) = A := by
+  funext ⟨v, s⟩
+  cases s
+  · simp [normalize, decode]
+  · have hh := congrFun h (v, true)
+    simpa [normalize, decode, signDual] using hh
+
+@[simp] theorem sat_signed_iff (c : Fin n → Bool) (A : V × Bool → Semantics.Tree n)
+    (χ : List (LitT n V)) :
+    SatT (fun _ => false) A (signed c χ) ↔
+      ∀ l ∈ χ, SatT (fun _ => false) A (signedLit c l) := by
+  constructor
+  · intro h l hl m hm
+    exact h m (List.mem_flatMap.mpr ⟨l, hl, hm⟩)
+  · intro h m hm
+    obtain ⟨l, hl, hm⟩ := List.mem_flatMap.mp hm
+    exact h l hl m hm
+
+theorem holds_normalize_iff (c : Fin n → Bool) (ρ : V → Semantics.Tree n) (l : LitT n V) :
+    SatT (fun _ => false) (normalize c ρ) (signedLit c l) ↔ HoldsT c ρ l := by
+  cases l <;> simp [signedLit, SatT, HoldsT, normalize, treeLe_iff_normalize,
+    normalize_node, ← dual_node, Function.comp_def]
+
+theorem sat_normalize_iff (c : Fin n → Bool) (ρ : V → Semantics.Tree n)
+    (χ : List (LitT n V)) :
+    SatT (fun _ => false) (normalize c ρ) (signed c χ) ↔ SatT c ρ χ := by
+  rw [sat_signed_iff]
+  simp_rw [holds_normalize_iff]
+  rfl
+
+theorem sat_signDual {c : Fin n → Bool} {A : V × Bool → Semantics.Tree n}
+    {χ : List (LitT n V)} (h : SatT (fun _ => false) A (signed c χ)) :
+    SatT (fun _ => false) (signDual A) (signed c χ) := by
+  rw [sat_signed_iff] at h ⊢
+  intro l hl
+  have hh := h l hl
+  cases l <;> simpa [signedLit, SatT, HoldsT, signDual, ← dual_node, Function.comp_def,
+    and_comm] using hh
+
+theorem sat_decode (c : Fin n → Bool) {A : V × Bool → Semantics.Tree n}
+    {χ : List (LitT n V)} (h : SatT (fun _ => false) A (signed c χ))
+    (hf : signDual A = A) : SatT c (decode c A) χ := by
+  apply (sat_normalize_iff c _ χ).mp
+  rwa [normalize_decode c hf]
+
+/-- The median of three covariant solutions of a flat constraint is a covariant solution. -/
+theorem sat_median {A B D : V → Semantics.Tree n} {χ : List (LitT n V)}
+    (ha : SatT (fun _ => false) A χ) (hb : SatT (fun _ => false) B χ)
+    (hd : SatT (fun _ => false) D χ) :
+    SatT (fun _ => false) (fun v => treeMedian (A v) (B v) (D v)) χ := by
+  intro l hl
+  have h₁ := ha l hl
+  have h₂ := hb l hl
+  have h₃ := hd l hl
+  cases l with
+  | le u v =>
+    simp only [HoldsT, treeLe_false_iff_le] at *
+    exact treeMedian_mono h₁ h₂ h₃
+  | fLe a u =>
+    simp only [HoldsT, treeLe_false_iff_le] at *
+    have hh := treeMedian_mono h₁ h₂ h₃
+    simpa only [treeMedian_node, Function.comp_def] using hh
+  | leF u a =>
+    simp only [HoldsT, treeLe_false_iff_le] at *
+    have hh := treeMedian_mono h₁ h₂ h₃
+    simpa only [treeMedian_node, Function.comp_def] using hh
+  | eqBot u =>
+    change treeMedian (A u) (B u) (D u) = Tree.bot
+    change A u = Tree.bot at h₁
+    change B u = Tree.bot at h₂
+    simp [h₁, h₂]
+  | eqTop u =>
+    change treeMedian (A u) (B u) (D u) = Tree.top
+    change A u = Tree.top at h₁
+    change B u = Tree.top at h₂
+    simp [h₁, h₂]
+
+/-- The finite symmetrization of a finite signed assignment, with a finite third input `D`. -/
+def symmetrize (c : Fin n → Bool) (A : V × Bool → FTree n)
+    (D : V → FTree n) (z : V × Bool) : FTree n :=
+  FiniteMedian.median (A z) ((A (z.1, !z.2)).dual)
+      ((D z.1).normalize c z.2)
+
+@[simp] theorem symmetrize_toTree (c : Fin n → Bool) (A : V × Bool → FTree n)
+    (D : V → FTree n) (z : V × Bool) :
+    (symmetrize c A D z).toTree =
+      treeMedian (A z).toTree (signDual (FTree.toTree ∘ A) z)
+        (normalize c (FTree.toTree ∘ D) z) := by
+  simp [symmetrize, signDual, normalize]
+
+theorem symmetrize_fixed (c : Fin n → Bool) (A : V × Bool → FTree n)
+    (D : V → FTree n) :
+    signDual (FTree.toTree ∘ symmetrize c A D) =
+      FTree.toTree ∘ symmetrize c A D := by
+  funext ⟨v, s⟩
+  simp only [signDual, Function.comp_apply, symmetrize_toTree, normalize,
+    dual_treeMedian, dual_involutive, Bool.not_not, normalize_not]
+  rw [treeMedian_swap]
+
+theorem symmetrize_sat {c : Fin n → Bool} {A : V × Bool → FTree n}
+    {D : V → FTree n} {χ : List (LitT n V)}
+    (ha : SatT (fun _ => false) (FTree.toTree ∘ A) (signed c χ))
+    (hd : SatT c (FTree.toTree ∘ D) χ) :
+    SatT (fun _ => false) (FTree.toTree ∘ symmetrize c A D) (signed c χ) := by
+  have hh := sat_median ha (sat_signDual ha) ((sat_normalize_iff c _ χ).mpr hd)
+  simpa only [Function.comp_def, symmetrize_toTree] using hh
+
+end DeciSigma1.Full.Models.Signed.FinitePinning
+
+namespace DeciSigma1.Full.Models
+open DeciSigma1.Semantics
+
+variable {n : ℕ}
+
+/-- Truth of a ground bound in the order with variance `c`. -/
+def GroundBound.HoldsWithVariance {V : Type*} (c : Fin n → Bool) (ρ : V → Semantics.Tree n)
+    (b : GroundBound n V) : Prop :=
+  if b.lower then Tree.Le c b.tree.toTree (ρ b.var)
+  else Tree.Le c (ρ b.var) b.tree.toTree
+
+end DeciSigma1.Full.Models
+
+namespace DeciSigma1.Full.Models.Signed
+
+open DeciSigma1.Semantics
+open DeciSigma1.Full.Models DeciSigma1.Constraints
+
+variable {n : ℕ}
+
+namespace FinitePinning
+variable {V : Type*}
+
+/-- The bound on the copy of sign `s`: the negative copy carries the dual bound. -/
+def pin (c : Fin n → Bool) (b : GroundBound n V) (s : Bool) : GroundBound n (V × Bool) :=
+  ⟨(b.var, s), Bool.xor b.lower s, b.tree.normalize c s⟩
+
+/-- The bounds on both signed copies. -/
+def pins (c : Fin n → Bool) (B : List (GroundBound n V)) : List (GroundBound n (V × Bool)) :=
+  B.flatMap fun b => [pin c b false, pin c b true]
+
+theorem pins_iff (c : Fin n → Bool) (B : List (GroundBound n V))
+    (A : V × Bool → Semantics.Tree n) :
+    (∀ p ∈ pins c B, p.Holds A) ↔ ∀ b ∈ B, ∀ s, (pin c b s).Holds A := by
+  constructor
+  · intro h b hb s
+    apply h
+    apply List.mem_flatMap.mpr
+    exact ⟨b, hb, by cases s <;> simp⟩
+  · intro h p hp
+    obtain ⟨b, hb, hp⟩ := List.mem_flatMap.mp hp
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+    rcases hp with rfl | rfl
+    · exact h b hb false
+    · exact h b hb true
+
+theorem pin_normalize_iff (c : Fin n → Bool) (b : GroundBound n V) (s : Bool)
+    (ρ : V → Semantics.Tree n) :
+    (pin c b s).Holds (normalize c ρ) ↔ b.HoldsWithVariance c ρ := by
+  obtain ⟨v, lower, g⟩ := b
+  cases lower <;> cases s <;>
+    simp [pin, GroundBound.Holds, GroundBound.HoldsWithVariance, normalize, treeLe_iff_normalize]
+
+theorem pins_normalize_iff (c : Fin n → Bool) (B : List (GroundBound n V))
+    (ρ : V → Semantics.Tree n) :
+    (∀ p ∈ pins c B, p.Holds (normalize c ρ)) ↔ ∀ b ∈ B, b.HoldsWithVariance c ρ := by
+  simp only [pins_iff, pin_normalize_iff, forall_const]
+
+/-- The sign dual of `A` satisfies the bound on the copy of sign `s` exactly when `A` satisfies the
+bound on the copy of sign `!s`. -/
+theorem pin_signDual_iff (c : Fin n → Bool) (b : GroundBound n V) (s : Bool)
+    (A : V × Bool → Semantics.Tree n) :
+    (pin c b s).Holds (signDual A) ↔ (pin c b (!s)).Holds A := by
+  obtain ⟨v, lower, g⟩ := b
+  cases lower <;> cases s <;>
+    simp only [pin, GroundBound.Holds, FTree.toTree_normalize, signDual,
+      Bool.xor_false, Bool.xor_true, Bool.not_false, Bool.not_true,
+      Bool.false_eq_true, ite_false, ite_true, normalize_true]
+  all_goals exact (dual_le_iff _ _).symm.trans (by simp)
+
+theorem pins_signDual {c : Fin n → Bool} {B : List (GroundBound n V)}
+    {A : V × Bool → Semantics.Tree n} (h : ∀ p ∈ pins c B, p.Holds A) :
+    ∀ p ∈ pins c B, p.Holds (signDual A) := by
+  rw [pins_iff] at h ⊢
+  intro b hb s
+  exact (pin_signDual_iff c b s A).mpr (h b hb (!s))
+
+/-- If two assignments satisfy a ground bound, so does their median with any third assignment. -/
+theorem bound_median (b : GroundBound n V) {A A' D : V → Semantics.Tree n}
+    (ha : b.Holds A) (hb : b.Holds A') :
+    b.Holds (fun v => treeMedian (A v) (A' v) (D v)) := by
+  obtain ⟨v, lower, g⟩ := b
+  cases lower with
+  | false =>
+    change A v ≤ g.toTree at ha
+    change A' v ≤ g.toTree at hb
+    change treeMedian (A v) (A' v) (D v) ≤ g.toTree
+    simpa using treeMedian_mono ha hb (le_refl (D v))
+  | true =>
+    change g.toTree ≤ A v at ha
+    change g.toTree ≤ A' v at hb
+    change g.toTree ≤ treeMedian (A v) (A' v) (D v)
+    simpa using treeMedian_mono ha hb (le_refl (D v))
+
+theorem symmetrize_pins {c : Fin n → Bool} {B : List (GroundBound n V)}
+    {A : V × Bool → FTree n} (D : V → FTree n)
+    (h : ∀ p ∈ pins c B, p.Holds (FTree.toTree ∘ A)) :
+    ∀ p ∈ pins c B, p.Holds (FTree.toTree ∘ symmetrize c A D) := by
+  intro p hp
+  have hh := bound_median (D := normalize c (FTree.toTree ∘ D)) p
+    (h p hp) (pins_signDual h p hp)
+  simpa only [Function.comp_def, symmetrize_toTree] using hh
+
+theorem pins_decode {c : Fin n → Bool} {B : List (GroundBound n V)}
+    {A : V × Bool → Semantics.Tree n} (hf : signDual A = A)
+    (h : ∀ p ∈ pins c B, p.Holds A) : ∀ b ∈ B, b.HoldsWithVariance c (decode c A) := by
+  apply (pins_normalize_iff c B _).mp
+  rwa [normalize_decode c hf]
+
+end FinitePinning
+
+/-- Finitely many ground bounds that hold together in some solution with variance hold together in a
+finite solution, provided the constraint has a finite solution. -/
+theorem boundRealization_finiteTop_of_neZero [NeZero n] {V : Type*} (c : Fin n → Bool)
+    (χ : List (LitT n V))
+    (hf : ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT c τ χ)
+    (B : List (GroundBound n V))
+    (hs : ∃ ρ, SatT c ρ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c ρ) :
+    ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT c τ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c τ := by
+  classical
+  obtain ⟨δ, hδfin, hδ⟩ := hf
+  choose D hD using hδfin
+  have hDeq : FTree.toTree ∘ D = δ := funext hD
+  have hf' : SatisfiableIn FiniteTop (fun _ => false) (FinitePinning.signed c χ) := by
+    refine ⟨FinitePinning.normalize c δ, ?_,
+      (FinitePinning.sat_normalize_iff c δ χ).mpr hδ⟩
+    intro z
+    exact ⟨(D z.1).normalize c z.2, by simp [FinitePinning.normalize, hD]⟩
+  obtain ⟨ρ, hρ, hB⟩ := hs
+  obtain ⟨β, hβfin, hβ, hβB⟩ := Models.finiteBoundPinning
+    (FinitePinning.signed c χ) hf' (FinitePinning.pins c B)
+    ⟨FinitePinning.normalize c ρ, (FinitePinning.sat_normalize_iff c ρ χ).mpr hρ,
+      (FinitePinning.pins_normalize_iff c B ρ).mpr hB⟩
+  choose A hA using hβfin
+  have hAeq : FTree.toTree ∘ A = β := funext hA
+  have hAsat : SatT (fun _ => false) (FTree.toTree ∘ A)
+      (FinitePinning.signed c χ) := hAeq.symm ▸ hβ
+  have hApins : ∀ p ∈ FinitePinning.pins c B, p.Holds (FTree.toTree ∘ A) :=
+    hAeq.symm ▸ hβB
+  let M := FinitePinning.symmetrize c A D
+  have hfixed := FinitePinning.symmetrize_fixed c A D
+  refine ⟨FinitePinning.decode c (FTree.toTree ∘ M), ?_, ?_, ?_⟩
+  · intro v
+    exact ⟨(M (v, false)).normalize c false, by simp [FinitePinning.decode]⟩
+  · exact FinitePinning.sat_decode c
+      (FinitePinning.symmetrize_sat hAsat (hDeq.symm ▸ hδ)) hfixed
+  · exact FinitePinning.pins_decode hfixed (FinitePinning.symmetrize_pins D hApins)
+
+end DeciSigma1.Full.Models.Signed
+
+namespace DeciSigma1.Full.Models.Signed
+open DeciSigma1.Full.Closure DeciSigma1.Semantics
+open DeciSigma1.Full.Models DeciSigma1.Constraints
+
+variable {n : ℕ}
+
+/-- An observation of a signed configuration: asserted (`true`) or denied (`false`). -/
+abbrev Observation (n : ℕ) (V : Type*) := Closure.Config n V × Bool
+
+/-- Truth of an observation of a signed configuration for an assignment. -/
+def Observation.Holds {V : Type*} (c : Fin n → Bool) (ρ : V → Semantics.Tree n)
+    (o : Observation n V) : Prop :=
+  if o.2 then o.1 ∈ configSet c ρ else o.1 ∉ configSet c ρ
+
+/-- The same observation on the normalized assignment, in the covariant order. -/
+def Observation.normalized {V : Type*} (o : Observation n V) : Models.Observation n V :=
+  ⟨!o.1.2.1, o.1.1, o.1.2.2, !o.2⟩
+
+theorem observation_normalized {V : Type*} (c : Fin n → Bool)
+    (ρ : V → Semantics.Tree n) (o : Observation n V) :
+    o.normalized.Holds (fun v => Tree.normalize c false (ρ v)) ↔ o.Holds c ρ := by
+  obtain ⟨⟨v, s, w⟩, b⟩ := o
+  cases s <;> cases b <;>
+    simp only [Observation.normalized, Models.Observation.Holds, Observation.Holds,
+      configSet, Set.mem_ofPred_eq, Bool.not_false, Bool.not_true,
+      Bool.false_eq_true, ite_false, ite_true]
+  · simpa only [leaf, Set.mem_ofPred_eq] using mem_nonBottomPrefixes_dual
+      (Tree.normalize c false (ρ v)) w
+  · simpa only [leaf, Set.mem_ofPred_eq, not_not] using
+      (mem_nonBottomPrefixes_dual (Tree.normalize c false (ρ v)) w).not
+  · simpa only [not_not] using (leaf_minus c (ρ v) w).not.symm
+  · exact (leaf_minus c (ρ v) w).symm
+
+/-- The ground bound equivalent to an observation of a signed configuration. -/
+def Observation.bound {V : Type*} (c : Fin n → Bool) (o : Observation n V) :
+    GroundBound n V :=
+  let b := o.normalized.bound
+  ⟨b.var, b.lower, b.tree.normalize c false⟩
+
+/-- An observation of a signed configuration holds exactly when its ground bound holds in the
+order with variance. -/
+theorem observation_bound {V : Type*} (c : Fin n → Bool)
+    (ρ : V → Semantics.Tree n) (o : Observation n V) :
+    (o.bound c).HoldsWithVariance c ρ ↔ o.Holds c ρ := by
+  rw [← observation_normalized, ← Models.observation_bound]
+  simp only [Observation.bound, GroundBound.HoldsWithVariance, GroundBound.Holds,
+    FTree.toTree_normalize, treeLe_iff_normalize, normalize_involutive]
+
+/-- Any finitely many ground bounds that hold together in some solution of `χ` also hold together
+in a solution with values in `C`. -/
+def BoundRealization {V : Type*} (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
+    (χ : List (LitT n V)) : Prop :=
+  ∀ B : List (GroundBound n V),
+    (∃ ρ, SatT c ρ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c ρ) →
+    ∃ τ, (∀ v, C (τ v)) ∧ SatT c τ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c τ
+
+/-- A satisfiable flat constraint with variance has a regular solution, at every arity; at arity
+zero every tree is regular. -/
+theorem satisfiable_regular {V : Type*} [Fintype V] (c : Fin n → Bool)
+    {χ : List (LitT n V)} (h : ∃ ρ, SatT c ρ χ) : SatisfiableIn RegularTop c χ := by
+  cases n with
+  | zero =>
+    obtain ⟨ρ, hρ⟩ := h
+    exact ⟨ρ, fun v => Satisfiability.Nullary.unfold_zero_surjective (ρ v), hρ⟩
+  | succ m => exact Models.satisfiable_regular c h
+
+namespace Graphs
+open DeciSigma1.Full.Models.GraphEquations
+variable {I V : Type*}
+
+theorem sat_equations [Fintype I] (c : Fin n → Bool) (g : I → RGraph n)
+    (τ : States g → Semantics.Tree n) :
+    SatT c τ (equations g) ↔ IsSolution g τ := by
+  simp only [equations, SatT, List.forall_mem_flatMap, Finset.mem_toList,
+    Finset.mem_univ, forall_const]
+  constructor
+  · intro h i q
+    have hh := h ⟨i,q⟩
+    cases hl : (g i).label q <;>
+      simp only [equationsAt, hl, List.mem_cons, List.not_mem_nil, or_false,
+        forall_eq_or_imp, forall_eq, HoldsT, rhs] at hh ⊢
+    · exact hh
+    · exact treeLe_antisymm hh.2 hh.1
+    · exact hh
+  · intro h ⟨i,q⟩
+    have hh := h i q
+    cases hl : (g i).label q <;>
+      simp only [equationsAt, hl, List.mem_cons, List.not_mem_nil, or_false,
+        forall_eq_or_imp, forall_eq, HoldsT, rhs] at hh ⊢
+    · exact hh
+    · rw [hh]; exact ⟨treeLe_refl _ _, treeLe_refl _ _⟩
+    · exact hh
+
+/-- A bound between a variable and the unfolding of a graph of the family. -/
+abbrev Binding (V I : Type*) := V × I × Bool
+
+/-- Truth of a binding: the value of the variable is above (`true`) or below (`false`) the unfolding
+of the graph. -/
+def Binding.Holds (c : Fin n → Bool) (g : I → RGraph n) (ρ : V → Semantics.Tree n)
+    (b : Binding V I) : Prop :=
+  if b.2.2 then Tree.Le c (g b.2.1).unfold (ρ b.1) else Tree.Le c (ρ b.1) (g b.2.1).unfold
+
+/-- The literal expressing a binding, relating the variable to the root node of the graph. -/
+def bindingLit (g : I → RGraph n) (b : Binding V I) : LitT n (V ⊕ States g) :=
+  if b.2.2 then .le (.inr ⟨b.2.1, (g b.2.1).root⟩) (.inl b.1)
+  else .le (.inl b.1) (.inr ⟨b.2.1, (g b.2.1).root⟩)
+
+private theorem root_value (g : I → RGraph n) (i : I) :
+    values g ⟨i,(g i).root⟩ = (g i).unfold := rfl
+
+private theorem binding_spec (c : Fin n → Bool) (g : I → RGraph n)
+    (τ : V ⊕ States g → Semantics.Tree n)
+    (h : τ ∘ Sum.inr = values g) (b : Binding V I) :
+    HoldsT c τ (bindingLit g b) ↔ Binding.Holds c g (τ ∘ Sum.inl) b := by
+  have he := congrFun h ⟨b.2.1, (g b.2.1).root⟩
+  simp only [Function.comp_apply, root_value] at he
+  cases hb : b.2.2 <;> simp [bindingLit, Binding.Holds, hb, HoldsT, he]
+
+private theorem sat_map {A B : Type*} {c : Fin n → Bool} (f : A → B) (τ : B → Semantics.Tree n)
+    (χ : List (LitT n A)) :
+    SatT c τ (χ.map (LitT.map f)) ↔ SatT c (τ ∘ f) χ := by
+  simp [SatT]
+
+private theorem sat_append {A : Type*} {c : Fin n → Bool} (τ : A → Semantics.Tree n)
+    (χ ψ : List (LitT n A)) :
+    SatT c τ (χ ++ ψ) ↔
+      SatT c τ χ ∧ SatT c τ ψ := by
+  simp [SatT, or_imp, forall_and]
+
+/-- If some solution of `χ` satisfies finitely many bindings to unfoldings of graphs, some regular
+solution of `χ` satisfies them too. -/
+theorem regularize [Fintype V] [Fintype I] (c : Fin n → Bool)
+    (χ : List (LitT n V)) (g : I → RGraph n) (B : List (Binding V I))
+    (hs : ∃ ρ, SatT c ρ χ ∧ ∀ b ∈ B, Binding.Holds c g ρ b) :
+    ∃ τ, (∀ v, RegularTop (τ v)) ∧ SatT c τ χ ∧
+      ∀ b ∈ B, Binding.Holds c g τ b := by
+  let E : List (LitT n (V ⊕ States g)) :=
+    χ.map (LitT.map Sum.inl) ++
+    (equations g).map (LitT.map Sum.inr) ++ B.map (bindingLit g)
+  obtain ⟨ρ, hρ, hb⟩ := hs
+  have hsE : ∃ ρ, SatT c ρ E := by
+    refine ⟨Sum.elim ρ (values g), ?_⟩
+    simp only [E, sat_append, sat_map]
+    refine ⟨⟨hρ, (sat_equations c g _).mpr (values_isSolution g)⟩, ?_⟩
+    intro l hl
+    obtain ⟨b, hbB, rfl⟩ := List.mem_map.mp hl
+    exact (binding_spec c g _ rfl b).mpr (hb b hbB)
+  obtain ⟨τ, hc, ht⟩ := satisfiable_regular c hsE
+  simp only [E, sat_append, sat_map] at ht
+  have hv : τ ∘ Sum.inr = values g := eq_values_of_isSolution g ((sat_equations c g _).mp ht.1.2)
+  refine ⟨τ ∘ Sum.inl, fun v => hc (.inl v), ht.1.1, ?_⟩
+  intro b hb
+  exact (binding_spec c g τ hv b).mp (ht.2 _ (List.mem_map.mpr ⟨b, hb, rfl⟩))
+
+end Graphs
+
+/-- Finitely many ground bounds that hold together in some solution hold together in a regular
+solution. -/
+theorem boundRealization_regularTop {V : Type*} [Fintype V]
+    (c : Fin n → Bool) (χ : List (LitT n V)) : BoundRealization RegularTop c χ := by
+  classical
+  intro B hs
+  have hg : ∀ i : Fin B.length, ∃ g : RGraph n, g.unfold = (B.get i).tree.toTree := by
+    intro i
+    apply (Characterization.unfold_range_iff _).mpr
+    exact Characterization.subtrees_finite_of_dom_finite _
+      (Characterization.dom_toTree_finite (B.get i).tree)
+  choose g hg using hg
+  let bindings : List (Graphs.Binding V (Fin B.length)) :=
+    (List.finRange B.length).map (fun i => ((B.get i).var, i, (B.get i).lower))
+  have hb (ρ : V → Semantics.Tree n) (i : Fin B.length) :
+      Graphs.Binding.Holds c g ρ ((B.get i).var, i, (B.get i).lower) ↔
+        (B.get i).HoldsWithVariance c ρ := by
+    simp only [Graphs.Binding.Holds, hg, GroundBound.HoldsWithVariance]
+  obtain ⟨ρ, hρ, hB⟩ := hs
+  obtain ⟨τ, hc, ht, hτ⟩ := Graphs.regularize c χ g bindings ⟨ρ, hρ, by
+    simp only [bindings, List.forall_mem_map]
+    intro i _
+    exact (hb ρ i).mpr (hB _ (List.get_mem B i))⟩
+  refine ⟨τ, hc, ht, ?_⟩
+  intro b hbB
+  obtain ⟨i, rfl⟩ := List.mem_iff_get.mp hbB
+  exact (hb τ i).mp (hτ _ (List.mem_map.mpr ⟨i, List.mem_finRange i, rfl⟩))
+
+end DeciSigma1.Full.Models.Signed
+
+namespace DeciSigma1.Full.Models.Signed
+open DeciSigma1.Satisfiability DeciSigma1.Semantics
+open DeciSigma1.Full.Models DeciSigma1.Constraints
+
+variable {n : ℕ}
+
+/-- At arity zero, `χ` has a finite solution exactly when some assignment of labels satisfies
+it. -/
+theorem satFin_nullary_iff {V : Type*} (c : Fin 0 → Bool) (χ : List (LitT 0 V)) :
+    SatFin c χ ↔ ∃ ρ : V → Semantics.Sym, Nullary.satAnyB ρ χ = true := by
+  constructor
+  · rintro ⟨ρ, _, hρ⟩
+    refine ⟨fun v => Satisfiability.Nullary.treeEquiv (ρ v), ?_⟩
+    apply (Nullary.satT_ofSym_iff c _ χ).mp
+    simpa only [Function.comp_def, Satisfiability.Nullary.treeEquiv,
+      Equiv.coe_fn_mk, Satisfiability.Nullary.ofSym_toSym] using hρ
+  · rintro ⟨ρ, hρ⟩
+    exact ⟨Satisfiability.Nullary.ofSym ∘ ρ,
+      fun v => Satisfiability.Nullary.toTree_zero_surjective _,
+      (Nullary.satT_ofSym_iff c ρ χ).mpr hρ⟩
+
+/-- A decision procedure for finite satisfiability with variance, at every arity. -/
+def decideSatFin {V : Type*} [Fintype V] [DecidableEq V]
+    (c : Fin n → Bool) (χ : List (LitT n V)) : Decidable (SatFin c χ) := by
+  cases n with
+  | zero =>
+    letI : Fintype Semantics.Sym := ⟨{Sym.bot, Sym.f, Sym.top}, by intro s; cases s <;> simp⟩
+    exact decidable_of_iff _ (satFin_nullary_iff c χ).symm
+  | succ m => exact Models.decideSatFinOfNeZero c χ
+
+/-- A constraint with a finite solution realizes every finite list of satisfiable ground bounds by a
+finite solution. -/
+theorem boundRealization_finiteTop {V : Type*} (c : Fin n → Bool)
+    (χ : List (LitT n V)) (hf : SatFin c χ) : BoundRealization FiniteTop c χ :=
+  by
+    cases n with
+    | zero =>
+      intro B hs
+      obtain ⟨ρ, hρ, hb⟩ := hs
+      exact ⟨ρ, fun v => Satisfiability.Nullary.toTree_zero_surjective (ρ v), hρ, hb⟩
+    | succ m => exact boundRealization_finiteTop_of_neZero c χ hf
+
+end DeciSigma1.Full.Models.Signed

@@ -1,0 +1,16 @@
+name = "deci_sigma1"
+version = "0.1.0"
+defaultTargets = ["DeciSigma1"]
+
+[leanOptions]
+pp.unicode.fun = true
+autoImplicit = false
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.35.0"
+
+[[lean_lib]]
+name = "DeciSigma1"
+allowNonModules = true
