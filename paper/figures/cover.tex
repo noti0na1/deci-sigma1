@@ -1,0 +1,57 @@
+%% cover -- the cover of a hole on a tracked coordinate.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >={Stealth[length=1.8mm]}, x=1.45cm, y=1cm,
+    st/.style={draw, circle, minimum size=6.5mm, inner sep=0pt},
+    rj/.style={st, double, double distance=1pt},
+    cv/.style={draw, rounded corners=2pt, minimum height=6mm, minimum width=9mm, inner sep=1.5pt}]
+%% the run in M
+\node[st] (m0) at (0,0) {$s_i$};
+\node[st] (m1) at (1,0) {$q$};
+\node[st] (m2) at (2,0) {$q'$};
+\node[rj] (m3) at (3.3,0) {$r_i$};
+\node[rj] (m4) at (5.0,0) {$r'$};
+\draw[->] (m0) -- node[above] {$c_1$} (m1);
+\draw[->] (m1) -- node[above] {$c_2$} (m2);
+\draw[->] (m2) -- node[above] {$c_3$} (m3);
+\draw[->] (m3) to[bend left=22] node[above] {$c_4,\,c_6$} (m4);
+\draw[->] (m4) to[bend left=22] node[below] {$c_5,\,c_7$} (m3);
+\node[left] at (-0.45,0) {in $M$:};
+%% the run in the cover
+\node[cv] (c0) at (0,-1.7) {$(i,s_i)$};
+\node[cv] (c1) at (1,-1.7) {$(i,q)$};
+\node[cv] (c2) at (2,-1.7) {$(i,q')$};
+\node[cv] (c3) at (3.3,-1.7) {$(i,0)$};
+\node[cv] (c4) at (4.3,-1.7) {$(i,1)$};
+\node[cv] (c5) at (5.3,-1.7) {$(i,2)$};
+\node[cv] (c6) at (6.3,-1.7) {$(i,3)$};
+\node[cv] (c7) at (7.3,-1.7) {$(i,4)$};
+\draw[->] (c0) -- node[above] {$c_1$} (c1);
+\draw[->] (c1) -- node[above] {$c_2$} (c2);
+\draw[->] (c2) -- node[above] {$c_3$} (c3);
+\draw[->] (c3) -- node[above] {$c_4$} (c4);
+\draw[->] (c4) -- node[above] {$c_5$} (c5);
+\draw[->] (c5) -- node[above] {$c_6$} (c6);
+\draw[->] (c6) -- node[above] {$c_7$} (c7);
+\node[left] at (-0.45,-1.7) {in $\cov M$:};
+%% projection
+\node[left] at (-0.45,-2.45) {$\proj$:};
+\foreach \x/\l in {0/s_i,1/q,2/q',3.3/r_i,4.3/r',5.3/r_i,6.3/r',7.3/r_i} { \node at (\x,-2.45) {$\l$}; }
+\foreach \x in {0,1,2,3.3,4.3,5.3,6.3,7.3} { \draw[densely dotted, ->] (\x,-2.02) -- (\x,-2.3); }
+\draw[decorate, decoration={brace, mirror, amplitude=4pt}] (-0.3,-2.75) -- (2.3,-2.75)
+  node[midway, below=4pt] {head: the states of $M$};
+\draw[decorate, decoration={brace, mirror, amplitude=4pt}] (2.95,-2.75) -- (7.65,-2.75)
+  node[midway, below=4pt] {rejected tail $c_4c_5c_6c_7$: one counter for each cut};
+\end{tikzpicture}
+\caption{The cover on a tracked coordinate $i$ with $w_i=c_1\cdots c_7$,
+$J_i=3$ and $\ell_i=4$. In $M$ the rejected tail runs twice through the
+cycle of the rejected states $r_i$ and $r'$, so the endpoint $r_i$ is
+visited three times and the word is not fresh. In the cover the tail is
+spelled out by the counters $(i,0),\dots,(i,4)$, the endpoint $(i,4)$ is
+visited once. From each displayed counter, every transition other than the
+displayed next-letter transition leads to the absorbing state $o$, and all
+transitions from $(i,4)$ lead to $o$; other transitions from copies of head
+states follow \cref{def:cover-hole}. On the displayed run, the projection $\proj$
+(last row) maps each state to the state of $M$ at the same cut.}
+\label{fig:cover}
+\end{figure}

@@ -1,0 +1,277 @@
+\section{Fresh Tuples}
+\label{sec:fresh}
+
+This section explains the proof of \cref{thm:fresh}: a minimal fresh tuple
+of a table with $k$ starts and $N$ states has bounded total length. We fix
+such a table and a fresh tuple $W=(w_1,\dots,w_k)$. Full proofs are in
+\cref{app:fresh}.
+
+\subsection{The Idea}\label{sec:fresh-idea}
+
+To shorten $W$ we delete a factor between two cuts of one word that carry
+the same state. This preserves endpoints and visited states, but in general
+not the channels. A channel compares the rest of a target word with a factor
+of a host word. If we delete a factor from the host in the middle of such a
+comparison, the two sides no longer match; and after the deletion the rest
+of some word may match a factor of the edited host that it did not match
+before, at cuts whose states were never compared. Both effects disappear if
+the deletion is \emph{invisible to every comparison}: whenever a comparison
+runs over a deleted factor on one side, the same factor is deleted at the
+corresponding place on the other side.
+
+This suggests deleting a repeated factor at \emph{all} places that look
+alike, in all words at once. The question is what ``look alike'' should
+mean. Comparing bounded windows of letters is not enough, because a
+comparison can run over arbitrarily long equal texts. We therefore cut all
+words into blocks by a rule that depends only on the text, so that equal
+texts are cut in the same way, up to a bounded number of blocks at their left
+ends. The cutting rule is given by \emph{markers}, suffixes of the words
+$w_i$ themselves, and it is iterated: the blocks of one level are grouped
+into the blocks of the next level, until every word is a single block.
+Deleting equal stretches of blocks at equal distances from the right ends of
+equal block sequences is then invisible to comparisons, and a pigeonhole
+argument finds such stretches whenever some block consists of too many
+blocks of the level below.
+
+\subsection{The Marker Hierarchy}\label{sec:fresh-hierarchy}
+
+\begin{definition}[Markers and anchors]\label{def:markers}
+For each \emph{level} $t\ge1$ we define a set $\Act_t$ of \emph{active}
+coordinates and, for $l\in\Act_t$, a \emph{marker} $\mk tl$, a nonempty
+suffix of $w_l$.
+\begin{itemize}
+\item $\Act_1$ consists of the coordinates with a nonempty word, and $\mk 1l$
+  is the last letter of $w_l$.
+\item A \emph{level-$t$ anchor} of a text $u$ is a cut $e\ge1$ of $u$ at
+  which $\mk tm$ ends, for some $m\in\Act_t$. The level-$t$ anchors of the
+  word $w_l$ are its anchors as a text together with its end $\len{w_l}$.
+\item A coordinate $l\in\Act_t$ belongs to $\Act_{t+1}$ if $w_l$ has a
+  level-$t$ anchor $e<\len{w_l}$. Let $e$ be the last such anchor and
+  $\mk tm$ the longest level-$t$ marker that ends at $e$. Then
+  $\mk{t+1}l=\wsuf{w_l}{e-\len{\mk tm}}$.
+\end{itemize}
+The \emph{level-$0$ anchors} of a text are all its cuts $e\ge1$. The
+level-$t$ anchors cut each nonempty word into its \emph{level-$t$ blocks},
+the factors between consecutive anchors, the first block beginning at the
+cut $0$. The \emph{top level} is the largest $t$ with $\Act_t\ne\varnothing$,
+and $0$ if all words are empty.
+\end{definition}
+
+\input{figures/markers}
+
+So the blocks of level $0$ are single letters, the blocks of level $1$ end
+with the last letter of some word, and the marker of the next level consists
+of the last block of the word together with the marker in front of it. A
+coordinate stops being active when its word is a single block.
+
+\begin{example}\label{ex:hierarchy}
+Let $W=(w_1,w_2)$ with $w_1=0010010011$ and $w_2=110$
+(\cref{fig:markers}). The level-$1$
+markers are the letters $1$ and $0$, so every cut is a level-$1$ anchor and
+the level-$1$ blocks are single letters. In $w_1$ the last anchor before the
+end is the cut $9$, where the marker $1$ ends, so $\mk21=11$; in $w_2$ it is
+the cut $2$, and $\mk22=10$. The level-$2$ anchors are the cuts at which $11$
+or $10$ ends: the cuts $4$, $7$ and $10$ of $w_1$, and the cuts $2$ and $3$
+of $w_2$. They cut the words into the level-$2$ blocks
+\[
+  w_1=0010\cdot010\cdot011,\qquad w_2=11\cdot0 .
+\]
+At level $3$ the markers are $\mk31=10\,011$ (the level-$2$ marker $10$ that
+ends at the cut $7$, followed by the last block) and $\mk32=11\,0=w_2$.
+Neither occurs at another place, so the level-$3$ blocks are the whole words,
+no coordinate is active at level $4$, and the top level is $3$.
+\end{example}
+
+The hierarchy has three structural properties. The first is the reason why
+blocks behave well under comparisons.
+
+\begin{lemma}[Markers]\label{lem:markers}
+For every level $t\ge1$:
+\begin{enumerate}
+\item\label{it:mk-anti} \emph{Factor antichain.} If $l,m\in\Act_t$ and
+  $\mk tl$ is a factor of $\mk tm$, then $\mk tl=\mk tm$. Consequently, if an
+  occurrence of an active level-$t$ marker in a text lies inside an
+  occurrence of another one, the two occurrences coincide.
+\item\label{it:mk-two} For $l\in\Act_{t+1}$, the marker $\mk tl$ is a proper
+  suffix of $\mk{t+1}l$, and the text $\mk{t+1}l$ has exactly two level-$t$
+  anchors: the end of the level-$t$ marker it begins with, and its own end.
+\item\label{it:mk-nest} Every level-$(t+1)$ anchor of a text is a level-$t$
+  anchor of it.
+\end{enumerate}
+\end{lemma}
+
+By \eqref{it:mk-nest} the blocks of level $t+1$ are concatenations of blocks
+of level $t$. The freshness of $W$ enters through \cref{lem:distinct}: a
+fixed text has at most $N-1$ nonempty rests of one word $w_l$ as prefixes.
+
+\begin{lemma}[Depth and span]\label{lem:depth-span}
+\begin{enumerate}
+\item\label{it:depth} The top level is at most $k(N-1)$.
+\item\label{it:span} In every text, an occurrence $\wsub uab$ of a
+  level-$(t+1)$ marker contains at most $k(N-1)+2$ level-$t$ anchors $e$ of
+  $u$ with $a<e\le b$.
+\end{enumerate}
+\end{lemma}
+
+For \eqref{it:depth}, a marker of level $t$ has at least $t$ prefixes that
+are suffixes of words, namely the markers nested at its left end, and these
+give rests of words that are prefixes of one text. For \eqref{it:span}, a
+level-$t$ marker that ends inside the occurrence lies inside it, which
+happens at two anchors by \cref{lem:markers}, or it begins to the left of
+it, and then the part inside is a rest of a word and a prefix of the marker.
+
+\subsection{Parses and the Reverse Trie}\label{sec:fresh-trie}
+
+Fix a level $t$ between $0$ and the top level. We call the blocks of level
+$t+1$ \emph{upper blocks} and those of level $t$ \emph{lower blocks}; at the
+top level the upper blocks are the nonempty words. An \emph{upper occurrence}
+is an upper block together with its place, a word and two cuts. Its
+\emph{parse} is the sequence of its lower blocks, a word over the alphabet of
+lower blocks, and for $d\ge0$ its \emph{cut at depth $d$} is the cut that
+lies $d$ lower blocks to the left of its end.
+
+Equal texts are parsed alike only up to their left ends: a marker that
+begins before an upper block can end inside it and create an additional
+anchor there. Different occurrences of one text can therefore have different
+parses, but by \cref{lem:distinct} only at boundedly many places, all to the
+left of the first anchor that the text has on its own
+(\cref{lem:parse-local}). What matters is how parses end. For two parses $Z$
+and $Y$ let $\lcsuf(Z,Y)$ be the number of lower blocks in their longest
+common suffix.
+
+\begin{definition}[Reverse trie]\label{def:trie}
+The \emph{nodes} on the path of a parse $Z$ are $0$, the length of $Z$, and
+the numbers $\lcsuf(Z,Y)$ for the parses $Y$ of all upper occurrences. An
+\emph{edge} is a parse $Z$ with two consecutive nodes $a<b$ on its path. An
+upper occurrence \emph{traverses} the edge if its parse $Y$ satisfies
+$\lcsuf(Y,Z)\ge b$.
+\end{definition}
+
+This is the trie of all parses read from the right; an edge is a stretch of
+a parse along which no other parse branches off. All upper occurrences that
+traverse an edge end with the same $b$ lower blocks, and whether an
+occurrence traverses the edge is decided by a bounded part of the text at
+its right end (\cref{lem:traverse}).
+
+\begin{example}\label{ex:trie}
+In \cref{ex:hierarchy} take $t=1$. The lower blocks are the letters, and the
+upper blocks are the level-$2$ blocks $0010$, $010$, $011$ of $w_1$ and
+$11$, $0$ of $w_2$; the parse of an upper block is the sequence of its
+letters. For $Z=0010$ we have $\lcsuf(Z,010)=3$, $\lcsuf(Z,0)=1$ and
+$\lcsuf(Z,011)=\lcsuf(Z,11)=0$. So the nodes on the path of $Z$ are
+$0,1,3,4$, and its edges are $(Z,0,1)$, $(Z,1,3)$ and $(Z,3,4)$
+(\cref{fig:trie}). The edge $(Z,1,3)$ is traversed by the upper blocks
+$0010$ and $010$ of $w_1$, which end with the same three lower blocks
+$0,1,0$; the edge $(Z,0,1)$ is traversed by these two and by the upper block
+$0$ of $w_2$. The upper block $010$ lies between the cuts $4$ and $7$ of
+$w_1$, and its cuts at the depths $0,1,2,3$ are $7,6,5,4$.
+\end{example}
+
+\input{figures/trie}
+
+\subsection{Block Deletions}\label{sec:fresh-deletion}
+
+For a cut $c$ of a word $w_l$, let $\tau_r(l,c)$ be the text of the
+level-$r$ marker that ends at $c$, if there is one; it is unique by
+\cref{lem:markers}. Let $\omega(l,c)$ be the largest length of these texts
+for $1\le r\le t$, and $0$ if there are none. The \emph{label} of the cut is
+\[
+  \lab(l,c)=\bigl(\tau_1(l,c),\dots,\tau_t(l,c),\;q_l(c-\omega(l,c))\bigr):
+\]
+the markers of all levels up to $t$ that end at the cut, and the state
+before the longest of them. Two cuts of one word with equal labels have the
+same $\omega$ letters to their left and the same states at all distances up
+to $\omega$, in particular the same state. In \cref{ex:hierarchy} with
+$t=2$, the markers $0$ of level $1$ and $10$ of level $2$ end at the cut $7$
+of $w_1$, so $\omega(1,7)=2$ and $\lab(1,7)=(0,\,10,\,q_1(5))$; likewise
+$\lab(1,4)=(0,\,10,\,q_1(2))$. The two labels are equal exactly when
+$q_1(2)=q_1(5)$, and then also $q_1(3)=q_1(6)$ and $q_1(4)=q_1(7)$, because
+the same letters $1,0$ are read from equal states.
+
+Deletions will be restricted to the interior of an edge. The \emph{margin}
+\[
+  \Marg=3kN-k+5
+\]
+is the number of lower blocks that are kept free at both ends of the edge.
+At the end $b$, where the parses branch, the margin ensures that the markers
+ending at the cuts in question lie inside the text that all traversing
+occurrences share, so that their labels can be compared
+(\cref{lem:labels-local}). At the end $a$ it leaves enough common lower
+blocks to the right of a deleted factor to recognize, from the text alone,
+every upper block that traverses the edge (\cref{lem:traverse}).
+
+\begin{definition}[Block deletion]\label{def:block-deletion}
+A \emph{block deletion} at level $t$ consists of an edge $(Z,a,b)$ and two
+depths $i<j$ with $a+\Marg\le i$ and $j\le b-\Marg$ such that, in every upper
+occurrence $o$ that traverses the edge, the cuts of $o$ at the depths $j$ and
+$i$ have equal labels. It deletes, from every traversing upper occurrence,
+the factor between its cuts at the depths $j$ and $i$.
+\end{definition}
+
+\Cref{fig:hierarchy} illustrates the definition. The deleted factors are
+equal words, since traversing occurrences end with the same $b$ lower
+blocks, and at least one factor is deleted. The words of the example are
+far too short for a block deletion, since an edge must have more than
+$2\Marg$ lower blocks; in general, deletions exist as soon as some edge is
+long (\cref{sec:fresh-bound}).
+
+\input{figures/hierarchy}
+
+\begin{theorem}[Block deletions]\label{thm:block-deletion}
+If $W$ is a fresh tuple, the result of a block deletion is a strictly
+shorter tuple that freshly dominates $W$. Hence a minimal fresh tuple admits
+no block deletion, at any level.
+\end{theorem}
+
+The proof has three steps (\cref{app:fresh-deletion}). First, the equal
+labels make every deleted factor a loop of the run, so endpoints are
+preserved, no new state is visited and the result is fresh. Second, the
+deletion \emph{preserves the anchors} of all levels up to $t+1$: a marker
+occurrence of the edited words that runs over a deletion site has only a
+short part to the left of the site, because of the antichain property and of
+\cref{lem:markers}\eqref{it:mk-two}, and this part lies in the window that
+the equal labels make identical on both sides of the deleted factor. So the
+edited words are cut into the same blocks. Third, the channels: consider a
+comparison of the edited tuple that runs over a deletion site of the host.
+The $i$ lower blocks between the site and the end of its upper block survive
+in the host, and they are copied into the target as long as the comparison
+continues. If it continues to the end of the upper block, the target has an
+upper block ending with the same text, which therefore traverses the same
+edge, and so the target has a deletion site at the corresponding cut; the
+deleted factor can be put back on both sides. If the comparison ends earlier,
+the target is a short rest of its word, and the equal labels provide a
+comparison of the original words with the same states. The place of a word
+of the result where a factor was removed is called a \emph{junction}.
+
+\subsection{The Bound}\label{sec:fresh-bound}
+
+On an edge, the label of the cut at a depth $d$ is the same function of the
+state at the top of the edge in every traversing occurrence, when $d$ is at
+least $\Marg$ below the top: by \cref{lem:depth-span} the markers that end
+at this cut lie in the common text of the edge. There are at most
+$(k+1)^tN^N$ such functions. So an edge of more than
+\[
+  E=(k+1)^{kN+1}N^N+2\Marg+1
+\]
+lower blocks has two depths with the same function between its margins, and
+admits a block deletion. In a minimal fresh tuple every edge is therefore
+shorter. This bounds the number of lower blocks of an upper block by the
+number of nodes on its path times $E$, hence by the number of parses. The
+number of parses is at most $2^{k(N-1)}$ times the number of distinct texts
+of upper blocks, and each text of a lower block is the text of an upper
+block one level below. Starting from the top level, where there are at most
+$k$ upper blocks, this gives a bound for every level.
+
+\begin{theorem}[Fresh tuples, with the bound]\label{thm:fresh-bound}
+Let $F=2^{k(N-1)}$, $\nu_0=k+1$ and $\nu_{d+1}=\nu_d+\nu_dF(\nu_dF+2)E$,
+and let $X=(\nu_{kN}F+2)E$. Every minimal fresh tuple of a table with $k$
+starts and $N$ states has total length at most
+\[
+  \FreshB(k,N)=k\,X^{kN+1}\;\le\;\expo_2\bigl((k+N+16)^4\bigr).
+\]
+\end{theorem}
+
+Here $\nu_d$ bounds the number of distinct texts of upper blocks $d$
+levels below the top level. In a minimal fresh tuple every upper block has
+at most $X$ lower blocks at every level, there are at most $kN+1$ levels,
+and the blocks of level $0$ are letters; this gives $k\,X^{kN+1}$.

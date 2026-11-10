@@ -1,0 +1,54 @@
+%% tree-witness -- two trees and the witness path of a failed inequality.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  nd/.style={inner sep=1.5pt, minimum size=4.5mm},
+  mkd/.style={nd, draw, circle, inner sep=0.5pt},
+  ed/.style={thin},
+  wit/.style={line width=1.3pt},
+  lb/.style={font=\scriptsize, inner sep=1pt}]
+%% the tree of x
+\begin{scope}
+  \node[nd] (r) at (0,0) {$f$};
+  \node[nd] (a) at (-0.9,-0.9) {$f$};
+  \node[nd] (b) at (0.9,-0.9) {$\Bot$};
+  \node[nd] (aa) at (-1.6,-1.8) {$\Bot$};
+  \node[mkd] (ab) at (-0.2,-1.8) {$\Top$};
+  \draw[wit] (r) -- node[lb, above left] {$1$} (a);
+  \draw[ed] (r) -- node[lb, above right] {$2$} (b);
+  \draw[ed] (a) -- node[lb, above left] {$1$} (aa);
+  \draw[wit] (a) -- node[lb, above right] {$2$} (ab);
+  \node at (0,0.55) {$\rho(x)$};
+\end{scope}
+%% the tree of y
+\begin{scope}[xshift=4.3cm]
+  \node[nd] (r) at (0,0) {$f$};
+  \node[nd] (a) at (-0.9,-0.9) {$f$};
+  \node[nd] (b) at (0.9,-0.9) {$\Top$};
+  \node[nd] (aa) at (-1.6,-1.8) {$\Bot$};
+  \node[mkd] (ab) at (-0.2,-1.8) {$f$};
+  \node[nd] (aba) at (-0.7,-2.7) {$\Bot$};
+  \node[nd] (abb) at (0.3,-2.7) {$\Bot$};
+  \draw[wit] (r) -- node[lb, above left] {$1$} (a);
+  \draw[ed] (r) -- node[lb, above right] {$2$} (b);
+  \draw[ed] (a) -- node[lb, above left] {$1$} (aa);
+  \draw[wit] (a) -- node[lb, above right] {$2$} (ab);
+  \draw[ed] (ab) -- node[lb, above left] {$1$} (aba);
+  \draw[ed] (ab) -- node[lb, above right] {$2$} (abb);
+  \node at (0,0.55) {$\rho(y)$};
+\end{scope}
+\node[align=left, font=\footnotesize, anchor=west] at (6.3,-1.1)
+  {$\Cone{\sgp}{\rho(x)}=12\,\Dir^*$\\[2pt]
+   $\Cone{\sgm}{\rho(x)}=11\,\Dir^*\cup 2\,\Dir^*$\\[7pt]
+   $\Cone{\sgp}{\rho(y)}=2\,\Dir^*$\\[2pt]
+   $\Cone{\sgm}{\rho(y)}=11\,\Dir^*\cup121\,\Dir^*\cup122\,\Dir^*$};
+\end{tikzpicture}
+\caption{A witness of $\rho(x)\not\le\rho(y)$ for a binary covariant
+constructor. Along the path $w=12$ (thick) the tree $\rho(x)$ reaches $\Top$
+and $\rho(y)$ does not: $w\in\Cone{\sgp}{\rho(x)}\setminus\Cone{\sgp}{\rho(y)}$.
+In the terms of \cref{sec:readers-modes} the query $(x,y)$ fails in mode
+$\Top$ at $w$, with the seed $(x^{\sgp},w)$ and the exclusion
+$(y^{\sgp},w)$.}
+\label{fig:tree-witness}
+\end{figure}

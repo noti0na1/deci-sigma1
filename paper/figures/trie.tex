@@ -1,0 +1,48 @@
+%% trie -- the reverse trie of the running example at level 1.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=1.5cm, y=1cm,
+    nd/.style={circle, draw, fill=white, inner sep=1.3pt},
+    en/.style={circle, draw, fill=black, inner sep=1.3pt},
+    pt/.style={circle, fill=black!40, inner sep=0.7pt}]
+%% depth d is drawn at x = -d; root at the right
+\node[nd] (r) at (0,0) {};
+%% branch ending with 0: parses 0, 010, 0010
+\node[en] (a1) at (-1,0.6) {};
+\node[pt] (a2) at (-2,0.6) {};
+\node[en] (a3) at (-3,0.6) {};
+\node[en] (a4) at (-4,0.6) {};
+\draw (r) -- node[above right, inner sep=1.5pt] {$0$} (a1);
+\draw (a1) -- node[below] {$1$} (a2);
+\draw (a2) -- node[below] {$0$} (a3);
+\draw (a3) -- node[below] {$0$} (a4);
+\node[above=2pt] at (a1) {$0$};
+\node[above=2pt] at (a3) {$010$};
+\node[left=2pt] at (a4) {$Z=0010$};
+%% branch ending with 1: parses 11, 011
+\node[pt] (b1) at (-1,-0.6) {};
+\node[en] (b2) at (-2,-0.6) {};
+\node[en] (b3) at (-3,-0.6) {};
+\draw (r) -- node[below right, inner sep=1.5pt] {$1$} (b1);
+\draw (b1) -- node[above] {$1$} (b2);
+\draw (b2) -- node[above] {$0$} (b3);
+\node[below=2pt] at (b2) {$11$};
+\node[left=2pt] at (b3) {$011$};
+%% edges of the path of Z
+\foreach \a/\b/\l in {0/1/{(Z,0,1)},1/3/{(Z,1,3)},3/4/{(Z,3,4)}} {
+  \draw[decorate, decoration={brace, amplitude=3pt}] (-\b+0.06,1.35) -- (-\a-0.06,1.35)
+    node[midway, above=3pt] {$\l$};
+}
+%% depth axis
+\draw[->, >={Stealth[length=1.8mm]}] (0,-1.65) -- (-4.5,-1.65) node[left] {depth};
+\foreach \d in {0,...,4} { \draw (-\d,-1.58) -- (-\d,-1.72) node[below] {$\d$}; }
+\end{tikzpicture}
+\caption{The reverse trie of \cref{ex:trie}: the parses of the five upper
+blocks, read from the right; the edges of the drawing are labeled with
+lower blocks, here letters. A black node is the end of the parse written
+next to it. The path of
+$Z=0010$ has the nodes $0,1,3,4$; nothing branches off at depth $2$, so
+$(Z,1,3)$ is one edge, which is traversed by the upper blocks $0010$ and
+$010$.}
+\label{fig:trie}
+\end{figure}

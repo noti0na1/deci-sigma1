@@ -1,0 +1,31 @@
+%% abstract -- body only; input inside the abstract environment of main.tex.
+Subtype constraints are inequalities $s\le t$ between type expressions with
+unknowns. With a least type $\Bot$ and a greatest type $\Top$, the subtype order
+is non-structural: it relates trees of different shapes. For a binary
+covariant constructor, the first-order theory of this order is undecidable, already for
+sentences with the quantifier prefix $\exists\forall\exists$, whereas satisfiability of a conjunction of constraints
+is decidable in polynomial time and entailment between constraints was shown
+decidable only recently. We determine the $\Sigma_1$ level of the quantifier
+hierarchy: it is decidable whether a Boolean combination of existential
+($\Sigma_1$) and universal ($\Pi_1$) sentences over subtype constraints is true.
+The result holds for the signature $\BFT$ with one constructor $f$ of any arity
+and any variance, in particular for function types, over arbitrary, regular and
+finite trees, and for the signature $\BF$ with a covariant constructor.
+Satisfiability and entailment are special cases, and so is the entailment of a
+disjunction of $k$ inequalities, to which every sentence reduces. A disjunction can
+be entailed although none of its disjuncts is, so the $k$ failures of a
+countermodel have to be realized by one solution.
+
+We reduce a countermodel to a \emph{hole} of a finite automaton with $k$ start
+states: a tuple of $k$ words, one witness path for each failed inequality, such
+that no forbidden pair of states occurs where the rest of one word is a prefix
+of the rest of another word. The central technical theorem bounds the total
+length of a shortest hole. Its proof has two parts. Words that can be continued forever are
+replaced by ultimately periodic continuations whose mutual constraints form a
+system of difference constraints, and their periodic stretches are then compressed.
+The remaining tuples are shortened by deleting repeated blocks of a hierarchy
+of markers in all words at once. The bound is elementary: four iterated
+exponentials of a number that is polynomial in the size of the automaton for
+a fixed number of queries, and five iterated exponentials of a polynomial in
+the size of the sentence, while the problem is PSPACE-hard. The decision procedures, their
+correctness and the elementary bound are mechanized in Lean~4.

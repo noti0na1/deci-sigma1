@@ -1,0 +1,360 @@
+\section{Proofs for Section~\ref{sec:complexity}: Complexity}
+\label{app:complexity}
+
+\subsection{The Closed Forms of the Bounds}\label{app:complexity-closed}
+
+We prove \cref{thm:elementary}, which contains the closed forms of
+\cref{thm:fresh-bound,thm:tails-bound}. All numbers are natural numbers,
+and $\expo_h$ is as in \cref{sec:complexity}. We use the following
+inequalities, for all $x$, $a$, $b$, $c$ and $h\ge1$:
+\begin{enumerate}[label=\textup{(X\arabic*)}]
+\item\label{it:X1} $x+1\le2^x$, and $N!\le N^N\le2^{N^2}$;
+\item\label{it:X2} $2^a+2^b\le2^{a+b+1}$;
+\item\label{it:X3} $\expo_h(a)+\expo_h(b)\le\expo_h(a+b+1)$ and
+  $\expo_h(a)\cdot\expo_h(b)\le\expo_h(a+b+1)$;
+\item\label{it:X4} $\expo_2(a)^c\le\expo_2(a+c)$.
+\end{enumerate}
+\ref{it:X2} holds because both summands are at most $2^{a+b}$. For
+\ref{it:X3}, the sum is at most $2\expo_h(a+b)\le\expo_h(a+b+1)$, because
+$\expo_{h-1}(a+b+1)\ge\expo_{h-1}(a+b)+1$; the product is
+$2^{\expo_{h-1}(a)+\expo_{h-1}(b)}$, which is $2^{a+b}$ for $h=1$ and at
+most $2^{\expo_{h-1}(a+b+1)}$ for $h\ge2$, by the inequality for sums at the
+height $h-1$. For \ref{it:X4}, $\expo_2(a)^c=2^{c2^a}\le2^{2^c2^a}$.
+
+\subparagraph*{Fresh tuples.}
+Since $\FreshB(0,N)=0$, let $k\ge1$; then $\Marg\le3kN+5$ and
+$F=2^{k(N-1)}\le2^{kN}$. Put $a=k(kN+1)+N^2+7kN+k+12$ and $a'=4a+4$. First,
+$E\le2^a$ and $F\le2^a$: by \ref{it:X1}, $(k+1)^{kN+1}N^N\le
+2^{k(kN+1)}2^{N^2}$, and $2\Marg+1\le6kN+11\le2^{6kN+11}$, so $E\le
+2^{k(kN+1)+N^2+6kN+12}$ by \ref{it:X2}. Second, $\nu_d\le2^{a'3^d}$ for
+every $d$. Indeed $\nu_0=k+1\le2^k$, and if $\nu_d\le2^x$, then
+$\nu_dF\le2^{x+a}$, $\nu_dF+2\le2^{x+a+2}$ and
+\[
+  \nu_{d+1}=\nu_d+\nu_dF(\nu_dF+2)E\le2^x+2^{2x+3a+2}\le2^{2x+3a+3},
+\]
+which is at most $2^{a'3^{d+1}}$ for $x=a'3^d$, because $3a+3\le a'$. Third,
+for $d=kN$, $X=(\nu_dF+2)E\le2^{a'3^d+a+2}\cdot2^a\le2^{2a'3^d}$. Finally,
+with $3^d\le2^{2d}$, \ref{it:X1} and \ref{it:X2},
+\[
+  \FreshB(k,N)=kX^{d+1}\le2^{k+2a'3^d(d+1)}\le2^{2^k+2^{a'+3d+1}}
+  \le\expo_2(k+a'+3d+2),
+\]
+and $k+a'+3d+2=4k^2N+4N^2+31kN+9k+54\le(k+N+16)^4$.
+
+\subparagraph*{Search lengths.}
+For the tails let $k\ge1$ and $N\ge1$, since $\TailB(0,N)=0$. Let $\Qc$,
+$s=\Qc+N$, $\Fb$, $\Lb_r$ and $\Wb_r$ be as in
+\cref{app:tails-closed,app:tails-levels}, for $m=k$ target words, and put
+$C_r=2^{(k+N+10)(s+3)^r}$ for $r\le k$. We show: \emph{if $b+2\le2^t$, then
+$\Lb_r(b)+b+2\le2^{C_rt}$.} Then $t\ge1$. For $r=0$, $b+1\le2^t$ and
+$kb(b+1)/2+1\le(k+1)2^{2t}$, so $\Fb(b)\le2^t\cdot2^N\cdot2^k2^{2t}$ and
+\[
+  \Lb_0(b)+b+2=\Fb(b)+1+b+2\le3\cdot2^{3t+k+N}\le2^{(k+N+5)t}\le2^{C_0t}.
+\]
+For the step from $r$ to $r+1$, let $C=C_r$ and $G(b)=b+\Lb_r(b)$. By
+induction on $j$, $G^j(b)+2\le2^{C^jt}$: apply the statement for $r$ to
+$G^{j}(b)$ and $C^jt$. So $x=G^s(b)$, the window $b^*$ of the recursion,
+satisfies $x+2\le2^{C^st}$; then $\Lb_r(x)+x+2\le2^{C^{s+1}t}$, and
+$y=x+\Lb_r(x)$ satisfies $\Lb_r(y)\le2^{C^{s+2}t}$. Since $b\le x$, we have
+$2\Lb_r(x)+b+4\le2(\Lb_r(x)+x+2)\le2^{C^{s+2}t}$, and
+\[
+  \Lb_{r+1}(b)+b+2=2\Lb_r(x)+\Lb_r(y)+b+4\le2^{C^{s+2}t+1}\le
+  2^{C^{s+3}t}=2^{C_{r+1}t}.
+\]
+
+\subparagraph*{Scales.}
+For $l\ge-1$, the \emph{values} of scale $l$ are the five numbers $e_l$,
+$X_l$, $X_{l-1}$, $Y_l$ and $T_l$; those of scale $-1$ are $1,0,0,0,0$, and
+by \cref{app:tails-levels} the values of scale $l-1$ determine those of
+scale $l$. Let $V=(k+N+10)(s+3)^k+5$, so that $2^V=32\,C_k$. We show:
+\emph{if $H\ge k+N+\Qc+N^2+20$ and the values of scale $l-1$ are at most
+$2^H$, then the values of scale $l$ are at most $2^{2^VH}$.} First,
+\[
+  b_l+2=(N+1)e_{l-1}+(\Qc+2)(X_{l-2}+1)+2\le2^H2^H+2^H(2^H+1)+2\le2^{2H+2}
+  \le2^{4H},
+\]
+so $T'_l=\Lb_k(b_l)\le Z$ for $Z=2^{4C_kH}$, by the bound on search
+lengths. The values of scale $l-1$, $N$, $\Qc$ and $N!\le2^{N^2}$ are at most
+$2^H\le Z$, and $e_l<T'_l\le Z$ by \ref{it:L2}. By the definitions,
+\begin{align*}
+  T_l&\le(Z+2)(3Z+3), \qquad
+  Y_l\le1+(2Z+2)Z^2+Z^2+3(Z+3)Z+2Z,\\
+  X_l&\le(Z+2)(2Z+1)+T_l+Y_l+Z\le2Z^3+11Z^2+26Z+9\le64Z^3 .
+\end{align*}
+Since $T_l,Y_l\le X_l$ and $e_l,X_{l-1}\le Z$, all values of scale $l$ are at
+most $64Z^3=2^{12C_kH+6}\le2^{32C_kH}=2^{2^VH}$.
+
+Let $A=k+N+\Qc+N^2+kN+k(\Qc+3)+20$. The values of scale $-1$ are at most $2^A$,
+so by induction on $l$, applying the last statement with $H=2^{Vl}A\ge A$,
+the values of scale $l$ are at most $2^{2^{V(l+1)}A}$. Let $\ell=3(2k+1)$
+and $H=2^{A+V(\ell+1)}$. Since $2^{V(\ell+1)}A\le H$, the values of scale
+$\ell$, the period bound $D=e_\ell$, and $T'_\ell\le T_\ell$ are at most
+$2^H$.
+
+\subparagraph*{Rejected tails.}
+Let $Z=2^H$. Since $k$ and $\Qc+3$ are at most $A\le H\le Z$, the number $E_0$
+of \cref{app:tails-runcover} satisfies
+\[
+  E_0=k\bigl(T_\ell+(\Qc+3)(3T'_\ell+3)+2(\Qc+3)D\bigr)
+  \le Z\bigl(Z+Z(3Z+3)+2Z^2\bigr)\le9Z^3\le2^{8H}.
+\]
+For the passes of \cref{thm:tails-bound} let $F=2^{k(N-1)}$,
+$\sigma=F(\kappa_D+m_D)$ and $c_n=\phi_D+m_D+((2n+1)F-1)(\kappa_D+m_D)$, so
+that the recurrence reads $E_{r+1}=E_r+(g-r)(c_{g-r}+\sigma E_r)$, and
+$c_n\le c_g$ for $n\le g$. Since $D\ge e_{-1}=1$ and $g\ge1$, we have
+$g\sigma\ge1$, and induction on $r\le g$ gives
+\[
+  E_{r+1}+gc_g\le E_r+gc_g+g\sigma E_r+gc_g\le(1+g\sigma)(E_r+gc_g),
+\]
+so $\TailB(k,N)=E_g\le(1+g\sigma)^g(E_0+gc_g)$.
+Let $G=8H$. The numbers $N$, $N!$, $F$, $D$, $g$ and $E_0$ are at most
+$2^G$, because $N^2$, $kN$ and $g$ are at most $A$. With $\alpha_D=ND$ and
+$m_D=D\cdot N!$ at most $2^{2G}$, we get $\kappa_D+m_D=2\alpha_D+4m_D\le
+2^{2G+3}\le2^{5G}$ and $\phi_D+m_D=6\alpha_D+9m_D\le2^{2G+4}\le2^{6G}$, hence
+$\sigma\le2^{6G}$, $2g+1\le2^{3G}$, $c_g\le\phi_D+m_D+(2g+1)\sigma\le
+2^{10G}$, $1+g\sigma\le2^{8G}$ and $E_0+gc_g\le2^{12G}$. Therefore
+\[
+  \TailB(k,N)\le2^{8Gg+12G}\le2^{16(g+1)G}=2^{128(g+1)H}\le
+  2^{2^{g+7}H}=\expo_2\bigl(A+V(\ell+1)+g+7\bigr).
+\]
+Finally let $R=k+N+20$. Then $\Qc\le4+2kN$, so $s+3\le R^2$ and $\Qc\le R^2$;
+hence $A+g+7=k+N+\Qc+N^2+kN+2k(\Qc+3)+27\le R^4$,
+$V\le(k+N+15)(s+3)^k\le R^{2k+1}$ and $\ell+1=6k+4\le R^2$. So
+$A+V(\ell+1)+g+7\le R^4+R^{2k+3}\le R^{2k+5}$, and
+$\TailB(k,N)\le\expo_2((k+N+20)^{2k+5})$.
+
+\subparagraph*{Small holes.}
+$\Hole(0,N)=\FreshB(0,1)=0$. Let $k\ge1$, $p=(k+N+20)^{2k+5}$ and
+$N'=k(N+\TailB(k,N)+1)+1$, so that $\Hole(k,N)=\FreshB(k,N')$. Since
+$\TailB(k,N)\le\expo_2(p)$ and $x\le\expo_2(x)$, \ref{it:X3} gives
+$N+\TailB(k,N)+1\le\expo_2(N)+\expo_2(p)+\expo_2(0)\le\expo_2(N+p+2)$, then
+$k(N+\TailB(k,N)+1)\le\expo_2(k+N+p+3)$, and
+\[
+  k+N'+16\le\expo_2(k)+\expo_2(k+N+p+3)+\expo_2(16)\le\expo_2(2k+N+p+21).
+\]
+By the bound on fresh tuples and \ref{it:X4},
+\[
+  \Hole(k,N)\le\expo_2\bigl((k+N'+16)^4\bigr)\le
+  \expo_2\bigl(\expo_2(2k+N+p+25)\bigr)=\expo_4(2k+N+p+25),
+\]
+and $2k+N+25\le2R\le2p$, so $2k+N+p+25\le3p\le Rp=(k+N+20)^{2k+6}$. This
+proves \cref{thm:elementary}.
+
+\subsection{Long Witnesses}\label{app:complexity-long}
+
+This subsection gives the construction behind \cref{ex:lcm}. Let $f$ be
+binary and covariant, so the alphabet of the readers is $\Dir=\{1,2\}$.
+
+\subparagraph*{From stopping readers to constraints.}
+A \emph{stopping reader} is a structural reader over $\{1,2\}$; let $S_0$
+be the set of its states other than $\dead$ (it contains the starts). It has a set
+$S_1\subseteq S_0$ of \emph{final} states, such that $\delta(q,c)=\dead$ for
+every $q\in S_1$ and every letter $c$, the rejected states are the final
+states, and $\Adm\subseteq S_0\times S_0$. Conditions \ref{it:S1} and
+\ref{it:S2} hold vacuously. On a run that never reaches $\dead$, a final
+state can only occur at the last cut. Write $\Adm$ as a union of
+\emph{rectangles} $A_1\times B_1,\dots,A_u\times B_u$, for instance of
+single pairs. The constraint $\Gamma_R$ of a stopping reader $R$ with $k$
+starts has the variables $x_q$ and $y_q$ for $q\in S_0$, a variable $b$ and
+variables $z_1,\dots,z_u$; we write $x_\dead=y_\dead=b$. Its literals are
+\begin{align*}
+ & b=\Bot, \\
+ & x_q\le f(x_{\delta(q,1)},x_{\delta(q,2)}) && \text{for }q\in S_0,\\
+ & f(y_{\delta(q,1)},y_{\delta(q,2)})\le y_q && \text{for }q\in S_0\setminus S_1,\\
+ & x_p\le z_h\ \text{ and }\ z_h\le y_q && \text{for }p\in A_h,\ q\in B_h,
+   \ 1\le h\le u,
+\end{align*}
+and the queries are $(x_{s_i},y_{s_i})$ for the starts $s_i$. The
+\emph{witness tuples} of a countermodel $\rho$ are the tuples $W$ of paths
+such that, for some vector of modes, $S_\rho$ contains the seeds and none of
+the exclusions of the queries along $W$ (\cref{sec:readers-modes}).
+
+\begin{lemma}[Stopping readers]\label{lem:stopping}
+The constraint $\Gamma_R$ has a finite solution. For each of the classes
+$\Trees$, $\TreesReg$ and $\TreesFin$, the witness tuples of the
+countermodels of $\Gamma_R$ and its queries in the class are exactly the
+holes of $R$.
+\end{lemma}
+
+\begin{proof}
+All $x_q$, $z_h$ and $b$ equal to $\Bot$ and all $y_q$ equal to $\Top$ is a
+finite solution. Since $f$ is covariant, \cref{tab:clauses} gives the
+following moves, where $q\in S_0$, $i\in\{1,2\}$ and $w$ is a path:
+\begin{itemize}
+\item $(x_q^{\sgp},iw)\to(x_{\delta(q,i)}^{\sgp},w)$ and
+  $(x_{\delta(q,i)}^{\sgm},w)\to(x_q^{\sgm},iw)$;
+\item for $q\notin S_1$: $(y_{\delta(q,i)}^{\sgp},w)\to(y_q^{\sgp},iw)$ and
+  $(y_q^{\sgm},iw)\to(y_{\delta(q,i)}^{\sgm},w)$;
+\item for $p\in A_h$ and $q\in B_h$: $(x_p^{\sgp},w)\to(z_h^{\sgp},w)\to
+  (y_q^{\sgp},w)$ and $(y_q^{\sgm},w)\to(z_h^{\sgm},w)\to(x_p^{\sgm},w)$.
+\end{itemize}
+The only fact is $(b^{\sgm},\eps)$, and $\NegV$ consists of the $x_q^{\sgp}$
+for $q\in S_0$ and the $y_q^{\sgm}$ for $q\in S_0\setminus S_1$. On the
+negative signed variables the moves have a simple structure: from a
+variable $y_q^{\sgm}$ they pop a letter, to a $y^{\sgm}$ or to $b^{\sgm}$, or
+pass to a $z_h^{\sgm}$ without changing the path; from a $z_h^{\sgm}$ they
+pass to an $x_p^{\sgm}$; and from an $x_q^{\sgm}$ or $b^{\sgm}$ they push a
+letter. So along a derivation by moves the negative variables are first of
+the form $y^{\sgm}$, while letters are popped, and then of the forms
+$z^{\sgm}$, $x^{\sgm}$ and $b^{\sgm}$, while letters are pushed. In
+particular $\FctV=\{b^{\sgm}\}$. For $q\in S_0$ let
+\begin{align*}
+  P_q&=\{y_q^{\sgm}\}\cup\{z_h^{\sgm}\mid q\in B_h\}\cup
+    \{x_p^{\sgm}\mid(p,q)\in\Adm\},\\
+  Q_q&=\{x_q^{\sgm}\}\cup\{z_h^{\sgm}\mid q\in A_h\}\cup
+    \{y_r^{\sgm}\mid(q,r)\in\Adm\}.
+\end{align*}
+
+\emph{Claim.} Let $s\in S_0$, let $v$ be a path and $q(0),\dots,q(\len v)$
+the run of $R$ on $v$ from $s$. If no $q(a)$ is $\dead$, then
+$\Up(y_s^{\sgm},v)=P_{q(\len v)}$ and $\Dn(x_s^{\sgm},v)=Q_{q(\len v)}$. If
+$q(\len v)=\dead$ and no earlier $q(a)$ is $\dead$, then
+$\Dn(x_s^{\sgm},v)=\{b^{\sgm}\}$. Indeed, a derivation by moves from
+$(y_s^{\sgm},v)$ to an atom with the empty path pops the letters of $v$ one
+by one, through the atoms $(y_{q(a)}^{\sgm},\wsuf va)$, which is possible
+because $q(a)\notin S_1$ for $a<\len v$, and leaves the variables $y^{\sgm}$
+only at the empty path, since afterwards only pushes follow; at the empty
+path it can pass from $y_{q(\len v)}^{\sgm}$ to the $z_h^{\sgm}$ with
+$q(\len v)\in B_h$ and then to the $x_p^{\sgm}$ with $p\in A_h$. A derivation
+from an atom with the empty path to $(x_s^{\sgm},v)$ pops nothing, so it
+consists of moves at the empty path followed by pushes. Read backwards, the
+pushes follow the run: the atom before $(x_{q(a)}^{\sgm},\wsuf va)$ is
+$(x_{q(a+1)}^{\sgm},\wsuf v{a+1})$. If the run avoids $\dead$, they start at
+$(x_{q(\len v)}^{\sgm},\eps)$, which can be reached at the empty path from
+the $z_h^{\sgm}$ with $q(\len v)\in A_h$ and from the $y_r^{\sgm}$ with
+$r\in B_h$. If $q(\len v)=\dead$, they start at $(b^{\sgm},\eps)$, which is
+reached by moves only from atoms with a nonempty path.
+
+\emph{Bottom modes.} Let all modes be $\Bot$, so that the seeds are
+$(y_{s_i}^{\sgm},w_i)$ and the exclusions $(x_{s_i}^{\sgm},w_i)$. By
+\cref{lem:runs-det} and the claim, coordinate $i$ of the reader
+$M_{\bar\mu}$ of \cref{def:compile} is in the state
+$\varphi(q)=(P_q,Q_q)$ at every cut at which the run of $R$ on $w_i$ is in
+the state $q\ne\dead$, since $b^{\sgm}\notin Q_q$ and $P_q$ has no positive
+variables; and it is dead at the first cut at which the run of $R$ reaches
+$\dead$, because $b^{\sgm}\in\FctV$. Moreover $\varphi(q)$ is rejected if
+and only if $P_q\cap\NegV=\varnothing$, that is, if and only if $q\in S_1$.
+And $(\varphi(h),\varphi(t))$ is admitted if and only if $P_t\cap(Q_h\cup
+\flip{P_h})\ne\varnothing$; since $\flip{P_h}$ has only positive variables,
+this means $P_t\cap Q_h\ne\varnothing$, which holds if and only if
+$(h,t)\in\Adm$: through $y_t^{\sgm}\in Q_h$, through $x_h^{\sgm}\in P_t$, or
+through a $z_g^{\sgm}$ with $h\in A_g$ and $t\in B_g$. So the holes of
+$M_{\bar\mu}$ are exactly the holes of $R$.
+
+\emph{Other modes.} Let $\mu_i=\Top$, with the seed $(x_{s_i}^{\sgp},w_i)$.
+From $(x_q^{\sgp},iw)$ there is a move to $(x_{\delta(q,i)}^{\sgp},w)$. If the
+run of $R$ on $w_i$ never reaches $\dead$, these moves lead from the seed to
+$(x_q^{\sgp},\eps)$ for its endpoint $q\in S_0$, so the upper set at the
+endpoint meets $\NegV$, and the endpoint of coordinate $i$ is not rejected.
+If the run reaches $\dead$ first at the cut $a$, they lead from
+$(x_{s_i}^{\sgp},\wpre{w_i}a)$ to $(b^{\sgp},\eps)$, so the upper set at the
+cut $a$ contains $b^{\sgp}$, its opposite is the fact $b^{\sgm}$, and the
+coordinate is dead at the cut $a$ or earlier. In both cases coordinate $i$
+is not eligible, and $M_{\bar\mu}$ has no hole.
+
+By \cref{thm:reduction}, the witness tuples of the countermodels over
+$\Trees$ are therefore the holes of $R$. A countermodel over $\TreesReg$ or
+$\TreesFin$ is one over $\Trees$. Conversely, for a hole of $R$ there is a
+countermodel over $\Trees$ with this witness tuple; its $2k$ observations are
+bounds by finite trees (\cref{lem:observations}), and since $\Gamma_R$ has a
+finite solution, \cref{lem:pinning} gives a finite solution that satisfies
+them, a finite countermodel with the same witness tuple.
+\end{proof}
+
+The constraint $\Gamma_R$ has $2\len{S_0}+1+u$ variables and at most
+$2\len{S_0}+1+\sum_h(\len{A_h}+\len{B_h})$ literals.
+
+\subparagraph*{The modular reader.}
+Let $r\ge1$ and $p_1,\dots,p_r\ge1$, with least common multiple $L$. The
+first component has \emph{boundary} states $b_1,\dots,b_r$, \emph{cycle}
+states $c_{j,z}$ for $1\le j\le r$ and $0\le z<p_j$, and a final state
+$\mathsf f_1$, with the transitions
+\[
+  \begin{aligned}
+  \delta(b_j,1)&=c_{j,1\bmod p_j}, &
+  \delta(c_{j,z},1)&=c_{j,(z+1)\bmod p_j},\\
+  \delta(b_j,2)&=b_1, &
+  \delta(c_{j,z},2)&=
+  \begin{cases}
+    b_{j+1}&\text{if }z=0\text{ and }j<r,\\
+    \mathsf f_1&\text{if }z=0\text{ and }j=r,\\
+    b_1&\text{if }z\ne0.
+  \end{cases}
+  \end{aligned}
+\]
+So after $e\ge1$ letters $1$ from $b_j$ the state is $c_{j,e\bmod p_j}$. The
+second component is a disjoint copy of this construction for the single
+modulus $1$, with the boundary state $b'_1$, the cycle state $c'_{1,0}$ and
+the final state $\mathsf f_2$. The reader $R_{\mathrm{mod}}$ has the states of both
+components and $\dead$, the starts $b_1$ and $b'_1$, the final states $\mathsf f_1$
+and $\mathsf f_2$, whose transitions lead to $\dead$, and
+\[
+  \Adm=(\mathrm{Bnd}\times\mathrm{Cyc})\cup(\mathrm{Cyc}\times\mathrm{Bnd}),
+\]
+where $\mathrm{Bnd}$ and $\mathrm{Cyc}$ are the sets of all boundary and of
+all cycle states of both components. It is a stopping reader with
+$r+p_1+\dots+p_r+5$ states, and $\Adm$ consists of two rectangles.
+
+\begin{lemma}[The modular reader]\label{lem:modular}
+The holes of $R_{\mathrm{mod}}$ are exactly the tuples
+$W_t=((1^{tL}2)^r,1^{tL}2)$ with $t\ge1$.
+\end{lemma}
+
+\begin{proof}
+Let $(w_1,w_2)$ be a hole. The run of $w_1$ avoids $\dead$ and ends in the
+final state $\mathsf f_1$, which can only occur at the last cut and is entered only
+by the letter $2$ from $c_{r,0}$. Write $w_1=1^{a_1}2\,1^{a_2}2\cdots
+1^{a_h}2$ with $h\ge1$ and $a_j\ge0$. Every letter $2$ before the last one
+leads to a boundary state, so the cuts at the beginnings of the blocks
+$1^{a_j}2$ carry boundary states, and the cuts inside a block after at
+least one letter $1$ carry cycle states. The last block has $\ell=a_h\ge1$,
+because its letter $2$ is read in a cycle state.
+
+All blocks have the length of the last one. If $a_j<\ell$ for some $j<h$,
+the cut at the beginning of block $j$ carries a boundary state and its rest
+begins with $1^{a_j}2$, and the cut of the last block after $\ell-a_j\ge1$
+letters $1$ carries a cycle state and has the rest $1^{a_j}2$; this gives a
+pair of $\mathrm{Bnd}\times\mathrm{Cyc}$ on the channel from $1$ to $1$, also
+for $a_j=0$. If $a_j>\ell$, the cut of block $j$ after $a_j-\ell\ge1$
+letters $1$ carries a cycle state and its rest begins with $1^\ell2$, and the
+beginning of the last block carries a boundary state and has the rest
+$1^\ell2$; this gives a pair of $\mathrm{Cyc}\times\mathrm{Bnd}$. Both are
+excluded, so $a_j=\ell$ for all $j$.
+
+A block $1^\ell2$ leads from $b_j$ to $b_{j+1}$, or to $\mathsf f_1$ for $j=r$, if
+$p_j$ divides $\ell$, and back to $b_1$ otherwise. If some $p_j$ does not
+divide $\ell$ and $j_0$ is the least such index, the blocks lead from $b_1$
+through $b_2,\dots,b_{j_0}$ and back to $b_1$, so the run never reaches
+$\mathsf f_1$. Hence every $p_j$ divides $\ell$, every block advances one stage, and
+since $\mathsf f_1$ occurs only at the last cut, $h=r$: $w_1=(1^\ell2)^r$ and $L$
+divides $\ell$. In the same way $w_2=1^{\ell'}2$ with $\ell'\ge1$.
+
+If $\ell<\ell'$, the cut $0$ of $w_1$ carries the boundary state $b_1$ and
+its rest begins with $1^\ell2$, and the cut of $w_2$ after $\ell'-\ell$
+letters $1$ carries the cycle state $c'_{1,0}$ and has the rest $1^\ell2$:
+a pair of $\mathrm{Bnd}\times\mathrm{Cyc}$ on the channel from $1$ to $2$. If
+$\ell>\ell'$, the cut of $w_1$ after $\ell-\ell'$ letters $1$ carries a cycle
+state and its rest begins with $1^{\ell'}2$, and the cut $0$ of $w_2$
+carries $b'_1$ and has the rest $1^{\ell'}2$: a pair of
+$\mathrm{Cyc}\times\mathrm{Bnd}$. So $\ell=\ell'$, and $\ell=tL$ with $t\ge1$.
+
+Conversely, in $W_t$ both runs avoid $\dead$ and end in final states. A cut
+at the beginning of a block carries a boundary state, and its rest begins
+with $1^{tL}2$; a cut inside a block after $d$ letters $1$, $1\le d\le tL$,
+carries a cycle state, and its rest begins with $1^{tL-d}2$; the last cuts
+carry final states. An admitted pair needs a target in a boundary or a cycle
+state, whose rest begins with $1^{e'}2$, and a host in the other kind of
+state, whose rest begins with $1^e2$, with $e\ne e'$. Then the two rests
+differ at the position $\min(e,e')$, so the rest of the target is not a
+prefix of the rest of the host. So $W_t$ is a hole.
+\end{proof}
+
+So the shortest hole of $R_{\mathrm{mod}}$ has total length $(r+1)(L+1)$.
+By \cref{lem:stopping}, the constraint $\Gamma_{R_{\mathrm{mod}}}$, with two
+variables $z_1$ and $z_2$ for the two rectangles, has
+$2(r+p_1+\dots+p_r+4)+3$ variables and $O(p_1+\dots+p_r)$ literals, has
+finite solutions, and the witness tuples of its countermodels over each of
+the three classes are exactly the tuples $W_t$. This proves the claims of
+\cref{ex:lcm}; with the first $r$ primes as moduli, the sum of the moduli is
+$\Theta(r^2\log r)$ and $L$, their product, is $2^{\Theta(r\log r)}$, by the
+prime number theorem.

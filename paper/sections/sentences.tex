@@ -1,0 +1,114 @@
+\section{From Sentences to Disjunctive Entailment}
+\label{sec:sentences}
+
+This section reduces the truth of a sentence to finitely many disjunctive
+entailments between flat constraints. The reduction is the same for every
+class of trees that contains $\Bot$ and $\Top$ and is closed under the
+constructor; we fix such a class $\Cls$.
+
+\subsection{Normal Forms}\label{sec:sent-nf}
+
+The truth value of a Boolean combination is computed from the truth values of
+its component sentences, and a $\Pi_1$ sentence $\forall\bar x.\,\varphi$ is
+true exactly when the $\Sigma_1$ sentence $\exists\bar x.\,\neg\varphi$ is
+false. It therefore suffices to decide $\Sigma_1$ sentences.
+
+A \emph{clause} is a conjunction of inequalities $s\le t$ and negated
+inequalities $\neg(s\le t)$ between terms. Pushing negations inward and
+distributing conjunctions over disjunctions turns a quantifier-free formula
+$\varphi$ into an equivalent disjunction of clauses, a disjunctive normal form
+of $\varphi$. Hence $\exists\bar x.\,\varphi$ is true over $\Cls$ exactly
+when some clause of the normal form is \emph{realizable} in $\Cls$: some
+assignment of trees of $\Cls$ to $\bar x$ makes all its conjuncts true.
+
+\subsection{Naming Subterms}\label{sec:sent-flat}
+
+Let $K$ be a clause. We introduce a variable $v_t$ for every term $t$ that
+occurs in $K$, as a side of an inequality or as a subterm of one, with
+$v_x=x$ for a variable $x$. The \emph{flat constraint} $\Gamma_K$ consists of
+\begin{itemize}
+\item $v_t=\Bot$ for $t=\Bot$, and $v_t=\Top$ for $t=\Top$, if these terms
+  occur;
+\item $f(v_{t_1},\dots,v_{t_n})\le v_t$ and $v_t\le f(v_{t_1},\dots,v_{t_n})$
+  for every occurring term $t=f(t_1,\dots,t_n)$;
+\item $v_s\le v_t$ for every inequality $s\le t$ of $K$.
+\end{itemize}
+The \emph{queries} of $K$ are the pairs $(v_s,v_t)$ for the negated
+inequalities $\neg(s\le t)$ of $K$.
+
+\begin{lemma}[Clauses]\label{lem:clause}
+A clause $K$ with queries $(x_1,y_1),\dots,(x_k,y_k)$ is realizable in $\Cls$
+if and only if $\Gamma_K\not\entails_{\Cls}x_1\le y_1\vee\dots\vee x_k\le
+y_k$.
+\end{lemma}
+
+\begin{proof}
+Let $\rho$ be an assignment in $\Cls$ of the variables of $K$ that realizes
+$K$. Extend it by giving $v_t$ the value of the term $t$ under $\rho$; this
+value lies in $\Cls$ because $\Cls$ contains $\Bot$ and $\Top$ and is closed
+under the constructor. The first two groups of literals of $\Gamma_K$ hold
+because the order is reflexive, the third because $\rho$ satisfies the
+inequalities of $K$, and every query fails because $\rho$ satisfies the
+negated inequalities. So the extension is a countermodel. Conversely, let
+$\rho$ be a countermodel in $\Cls$. Since the order is antisymmetric, the two
+literals for $t=f(t_1,\dots,t_n)$ give
+$\rho(v_t)=f(\rho(v_{t_1}),\dots,\rho(v_{t_n}))$, so by induction on terms
+$\rho(v_t)$ is the value of $t$ under the restriction of $\rho$ to the
+variables of $K$. This restriction then satisfies every inequality of $K$,
+by the third group, and no inequality $s\le t$ that is negated in $K$,
+because $\rho$ refutes the query $(v_s,v_t)$.
+\end{proof}
+
+\begin{example}\label{ex:clause}
+The sentence $\forall x.\;x\le\Bot\vee f(\Top,\Bot)\le x$ is the negation of
+$\exists x.\;\neg(x\le\Bot)\wedge\neg(f(\Top,\Bot)\le x)$, whose body is a
+single clause. Its flat constraint over the variables $x,b,t,a$ is
+\[
+  \Gamma=\{\,b=\Bot,\quad t=\Top,\quad f(t,b)\le a,\quad a\le f(t,b)\,\},
+\]
+with the queries $(x,b)$ and $(a,x)$. By \cref{lem:clause} the sentence is
+true over $\Cls$ if and only if $\Gamma\entails_{\Cls}x\le b\vee a\le x$.
+\end{example}
+
+\begin{proposition}[Reduction to disjunctive entailment]\label{prop:sentences}
+Suppose disjunctive entailment between flat constraints over $\Cls$ is
+decidable, uniformly in the number of queries. Then it is decidable whether a
+Boolean combination of $\Sigma_1$ and $\Pi_1$ sentences is true over $\Cls$.
+Moreover, if two classes give every disjunctive entailment the same truth
+value, they give every such sentence the same truth value.
+\end{proposition}
+
+\begin{proof}
+By \cref{sec:sent-nf} it suffices to treat a $\Sigma_1$ sentence, which is
+true exactly when one of the finitely many clauses of a normal form of its
+body is realizable. By \cref{lem:clause} this is the failure of a disjunctive
+entailment that is computed from the clause. The second statement follows
+because the reduction does not depend on the class.
+\end{proof}
+
+The number of queries is the number of negated inequalities of a clause, so
+the reduction needs disjunctive entailment for every $k$, and a single
+decision procedure that takes $k$ as part of its input.
+
+\subsection{Disjunctive Entailment Does Not Reduce to Plain Entailment}
+\label{sec:sent-nonreduction}
+
+Consider function types (\cref{ex:arrows}) and the entailment of
+\cref{ex:clause},
+\begin{equation}\label{eq:arrow-disj}
+  \Gamma\;\entails\;x\le b\;\vee\;a\le x
+  \qquad\text{with }b=\Bot\text{ and }a=\Top\to\Bot\text{ in every solution.}
+\end{equation}
+It holds, since every tree is $\Bot$ or lies above the least function type.
+But $\Gamma$ entails neither $x\le b$, refuted by $x=\Top\to\Bot$, nor $a\le
+x$, refuted by $x=\Bot$. For a covariant constructor, $f(\Bot,\dots,\Bot)$
+plays the role of $\Top\to\Bot$. So deciding the disjuncts one at a time is
+not enough, and countermodels of the single disjuncts do not help: a
+countermodel of the disjunction must refute every disjunct with one
+solution, and the two refuting values of $x$ above do not combine into one.
+Moving negated disjuncts into the constraint takes us outside plain
+entailment as well: $\Gamma\entails\varphi_1\vee\varphi_2$ holds if and only
+if $\Gamma\wedge\neg\varphi_1\entails\varphi_2$, but $\neg\varphi_1$ is not
+a constraint, and plain entailment allows only constraints on the left.
+The $k$ failures therefore have to be decided jointly. The next section
+describes what it means for $k$ failures to be realized by one solution.

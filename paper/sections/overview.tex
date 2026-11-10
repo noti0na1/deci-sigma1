@@ -1,0 +1,230 @@
+\section{Small Holes: Overview}
+\label{sec:overview}
+
+By \cref{thm:reduction}, deciding a disjunctive entailment amounts to
+deciding whether a structural reader has a hole. The rest of the proof is
+about readers and words; it uses no property of trees or constraints, and
+the alphabet $\Alp$ is arbitrary. We fix a structural reader
+$M=(S,\delta,(s_i)_i,\dead,\Rej,\Adm)$ with $k$ starts and $N$ states.
+
+\begin{theorem}[Small holes]\label{thm:small-hole}
+There is a computable function $\Hole$ such that every structural reader with
+$k$ starts and $N$ states that has a hole has a hole of total length at most
+$\Hole(k,N)$.
+\end{theorem}
+
+The definition of $\Hole$ is given in \cref{eq:hole-bound} below, and its
+growth is estimated in \cref{sec:complexity}. This section introduces the
+notions that organize the proof and reduces the theorem to two bounds.
+
+\subsection{Domination, Fresh Words and Immortal States}
+\label{sec:overview-notions}
+
+A \emph{table} with $k$ starts is the part $(S,\delta,(s_i)_i)$ of a reader:
+a complete deterministic automaton with $k$ start states. Runs, endpoints and
+channels of a tuple are defined for tables as in \cref{sec:readers-def}. We
+write $\Vis_i(W)=\{q_i(a)\mid 0\le a\le\len{w_i}\}$ for the states that
+coordinate $i$ visits.
+
+\begin{definition}[Domination]\label{def:domination}
+A tuple $U$ \emph{dominates} a tuple $W$ in a table, written $U\dominates W$,
+if for all coordinates $i$ and $j$: the endpoints of coordinate $i$ in $U$
+and in $W$ are equal, $\Vis_i(U)\subseteq\Vis_i(W)$, and
+$\Chan_{ij}(U)\subseteq\Chan_{ij}(W)$.
+\end{definition}
+
+Domination is reflexive and transitive. A dominating tuple does nothing that
+the dominated tuple does not do: it ends in the same states, passes only
+through states that were already visited, and compares only pairs of states
+that were already compared. Since the definition of a hole only forbids
+things, we obtain:
+
+\begin{lemma}[Holes under domination]\label{lem:hole-dominates}
+If $W$ is a hole of a structural reader and $U\dominates W$ in its table,
+then $U$ is a hole with the same endpoints.
+\end{lemma}
+
+\begin{proof}
+The run of $u_i$ visits only states of $\Vis_i(W)$, none of which is dead,
+and its endpoint is that of $w_i$, which is rejected. No pair of
+$\Chan_{ij}(U)\subseteq\Chan_{ij}(W)$ is admitted.
+\end{proof}
+
+So a hole may be replaced by any tuple that dominates it, and the task is to
+find short dominating tuples. The block deletions of \cref{sec:fresh} and
+the compression of periodic stretches in \cref{sec:tails-compression} delete factors from the
+words of a tuple in such a way that the result dominates it. The
+replacement of rejected tails by rays in \cref{sec:tails-choice} is of a
+different kind: it can lengthen words and change endpoints, and it only
+preserves the existence of a hole. Deleting a factor between two cuts with the same state preserves endpoints
+and visited states; the difficulty is always the channels, where a deletion
+can bring two cuts into a comparison that did not exist before.
+
+\begin{definition}[Fresh words]\label{def:fresh}
+Coordinate $i$ of a tuple $W$ is \emph{fresh} in a table if its endpoint is
+not visited earlier: $q_i(a)\ne q_i(\len{w_i})$ for every $a<\len{w_i}$. A
+tuple is \emph{fresh} if all its coordinates are. A tuple $U$ \emph{freshly
+dominates} $W$ if $U$ is fresh and $U\dominates W$. A fresh tuple is
+\emph{minimal} if no tuple that freshly dominates it has a smaller total
+length.
+\end{definition}
+
+The empty word is fresh. Since domination is transitive, every fresh tuple is
+freshly dominated by a minimal fresh tuple: a fresh dominator of least total
+length.
+
+\begin{definition}[Immortal states]\label{def:immortal}
+A state $q$ of a structural reader is \emph{immortal} if for every $m$ some
+word of length $m$ can be read from $q$ without reaching $\dead$, and
+\emph{mortal} otherwise.
+\end{definition}
+
+A state is immortal exactly when a cycle of states other than $\dead$ is
+reachable from it without passing through $\dead$. Freshness comes for free
+when the endpoint is mortal, and it yields the basic counting principle of
+the whole proof: \emph{cuts at which comparable rests begin carry different
+states}.
+
+\begin{lemma}[Distinct states]\label{lem:distinct}
+Let $W$ be a tuple and $a<b$ cuts of $w_i$ such that
+$\wsuf{w_i}b\pre\wsuf{w_i}a$.
+\begin{enumerate}
+\item\label{it:distinct-fresh} If coordinate $i$ is fresh, then
+  $q_i(a)\ne q_i(b)$.
+\item\label{it:distinct-mortal} If coordinate $i$ is eligible with a mortal
+  endpoint, then it is fresh.
+\item\label{it:distinct-head} If coordinate $i$ is eligible and
+  $b\le J_i$, then $q_i(a)\ne q_i(b)$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+(1) If $q_i(a)=q_i(b)$, reading $\wsuf{w_i}b$ from the cut $a$ leads to the
+endpoint, at the cut $a+\len{w_i}-b<\len{w_i}$. (2) If the endpoint occurs at
+a cut $a<\len{w_i}$, the run from $a$ to the end is a cycle of states other
+than $\dead$, so the endpoint is immortal. (3) If $q_i(a)=q_i(b)$, reading
+$\wsub{w_i}b{J_i}$ from the cut $a$ leads to the rejected state $q_i(J_i)$ at
+the cut $a+J_i-b<J_i$, before the first rejected cut.
+\end{proof}
+
+In particular, a fixed text has fewer than $N$ nonempty rests of one fresh
+word as prefixes, since these rests are comparable.
+
+\subsection{The Two Bounds}\label{sec:overview-bounds}
+
+The first bound concerns the coordinates with immortal endpoints. Recall that
+the rejected tail of an eligible coordinate is the part of its word after
+the first rejected cut.
+
+\begin{theorem}[Rejected tails]\label{thm:tails}
+There is a computable function $\TailB$ such that every structural reader
+with $k$ starts and $N$ states that has a hole has a hole in which the
+rejected tail of every coordinate with an immortal endpoint has length at
+most $\TailB(k,N)$.
+\end{theorem}
+
+The second bound is a statement about tables, which have no rejected states,
+no dead state and no admitted pairs.
+
+\begin{theorem}[Fresh tuples]\label{thm:fresh}
+There is a computable function $\FreshB$ such that every minimal fresh tuple
+of a table with $k$ starts and $N$ states has total length at most
+$\FreshB(k,N)$. Hence every fresh tuple is freshly dominated by a tuple of
+total length at most $\FreshB(k,N)$.
+\end{theorem}
+
+Neither bound depends on the size of the alphabet. \Cref{thm:fresh} is proved
+in \cref{sec:fresh} and \cref{thm:tails} in \cref{sec:tails}.
+
+Why two bounds? A hole need not be fresh: a coordinate with an immortal
+endpoint may run through its endpoint many times. Deleting such a loop is
+tempting, but it changes the rests of the word after all earlier cuts, and
+with them the channels in which this coordinate is the host. For a
+coordinate with a mortal endpoint the situation is rigid, by
+\cref{lem:distinct}. \Cref{thm:tails} is the tool that brings immortal
+coordinates under control: once the rejected tail is short, the coordinate
+can be made fresh in a larger table that counts the letters of the tail.
+
+\subsection{The Cover of a Hole}\label{sec:overview-cover}
+
+\input{figures/cover}
+
+A hole whose immortal tails are short is not yet fresh, but it becomes fresh
+in a larger table that counts the letters of these tails
+(\cref{fig:cover}). Let $W$ be a hole of $M$ and $L$ a number such that
+every coordinate with an immortal endpoint has a rejected tail of length at
+most $L$. Call a coordinate $i$ \emph{tracked} if its rejected tail has
+length $\ell_i=\len{w_i}-J_i\le L$; the other coordinates have mortal
+endpoints.
+
+\begin{definition}[Cover of a hole]\label{def:cover-hole}
+The \emph{cover} $\cov M$ of $W$ is the following table with $k$ starts. Its
+states are an absorbing state $o$ and, for each coordinate $i$, the pairs
+$(i,s)$ with $s\in S$ and the \emph{counters} $(i,m)$ with $0\le m\le L$,
+all of them distinct.
+\begin{itemize}
+\item For an untracked coordinate $i$, the start is $(i,s_i)$ and a letter
+  $c$ takes $(i,s)$ to $(i,\delta(s,c))$.
+\item For a tracked coordinate $i$ with first rejected state
+  $r_i=q_i(J_i)$, a letter $c$ takes $(i,s)$ with $s\notin\Rej$ to the
+  counter $(i,0)$ if $\delta(s,c)=r_i$, to $(i,\delta(s,c))$ if
+  $\delta(s,c)\notin\Rej$, and to $o$ otherwise. It takes a counter $(i,m)$
+  with $m<\ell_i$ to $(i,m+1)$ if $c$ is the letter of $w_i$ at the
+  position $J_i+m$, and to $o$ otherwise; since $\ell_i\le L$, the counter
+  $(i,m+1)$ exists. The start is $(i,0)$ if $J_i=0$ and $(i,s_i)$
+  otherwise.
+\item All remaining transitions lead to $o$. In particular, so do all
+  transitions from the counter $(i,\ell_i)$ of a tracked coordinate and
+  from the counters of an untracked one.
+\end{itemize}
+The \emph{projection} $\proj$ maps $(i,s)$ to $s$, the counter $(i,m)$ of a
+tracked coordinate with $m\le\ell_i$ to $q_i(J_i+m)$, and all other counters
+and $o$ to $\dead$.
+\end{definition}
+
+So the cover follows $M$ on the head of a tracked word and then spells out
+its rejected tail, letter by letter. It has $k(N+L+1)+1$ states.
+
+\begin{lemma}[Cover]\label{lem:cover}
+The tuple $W$ is fresh in its cover $\cov M$, and every tuple that dominates
+$W$ in $\cov M$ is a hole of $M$ with the same endpoints as $W$.
+\end{lemma}
+
+\begin{proof}
+On a tracked coordinate $i$, the run of $w_i$ in the cover is $(i,q_i(a))$
+at the cuts $a<J_i$ and the counter $(i,a-J_i)$ at the cuts $a\ge J_i$; on an
+untracked coordinate it is $(i,q_i(a))$. In the first case the endpoint is
+the counter $(i,\ell_i)$, which occurs only at the last cut. In the
+second case the endpoint of $w_i$ in $M$ is mortal, so coordinate $i$ is
+fresh in $M$ by \cref{lem:distinct}, hence in the cover. So $W$ is fresh in
+the cover, and its runs avoid $o$.
+
+Whenever a transition of the cover from a state $z$ on a letter $c$ does not
+lead to $o$, it leads to a state with projection $\delta(\proj(z),c)$; this is
+checked case by case, and for a counter it holds because the letter read is
+the letter of $w_i$. The starts project to the starts of $M$. Now let $U$
+dominate $W$ in the cover. The runs of $U$ in the cover visit only states
+visited by $W$, so they avoid $o$, and therefore the run of $U$ in $M$ is the
+projection of its run in the cover. Applying $\proj$ to the three conditions of
+domination in the cover gives $U\dominates W$ in the table of $M$, because
+the run of $W$ in $M$ is also the projection of its run in the cover. By
+\cref{lem:hole-dominates}, $U$ is a hole of $M$ with the endpoints of $W$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:small-hole} from
+\cref{thm:tails,thm:fresh}]
+Let $M$ have a hole. By \cref{thm:tails} it has a hole $W$ whose coordinates
+with immortal endpoints have rejected tails of length at most
+$L=\TailB(k,N)$. By \cref{lem:cover}, $W$ is fresh in its cover, a table with
+$k$ starts and $k(N+L+1)+1$ states, so by \cref{thm:fresh} it is freshly
+dominated there by a tuple $U$ of total length at most
+\begin{equation}\label{eq:hole-bound}
+  \Hole(k,N)=\FreshB\bigl(k,\;k\,(N+\TailB(k,N)+1)+1\bigr).
+\end{equation}
+By \cref{lem:cover} again, $U$ is a hole of $M$.
+\end{proof}
+
+The composition explains the shape of the final bound: the fresh-tuple bound
+is applied to a table whose size is the rejected-tail bound. For each fixed
+number $k$ of starts, both are doubly exponential in $N$
+(\cref{thm:elementary}), which gives four iterated exponentials in $N$.

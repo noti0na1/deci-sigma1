@@ -1,0 +1,65 @@
+\section{Mechanization}
+\label{sec:mechanization}
+
+The decision procedures and their correctness are mechanized in Lean~4
+\cite{MouraUllrich21} with Mathlib \cite{Mathlib20}. The development defines
+trees over $\BFT$ and over $\BF$, the order with variance, the three classes
+of trees, terms, quantifier-free formulas, $\Sigma_1$ sentences and their
+Boolean combinations, and it contains
+\begin{itemize}
+\item a decision procedure for Boolean combinations of $\Sigma_1$ and $\Pi_1$
+  sentences over each class, for every arity and variance over $\BFT$ and
+  for a covariant constructor over $\BF$, with the equivalence of truth over
+  regular and over arbitrary trees (\cref{thm:main});
+\item decision procedures for disjunctive entailment between flat
+  constraints over the three classes and both signatures, and the statements
+  that satisfiability and (disjunctive) entailment are the sentences of
+  \cref{sec:prelim-constraints};
+\item the small-hole theorem for structural readers over an arbitrary finite
+  alphabet (\cref{thm:small-hole}), with the computable bound $\Hole$, and
+  its closed form (\cref{thm:elementary}).
+\end{itemize}
+The results of
+\cref{sec:sentences,sec:readers,sec:overview,sec:fresh,sec:tails,sec:decision}
+and the inequalities of \cref{thm:elementary} have counterparts in the
+development; \cref{app:lean} gives the correspondence and the points where
+the formal statements or proofs are arranged differently. The
+complexity statements of \cref{sec:complexity} other than the numerical
+bound, that is, \cref{cor:complexity}, \cref{prop:hardness} and
+\cref{ex:lcm}, are not mechanized.
+
+Each decision procedure is a computable definition together with a theorem
+that it returns \emph{true} exactly when its proposition holds. The
+procedures have no hypotheses beyond a finite type of variables with
+decidable equality: satisfiability is tested inside them, the number of
+queries may be zero, and the arity may be zero. Decidability comes from
+bounded searches. Classical reasoning is used in the proofs of correctness
+and of the bounds, where it is harmless, and not to choose answers. The
+procedures are executable in principle and useless in practice, because of
+the size of the bound; they establish decidability.
+
+The statements one has to trust are the definitions of trees and of the
+order, of the syntax and truth of sentences, of the classes of trees, of
+disjunctive entailment, and the statements of the main theorems, which are
+collected in one file. The kernel checks everything else. The
+development uses no axioms beyond the three standard ones of Lean and
+Mathlib (propositional extensionality, quotient soundness and choice), no
+unfinished proofs, and no native evaluation; a file of the development
+checks the axioms of every public declaration and that every decision
+procedure compiles to executable code. Examples show that the definitions
+are not vacuous: they include the entailments of \cref{ex:unary} and
+\eqref{eq:arrow-disj} together with the failure of their single disjuncts,
+sentences that separate finite from regular trees, a reader compiled from an
+entailment with two queries, with a hole, and a minimal fresh tuple.
+
+The chain of shortening arguments is long, and several of its steps are of a
+kind in which informal proofs are fragile: the transport of comparisons
+through deletions has many boundary cases, with cuts at the ends of deleted
+factors and empty rests. Both deletion arguments are therefore built on one
+small library for deleting a set of positions from a word and following cuts
+and runs through the deletion (\cref{app:fresh-deletion,app:compression}).
+
+The development has about $27{,}500$ lines. It is available at
+\begin{center}
+\url{https://github.com/noti0na1/deci-sigma1}.
+\end{center}

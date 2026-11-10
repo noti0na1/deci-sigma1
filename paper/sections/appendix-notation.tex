@@ -1,0 +1,92 @@
+\section{Notation}
+\label{app:notation}
+
+\Cref{tab:notation} lists the notation of the paper in the order of its
+introduction. A few letters are used with different meanings in different
+sections, mostly with different decorations: $\sigma$ is a path or a word,
+$\mk tl$ a marker (\cref{sec:fresh}); $\tau_r(l,c)$ is a marker text
+(\cref{sec:fresh}) and $\tau$ the repeated factor of a ray
+(\cref{sec:tails}); $\Dn$ is a lower run, $\Dict_B$ a dictionary and $D$ a
+bound on periods; $E$ bounds the length of an edge (\cref{sec:fresh}), and
+$E_0,E_r$ count uncovered positions (\cref{sec:tails}); $J_i$ is a first
+rejected cut and $\FreshB$ the fresh-tuple bound; $\Marg$ is the margin of
+block deletions and $m_d$ the period of the states in a piece. Without a
+change of decoration, $\Cls$ is a class of trees and, in
+\cref{app:compression}, the class of the pieces with a given root, and $F$
+is the number $2^{k(N-1)}$ of \cref{sec:fresh-bound} and, in
+\cref{app:fresh-deletion}, the deleted text.
+
+{\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.49\linewidth}>{\raggedright\arraybackslash}p{0.20\linewidth}@{}}
+\caption{Notation.}\label{tab:notation}\\
+\toprule
+Symbol & Meaning & Introduced in \\
+\midrule
+\endfirsthead
+\toprule
+Symbol & Meaning & Introduced in \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\multicolumn{3}{@{}l}{\emph{Words, trees and sentences}}\\
+$\len w$, $\wpre wa$, $\wsuf wa$, $\wsub wab$ & length; prefix up to the cut $a$; rest after $a$; factor between two cuts & \cref{sec:prelim-words} \\
+$u\pre v$ & $u$ is a prefix of $v$ & \cref{sec:prelim-words} \\
+$n$, $\Dir$, $c$, $\pol$ & arity, argument positions, variance, polarity of a path & \cref{sec:prelim-trees} \\
+$\Trees$, $\TreesReg$, $\TreesFin$, $\Cls$ & all, regular, finite trees; a class of trees & \cref{sec:prelim-trees} \\
+$\fall$ & the tree with $f$ at every path & \cref{sec:prelim-trees} \\
+$\Gamma$, $V$, $\rho$ & constraint, its variables, an assignment & \cref{def:flat} \\
+$(x_i,y_i)$, $k$ & queries and their number & \cref{def:disj} \\
+$\Gamma\entails_{\Cls}\dots$ & disjunctive entailment over $\Cls$ & \cref{def:disj} \\
+$\Gamma_K$ & flat constraint of a clause $K$ & \cref{sec:sent-flat} \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{The reduction to holes}}\\
+$\Cone st$, $\flip s$ & cone of sign $s$ of the tree $t$; opposite sign & \cref{def:cones} \\
+$\SV$, $x^s$, $(p,w)$ & signed variables; an atom & \cref{sec:readers-atoms} \\
+$x^{[i]}$ & $x^{\sgp}$ for a covariant, $x^{\sgm}$ for a contravariant position $i$ & \cref{sec:readers-atoms} \\
+$S_\rho$ & set of atoms of an assignment & \cref{sec:readers-atoms} \\
+$a\to b$, $a\der b$, $a\mv b$ & move or extension; derivation by rules; derivation by moves & \cref{sec:readers-atoms} \\
+$\LC$, $\NegV$, $\FctV$ & least closure; signed variables with a forbidden atom; signed variables reached from facts & \cref{sec:readers-atoms}, \eqref{eq:neg-fct} \\
+$\mu_i$, $\bar\mu$ & mode of a query, vector of modes & \cref{lem:witness} \\
+$A_i=(p_i,w_i)$, $B_i=(p'_i,w_i)$ & seed and exclusion of query $i$ & \eqref{eq:seeds} \\
+$\Up(p,w)$, $\Dn(p,w)$, $\stepU$, $\stepD$ & upper and lower run, their transition functions & \cref{def:runs,lem:runs-det} \\
+$\Alp$, $S$, $\delta$, $s_i$, $\dead$, $\Rej$, $\Adm$, $N$ & alphabet, states, transitions, starts, dead state, rejected states, admitted pairs and size of a reader & \cref{def:reader} \\
+$W=(w_1,\dots,w_k)$, $\tot W$ & tuple of words, its total length & \cref{sec:readers-def} \\
+$q_i(a)$ & state of coordinate $i$ at the cut $a$ & \cref{sec:readers-def} \\
+$\Chan_{ij}(W)$ & channel from the host $i$ to the target $j$ & \cref{def:hole} \\
+$J_i$ & first rejected cut of coordinate $i$ & \cref{sec:readers-def} \\
+$M_{\bar\mu}$, $(P,Q)$ & reader of a mode vector; its states & \cref{def:compile} \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Small holes}}\\
+$\Vis_i(W)$, $U\dominates W$ & visited states; domination & \cref{def:domination} \\
+$\Hole$, $\TailB$, $\FreshB$ & bounds on holes, rejected tails, fresh tuples & \cref{thm:small-hole,thm:tails,thm:fresh} \\
+$\cov M$, $(i,s)$, $(i,m)$, $o$, $\proj$ & cover of a hole, its states, its projection & \cref{def:cover-hole} \\
+$\ell_i$, $L$ & length of a tracked tail and its bound & \cref{sec:overview-cover} \\
+$\expo_h$ & iterated exponential & \cref{sec:intro} \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Fresh tuples}}\\
+$\mk tl$, $\Act_t$ & marker of level $t$ of coordinate $l$; active coordinates & \cref{def:markers} \\
+$\lcsuf(Z,Y)$, $(Z,a,b)$ & common suffix of two parses, in lower blocks; an edge & \cref{def:trie} \\
+$\tau_r(l,c)$, $\omega(l,c)$, $\lab(l,c)$ & marker text, longest marker length and label of a cut & \cref{sec:fresh-deletion} \\
+$\Marg$ & margin of block deletions & \cref{sec:fresh-deletion} \\
+$E$, $F$, $\nu_d$, $X$ & bounds on edges, on parses per text, on texts, on lower blocks per upper block & \cref{sec:fresh-bound} \\
+$\cmap$, $\gamma$ & image of a retained cut; greatest preimage of a cut & \cref{app:fresh-deletion} \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Rejected tails}}\\
+$\Omega$, $\per(\Omega)$, $\onset(\Omega)$, $L_i$ & ray, its period and onset; length of a prefix & \cref{def:ray} \\
+$t_1,\dots,t_m$, $B$, $v_B(t)$ & target words; a window; suffix of length $B$ & \cref{def:node} \\
+$\Dict_B$, $\node_B(e)$ & suffix dictionary; suffix node of a cut & \cref{def:node} \\
+$\gap_t(b)$ & gap of the window $b$ in a suffix chain of $t$ & \cref{sec:tails-closed} \\
+$\Lb_m$, $\Wb_m$, $\Fb$ & search length, window bound, bound on closed factors & \cref{lem:closed-free} \\
+$e_l$, $T_l$, $Y_l$, $b_l$ & numbers of scale $l$: periods, exceptional positions, long suffixes, initial window & \cref{sec:tails-levels} \\
+$T'_l$, $B_l$, $X_l$ & search stretch, window bound and chain bound of scale $l$ & \cref{app:tails-levels} \\
+$\Qc$ & $4+2(k-1)(N-1)$; $\Qc+1$ periodic factors are allowed & \cref{sec:tails-levels} \\
+$F_l$, $K_l$ & almost periodic tail; and no long periodic suffix & \cref{def:cover} \\
+$X_u$, $A_u$, $\Pi_u$ & stretch, onset and periodic part of the ray of $u$ & \cref{sec:tails-choice}, \cref{app:tails-overlaps} \\
+$d$, $\zeta$, $\alpha_d$, $m_d$ & period and root of a piece; transient and period of its states & \cref{sec:tails-compression} \\
+$\beta_d$, $\kappa_d$, $\phi_d$, $x_P$ & offset of the deleted blocks, length threshold, retained length; number of deleted blocks & \cref{sec:tails-compression}, \cref{def:admissible} \\
+$D$, $E_0$, $E_r$, $g$ & bound on periods; uncovered positions; number of passes & \cref{prop:run-cover,thm:tails-bound} \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Decision procedures}}\\
+$\Gamma^{g}$ & a constraint over $\BF$ with the guard variable $u$ & \cref{sec:decision-bf} \\
+\end{longtable}}

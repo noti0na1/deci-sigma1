@@ -1,0 +1,394 @@
+\section{Proofs for Section~\ref{sec:decision}: Regular and Finite Trees}
+\label{app:classes}
+
+\subsection{Regular Trees}\label{app:classes-regular}
+
+\begin{lemma}[Regular cones]\label{lem:regular-cones}
+A tree whose two cones are regular languages has finitely many subtrees.
+\end{lemma}
+
+\begin{proof}
+Let $\pi$ be a position of $t$ and $t'$ the subtree at $\pi$. The leaves of
+$t'$ are the paths $v$ with $\pi v$ a leaf of $t$, with the same label and
+with $\pol(\pi v)=\pol(\pi)+\pol(v)$. So $\Cone s{t'}$ is the residual
+$\{v\mid\pi v\in\Cone st\}$ if $\pol(\pi)=0$, and the residual of
+$\Cone{\flip s}t$ if $\pol(\pi)=1$. A regular language has finitely many
+residuals, and a tree is determined by its cones
+(\cref{thm:cones}\eqref{it:cones-pair}).
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:decide-regular}]
+It remains to complete the sketch in \cref{sec:decision-regular} with the
+regularity of the cones of the hull. For a signed variable $x^s$, the paths
+$v$ with $(x^s,v)\in\LC$ are those with a prefix $v'$ such that
+$\Dn(x^s,v')$ meets $\FctV$ (\cref{lem:lc}), a regular language by
+\cref{lem:runs-det}. A seed $A_i=(p_i,w_i)$ satisfies \ref{it:R1}, so by
+\cref{lem:cuts} the paths $v$ with $A_i\der(x^s,v)$ are the words
+$v'\,\wsuf{w_i}a\,\sigma$ with $a$ a cut of $w_i$, $\Dn(x^s,v')\cap
+\Up(p_i,\wpre{w_i}a)\ne\varnothing$ and $\sigma$ arbitrary; for each of the
+finitely many cuts $a$ this is a regular language. By
+\cref{lem:regular-cones} the assignment of the hull consists of regular
+trees.
+\end{proof}
+
+\subsection{Finite Trees}\label{app:classes-finite}
+
+\begin{lemma}[Observations as bounds]\label{lem:observations}
+For every path $w$ there are finite trees $g^{\sgp}_w,g^{\sgm}_w,
+\hat g^{\sgp}_w,\hat g^{\sgm}_w$ such that for every tree $t$:
+\begin{align*}
+  w\in\Cone{\sgp}t&\iff g^{\sgp}_w\le t, & w\notin\Cone{\sgp}t&\iff t\le\hat g^{\sgp}_w,\\
+  w\in\Cone{\sgm}t&\iff t\le g^{\sgm}_w, & w\notin\Cone{\sgm}t&\iff\hat g^{\sgm}_w\le t .
+\end{align*}
+\end{lemma}
+
+\begin{proof}
+We define the trees by their cones (\cref{thm:cones}). Let $E_w$ be the set
+of paths $wv$, and $O_w$ the set of paths that are neither prefixes of $w$
+nor in $E_w$; both are extension closed and they are disjoint. Let
+$g^{\sgp}_w$ have the cones $(E_w,O_w)$, as cones of the signs $\sgp$ and
+$\sgm$, and $g^{\sgm}_w$ the cones $(O_w,E_w)$. Their positions are the
+prefixes of $w$ and the paths $ui$ with $u$ a proper prefix of $w$, so they
+are finite. If $w\in\Cone{\sgp}t$, then $E_w\subseteq\Cone{\sgp}t$, and
+$\Cone{\sgm}t$ contains neither a prefix of $w$, since it is extension
+closed and disjoint from $\Cone{\sgp}t$, nor an element of $E_w$; so
+$\Cone{\sgm}t\subseteq O_w$ and $g^{\sgp}_w\le t$ by
+\cref{thm:cones}\eqref{it:cones-order}. The converse is clear, and
+$g^{\sgm}_w$ is symmetric. Let $\hat g^{\sgp}_w$ have the cones
+$(N_w,\varnothing)$, where $N_w$ is the set of paths that are not prefixes
+of $w$, and $\hat g^{\sgm}_w$ the cones $(\varnothing,N_w)$; their positions
+are the prefixes of $w$ and their children. Then $t\le\hat g^{\sgp}_w$ if
+and only if no prefix of $w$ lies in $\Cone{\sgp}t$, that is, if and only
+if $w\notin\Cone{\sgp}t$.
+\end{proof}
+
+The proof of \cref{lem:pinning} has three steps. We first prove it for a
+covariant constructor, from a characterization of finite satisfiability
+proved in \cite{Zhao26}. We then introduce medians of trees, and treat
+variance through a translation into a covariant constraint on the signed
+variables, whose finite solutions are made symmetric by medians.
+
+\subparagraph*{Finite satisfiability of covariant constraints.}
+In this paragraph and the next, $f$ is covariant. The constraints of
+\cite{Zhao26} have no variable inequalities: their literals have the forms
+$f(\bar a)\le u$, $u\le f(\bar b)$, $u=\Bot$ and $u=\Top$. For such a
+constraint $\chi$, the \emph{closure} $D_\chi$ is the least reflexive and
+transitive relation on its variables such that $D_\chi(a_i,b_i)$ for every
+$i\in\Dir$ whenever $f(\bar a)\le u$ and $v\le f(\bar b)$ are literals of
+$\chi$ with $D_\chi(u,v)$. For a path $\pi$, the \emph{lower} and
+\emph{upper path relations} $L_\pi$ and $U_\pi$ are defined by recursion on
+$\pi$: $L_\eps(a,b)$ and $U_\eps(a,b)$ hold if $D_\chi(a,b)$, and
+\begin{align*}
+  L_{i\pi}(a,b)&\iff\text{some literal $f(\bar z)\le c$ of $\chi$ has
+    $D_\chi(c,b)$ and $L_\pi(a,z_i)$},\\
+  U_{i\pi}(a,b)&\iff\text{some literal $c\le f(\bar z)$ of $\chi$ has
+    $D_\chi(a,c)$ and $U_\pi(z_i,b)$}.
+\end{align*}
+In every solution, $D_\chi(a,b)$ forces the value of $a$ below that of $b$,
+$L_\pi(a,b)$ forces the subtree of $b$ at $\pi$, if it exists, above the
+value of $a$, and $U_\pi(a,b)$ forces the subtree of $a$ at $\pi$, if it
+exists, below the value of $b$. A \emph{cycle clash} of $\chi$ is a nonempty
+path $\pi$ together with variables $a$ and $b$ such that $L_\pi(a,a)$,
+$D_\chi(a,b)$ and $U_\pi(b,b)$; it excludes finite solutions.
+
+\begin{theorem}[{\cite[Theorems ``Least shape and satisfiability'' and
+``Covariant finite satisfiability'']{Zhao26}}]\label{thm:cycle-clash}
+Let $f$ be covariant. A constraint without variable inequalities has a
+solution over $\TreesFin$ if and only if it has a solution over $\Trees$ and
+no cycle clash.
+\end{theorem}
+
+\subparagraph*{Covariant pinning.}
+A bound $g\le x$ or $x\le g$ of a variable by a finite tree $g$ is
+\emph{compiled} into flat literals on fresh variables, by recursion on $g$.
+For $g\le x$: nothing if $g=\Bot$; the literal $x=\Top$ if $g=\Top$; and if
+$g=f(g_1,\dots,g_n)$, the literal $f(z_1,\dots,z_n)\le x$ with fresh
+variables $z_i$, together with the compiled bounds $g_i\le z_i$. For $x\le
+g$: nothing if $g=\Top$; the literal $x=\Bot$ if $g=\Bot$; and if
+$g=f(g_1,\dots,g_n)$, the literal $x\le f(z_1,\dots,z_n)$ with fresh
+variables $z_i$, together with the compiled bounds $z_i\le g_i$. By the
+rules \eqref{eq:order-rules}, every solution of the compiled literals
+satisfies the bound, and every assignment that satisfies the bound extends
+to a solution of the compiled literals, with the subtrees of $g$ as the
+values of the fresh variables.
+
+\begin{lemma}[Covariant pinning]\label{lem:pinning-cov}
+\Cref{lem:pinning} holds for a covariant constructor.
+\end{lemma}
+
+\begin{proof}
+For $n=0$ every tree is finite. Let $n\ge1$. We first remove the variable
+inequalities: replace every literal $u\le v$ of $\Gamma$ by the two literals
+$f(u,u,\dots,u)\le y$ and $y\le f(v,u,\dots,u)$, with a fresh variable $y$
+for each literal. A solution of the two literals satisfies $u\le v$, by
+\eqref{eq:order-rules} at the first argument, and an assignment with $u\le v$
+extends to one by $y=f(u,\dots,u)$, which is finite if the value of $u$ is.
+So the new constraint satisfies the hypotheses of the lemma, and the
+restriction of a finite solution of it that satisfies the bounds is a finite
+solution of $\Gamma$ that satisfies them. We may therefore assume that
+$\Gamma$ has no variable inequalities.
+
+Compile every bound with its own fresh variables, and let $\Delta$ be the
+compiled literals. The solution over $\Trees$ that satisfies the bounds
+extends to a solution of $\Gamma\cup\Delta$, and the restriction of a
+solution of $\Gamma\cup\Delta$ to the variables of $\Gamma$ solves $\Gamma$
+and satisfies the bounds. By \cref{thm:cycle-clash} it suffices to show that
+$\Gamma\cup\Delta$ has no cycle clash. We write $D$, $L_\pi$ and $U_\pi$ for
+its closure and path relations, and $D_\Gamma$, $L^\Gamma_\pi$ and
+$U^\Gamma_\pi$ for those of $\Gamma$.
+
+The variables of $\Gamma$ are \emph{old}. A fresh variable is a
+\emph{source} if it comes from the compilation of a bound $g\le x$, and a
+\emph{sink} if it comes from a bound $x\le g$. Its \emph{rank} is its depth
+in the recursion, $1$ for the variables $z_i$ of the first literal of the
+compilation; old variables have rank $0$. Every lower constructor literal
+$f(\bar z)\le y$ of $\Delta$ has an old variable or a source $y$ and sources
+$z_i$ whose rank is that of $y$ plus one; every upper constructor literal
+$y\le f(\bar z)$ of $\Delta$ has an old variable or a sink $y$ and sinks
+$z_i$ whose rank is that of $y$ plus one. No source occurs in $\Gamma$ or in
+an upper constructor literal, and no sink occurs in $\Gamma$ or in a lower
+constructor literal. Constant literals enter neither the closure nor the
+path relations.
+\begin{enumerate}[label=(\alph*)]
+\item\label{it:rk-closure} \emph{If $D(a,b)$ and $b$ is a source, then
+  $a=b$; if $D(a,b)$ and $a$ is a sink, then $a=b$.} By induction on the
+  derivation of $D(a,b)$: reflexivity is clear, a transitivity step follows
+  from the induction hypothesis applied twice, and a decomposition step
+  derives $D(a_i,b_i)$ from literals $f(\bar a)\le u$ and $v\le f(\bar b)$,
+  so $b_i$, a child of an upper constructor literal, is not a source, and
+  $a_i$, a child of a lower one, is not a sink.
+\item\label{it:rk-old} \emph{If $D(a,b)$ with $a$ and $b$ old, then
+  $D_\Gamma(a,b)$.} By induction on the derivation. In a transitivity step
+  from $D(a,c)$ and $D(c,b)$, the variable $c$ is old: if it were a source,
+  then $a=c$ by \ref{it:rk-closure}, and if it were a sink, then $c=b$. In a
+  decomposition step from $f(\bar a)\le u$, $D(u,v)$ and $v\le f(\bar b)$
+  with old $a_i$ and $b_i$, the two literals belong to $\Gamma$, because the
+  children of the literals of $\Delta$ are fresh; so $u$ and $v$ are old.
+\item\label{it:rk-paths} \emph{If $L_\pi(a,b)$ and $b$ is a source, then
+  $a$ is a source whose rank is at least that of $b$ plus $\len\pi$; if
+  $U_\pi(a,b)$ and $a$ is a sink, then $b$ is a sink whose rank is at least
+  that of $a$ plus $\len\pi$.} By induction on $\pi$. For $\pi=\eps$ this is
+  \ref{it:rk-closure}. If $L_{i\pi}(a,b)$ by a literal $f(\bar z)\le c$ with
+  $D(c,b)$ and $L_\pi(a,z_i)$, then $c=b$ by \ref{it:rk-closure}, so the
+  literal belongs to $\Delta$, and $z_i$ is a source whose rank is that of
+  $b$ plus one; apply the induction hypothesis to $L_\pi(a,z_i)$. The
+  statement for $U$ is symmetric.
+\item\label{it:rk-reflect} \emph{If $L_\pi(a,b)$ with $a$ and $b$ old, then
+  $L^\Gamma_\pi(a,b)$, and similarly for $U$.} By induction on $\pi$. For
+  $\pi=\eps$ this is \ref{it:rk-old}. If $L_{i\pi}(a,b)$ by a literal
+  $f(\bar z)\le c$ with $D(c,b)$ and $L_\pi(a,z_i)$, the literal does not
+  belong to $\Delta$: otherwise $z_i$ would be a source, and so would $a$,
+  by \ref{it:rk-paths}. So it belongs to $\Gamma$, the variables $c$ and
+  $z_i$ are old, and \ref{it:rk-old} and the induction hypothesis apply. If
+  $U_{i\pi}(a,b)$ by a literal $c\le f(\bar z)$ with $D(a,c)$ and
+  $U_\pi(z_i,b)$, a literal of $\Delta$ would make $z_i$ a sink, and $b$ a
+  sink by \ref{it:rk-paths}.
+\end{enumerate}
+Now let a nonempty path $\pi$ and variables $a$ and $b$ form a cycle clash
+of $\Gamma\cup\Delta$. By \ref{it:rk-paths}, $L_\pi(a,a)$ excludes that $a$
+is a source, and $U_\pi(b,b)$ that $b$ is a sink, since the rank would
+increase strictly. If $a$ were a sink, $D(a,b)$ would give $b=a$ by
+\ref{it:rk-closure}, a sink; if $b$ were a source, it would give $a=b$, a
+source. So $a$ and $b$ are old, and by \ref{it:rk-old} and
+\ref{it:rk-reflect} they form a cycle clash of $\Gamma$. This contradicts
+\cref{thm:cycle-clash}, because $\Gamma$ has a finite solution.
+\end{proof}
+
+\subparagraph*{Medians.}
+From now on the variance is arbitrary again. We also use the covariant order
+on the same trees, written $\le_0$: the order of \cref{def:order} for the
+variance with $c(i)=0$ for every $i$. Its cones are the set $C^{\sgp}_0(t)$
+of the paths along which $t$ reaches $\Top$ and the set $C^{\sgm}_0(t)$ of
+those along which it reaches $\Bot$, and \cref{thm:cones} applies to it.
+The \emph{dual} $t^*$ of a tree $t$ exchanges $\Bot$ and $\Top$ at every
+leaf. It exchanges the two covariant cones, so $s\le_0t$ if and only if
+$t^*\le_0s^*$, and $f(t_1,\dots,t_n)^*=f(t_1^*,\dots,t_n^*)$. A tree is
+finite if and only if, for some $d$, every path of length $d$ has a prefix
+that is a leaf: the paths without such a prefix are the positions labeled
+$f$, and they are closed under prefixes.
+
+For trees $t_1,t_2,t_3$, the \emph{median} $\operatorname{med}(t_1,t_2,t_3)$
+is the tree whose covariant cone of each sign $s$ consists of the paths that
+belong to $C^s_0(t_j)$ for at least two of the three indices $j$. These two
+sets of paths are extension closed, and they are disjoint, since a path in
+both would lie in both cones of one of the trees; so the median is well
+defined by \cref{thm:cones}\eqref{it:cones-pair}.
+
+\begin{lemma}[Medians]\label{lem:median}
+For all trees:
+\begin{enumerate}
+\item\label{it:med-sym} the median is symmetric in its arguments, and
+  $\operatorname{med}(t,t,u)=t$;
+\item\label{it:med-mono} if $t_j\le_0u_j$ for $j=1,2,3$, then
+  $\operatorname{med}(t_1,t_2,t_3)\le_0\operatorname{med}(u_1,u_2,u_3)$;
+\item\label{it:med-f} $\operatorname{med}(f(\bar a),f(\bar b),f(\bar c))=
+  f\bigl(\operatorname{med}(a_1,b_1,c_1),\dots,
+  \operatorname{med}(a_n,b_n,c_n)\bigr)$;
+\item\label{it:med-dual} $\operatorname{med}(t_1^*,t_2^*,t_3^*)=
+  \operatorname{med}(t_1,t_2,t_3)^*$;
+\item\label{it:med-fin} if $t_1$, $t_2$ and $t_3$ are finite, so is their
+  median.
+\end{enumerate}
+Consequently, the componentwise median of three solutions of a constraint in
+the covariant order is a solution, and if two assignments satisfy a bound
+$g\le_0x$ or $x\le_0g$, then so does their median with any third
+assignment.
+\end{lemma}
+
+\begin{proof}
+\eqref{it:med-sym} is clear. \eqref{it:med-mono} and \eqref{it:med-dual}
+follow from \cref{thm:cones}\eqref{it:cones-order}: inclusions between the
+cones of the arguments give inclusions between the majorities, and duality
+exchanges the two cones. For \eqref{it:med-f}, the empty path lies in no
+cone of the three arguments, hence in no cone of the median, which is
+therefore a constructor tree, and by \cref{thm:cones}\eqref{it:cones-node}
+its $i$th subtree has the majority cones of $a_i$, $b_i$ and $c_i$. For
+\eqref{it:med-fin}, let $d$ exceed the lengths of all positions of the three
+trees. Every path of length $d$ lies in a cone of each $t_j$; two of these
+three cones have the same sign, so the path lies in a cone of the median.
+For the consequences, a literal $x\le y$ is preserved by \eqref{it:med-mono},
+the constructor literals by \eqref{it:med-f} and \eqref{it:med-mono}, and the
+literals $x=\Bot$ and $x=\Top$ by \eqref{it:med-sym}. If $g\le_0\rho_1(x)$
+and $g\le_0\rho_2(x)$, then $g=\operatorname{med}(g,g,\rho_3(x))\le_0
+\operatorname{med}(\rho_1(x),\rho_2(x),\rho_3(x))$ by \eqref{it:med-sym} and
+\eqref{it:med-mono}, and symmetrically for upper bounds.
+\end{proof}
+
+\subparagraph*{Variance.}
+For a tree $t$, let $\eta(t)$ be the tree with the same domain obtained by
+exchanging $\Bot$ and $\Top$ at the leaves of polarity $1$. Then $\eta$ is an
+involution, $\eta(\Bot)=\Bot$, $\eta(\Top)=\Top$, and
+\begin{equation}\label{eq:normalize}
+\begin{gathered}
+  s\le t\iff\eta(s)\le_0\eta(t),\\
+  \eta(f(t_1,\dots,t_n))=f(t'_1,\dots,t'_n),\quad\text{where }
+  t'_i=\begin{cases}\eta(t_i)&\text{if $i$ is covariant},\\
+  \eta(t_i)^*&\text{if $i$ is contravariant}.\end{cases}
+\end{gathered}
+\end{equation}
+The first statement holds because $\eta(s)$ and $\eta(t)$ have the common
+paths of $s$ and $t$, and at the paths of polarity $1$, where
+\cref{def:order} compares the labels in the reverse direction, exchanging
+$\Bot$ and $\Top$ reverses the order $\Bot<f<\Top$. The second holds
+because the path $i\pi$ has the polarity $c(i)+\pol(\pi)$. The covariant
+cones of $\eta(t)$ are the cones of $t$.
+
+The \emph{signed translation} $\Gamma^\pm$ of $\Gamma$ is the constraint
+over the signed variables $\SV$, read in the order $\le_0$, with the
+following two literals for each literal of $\Gamma$, where $x^{[i]}$ is the
+signed variable of \cref{sec:readers-atoms}:
+\begin{center}\small\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Literal of $\Gamma$ & \multicolumn{2}{l}{Literals of $\Gamma^\pm$} \\
+\midrule
+$x\le y$ & $x^{\sgp}\le y^{\sgp}$ & $y^{\sgm}\le x^{\sgm}$\\
+$f(\bar x)\le y$ & $f(x_1^{[1]},\dots,x_n^{[n]})\le y^{\sgp}$ &
+  $y^{\sgm}\le f(\flip{x_1^{[1]}},\dots,\flip{x_n^{[n]}})$\\
+$y\le f(\bar x)$ & $y^{\sgp}\le f(x_1^{[1]},\dots,x_n^{[n]})$ &
+  $f(\flip{x_1^{[1]}},\dots,\flip{x_n^{[n]}})\le y^{\sgm}$\\
+$x=\Bot$ & $x^{\sgp}=\Bot$ & $x^{\sgm}=\Top$\\
+$x=\Top$ & $x^{\sgp}=\Top$ & $x^{\sgm}=\Bot$\\
+\bottomrule
+\end{tabular}
+\end{center}
+An assignment $\rho$ of $V$ gives the assignment $\rho^\pm$ of $\SV$ with
+$\rho^\pm(x^{\sgp})=\eta(\rho(x))$ and $\rho^\pm(x^{\sgm})=
+\eta(\rho(x))^*$; so $\rho^\pm(x^{[i]})$ is the tree $t'_i$ of
+\eqref{eq:normalize} for $t_i=\rho(x)$. For an assignment $A$ of $\SV$, the
+assignment $\tilde A$ is defined by $\tilde A(x^s)=A(x^{\flip s})^*$, and $A$
+is \emph{coherent} if $\tilde A=A$.
+
+\begin{lemma}[Signed translation]\label{lem:signed-translation}
+Let $\rho$ be an assignment of $V$ and $A$ one of $\SV$.
+\begin{enumerate}
+\item\label{it:sg-norm} $\rho$ solves $\Gamma$ if and only if $\rho^\pm$
+  solves $\Gamma^\pm$; $\rho^\pm$ is coherent, and finite if $\rho$ is.
+\item\label{it:sg-dual} $\tilde{\tilde A}=A$, and if $A$ solves $\Gamma^\pm$,
+  so does $\tilde A$.
+\item\label{it:sg-decode} If $A$ is coherent, then $A=\rho^\pm$ for the
+  assignment $\rho(x)=\eta(A(x^{\sgp}))$.
+\item\label{it:sg-pins} Let the \emph{pins} of a bound $g\le x$ be
+  $\eta(g)\le_0x^{\sgp}$ and $x^{\sgm}\le_0\eta(g)^*$, and those of a bound
+  $x\le g$ be $x^{\sgp}\le_0\eta(g)$ and $\eta(g)^*\le_0x^{\sgm}$. Then
+  $\rho$ satisfies a bound if and only if $\rho^\pm$ satisfies its pins, and
+  $A$ satisfies the pins of a bound if and only if $\tilde A$ does.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\eqref{it:sg-norm} By \eqref{eq:normalize},
+\[
+  \rho(y)\le f(\rho(x_1),\dots,\rho(x_n))\iff
+  \rho^\pm(y^{\sgp})\le_0f(\rho^\pm(x_1^{[1]}),\dots,\rho^\pm(x_n^{[n]})),
+\]
+which is the first translated literal. Since duality reverses $\le_0$ and commutes with $f$, and
+$\rho^\pm(r)^*=\rho^\pm(\flip r)$, this is equivalent to the second
+translated literal. The other literals are similar, and coherence and
+finiteness are clear. \eqref{it:sg-dual} The first statement holds because
+duality is an involution. The map $A\mapsto\tilde A$ exchanges the two
+literals of each row of the table: for instance, $\tilde A$ satisfies
+$y^{\sgp}\le_0f(x_1^{[1]},\dots,x_n^{[n]})$ if and only if
+$A(y^{\sgm})^*\le_0f(A(\flip{x_1^{[1]}})^*,\dots,A(\flip{x_n^{[n]}})^*)$,
+that is, if and only if $A$ satisfies $f(\flip{x_1^{[1]}},\dots,
+\flip{x_n^{[n]}})\le_0y^{\sgm}$. \eqref{it:sg-decode} $\rho^\pm(x^{\sgp})=
+\eta(\eta(A(x^{\sgp})))=A(x^{\sgp})$, and $\rho^\pm(x^{\sgm})=
+A(x^{\sgp})^*=\tilde A(x^{\sgm})=A(x^{\sgm})$. \eqref{it:sg-pins} By
+\eqref{eq:normalize}, $g\le\rho(x)$ if and only if $\eta(g)\le_0
+\rho^\pm(x^{\sgp})$, and by duality if and only if $\rho^\pm(x^{\sgm})\le_0
+\eta(g)^*$; similarly for $x\le g$. Finally, $\tilde A$ satisfies
+$\eta(g)\le_0x^{\sgp}$ if and only if $A$ satisfies $x^{\sgm}\le_0
+\eta(g)^*$, and conversely, and similarly for the pins of $x\le g$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{lem:pinning}]
+Let $\delta$ be a finite solution of $\Gamma$ and $\rho$ a solution over
+$\Trees$ that satisfies the bounds. By \cref{lem:signed-translation},
+$\delta^\pm$ is a finite coherent solution of $\Gamma^\pm$, and $\rho^\pm$ is
+a solution of $\Gamma^\pm$ that satisfies all pins, which are bounds by the
+finite trees $\eta(g)$ and $\eta(g)^*$. By \cref{lem:pinning-cov}, applied
+to $\Gamma^\pm$ in the covariant order, some finite solution $A$ of
+$\Gamma^\pm$ satisfies all pins, and by \cref{lem:signed-translation} so
+does the finite solution $\tilde A$. Let $B(r)=\operatorname{med}(A(r),
+\tilde A(r),\delta^\pm(r))$ for every signed variable $r$. By
+\cref{lem:median}, $B$ is a finite solution of $\Gamma^\pm$ that satisfies
+all pins, and it is coherent:
+\[
+  \tilde B(x^s)=\operatorname{med}\bigl(A(x^{\flip s}),\tilde A(x^{\flip
+  s}),\delta^\pm(x^{\flip s})\bigr)^*
+  =\operatorname{med}\bigl(\tilde A(x^s),A(x^s),\delta^\pm(x^s)\bigr)
+  =B(x^s),
+\]
+by \cref{lem:median}\eqref{it:med-dual}, $\tilde{\tilde A}=A$, the
+coherence of $\delta^\pm$ and the symmetry of the median. By
+\cref{lem:signed-translation}\eqref{it:sg-decode}, $B=\rho'^\pm$ for an
+assignment $\rho'$ of $V$, which is finite because $\eta$ preserves domains,
+solves $\Gamma$ by \cref{lem:signed-translation}\eqref{it:sg-norm}, and
+satisfies the bounds by \cref{lem:signed-translation}\eqref{it:sg-pins}.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:decide-finite}]
+If $\Gamma$ has no finite solution, the entailment over $\TreesFin$ holds
+vacuously, and if the entailment holds over $\Trees$ it holds over
+$\TreesFin$. Conversely, let $\Gamma$ have a finite solution and a
+countermodel $\rho$ over $\Trees$. By \cref{lem:witness} there are modes and
+paths such that $S_\rho$ contains the seeds $A_i$ and none of the exclusions
+$B_i$. By \cref{lem:observations} these $2k$ conditions are bounds of
+variables by finite trees, which $\rho$ satisfies. By \cref{lem:pinning}
+some finite solution $\rho'$ of $\Gamma$ satisfies them, and by
+\cref{lem:witness} it is a countermodel.
+
+It remains to decide finite satisfiability. For $n=0$ every tree is finite,
+and finite satisfiability is satisfiability. For $n\ge1$, replace every
+literal $u\le v$ by $f(\bar a)\le y$ and $y\le f(\bar b)$, with a fresh
+variable $y$, where $a_j=b_j=u$ for $j\ne1$, and $(a_1,b_1)=(u,v)$ if the
+first argument is covariant and $(a_1,b_1)=(v,u)$ if it is contravariant.
+By \eqref{eq:order-rules}, the two literals imply $f(\bar a)\le f(\bar b)$
+and hence $u\le v$, and an assignment with $u\le v$ extends to them by
+$y=f(\bar a)$. So the new constraint, which has no variable inequalities,
+has a finite solution if and only if $\Gamma$ has one. For constraints
+without variable inequalities, finite satisfiability is decided in
+\cite[Lemma ``Finite signed correspondence'' and Theorem ``Covariant finite
+satisfiability'']{Zhao26}, for every variance, by finite tests on the
+closure of a signed translation.
+\end{proof}

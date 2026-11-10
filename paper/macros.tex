@@ -1,0 +1,109 @@
+%% Packages -----------------------------------------------------------------
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xurl}
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,arrows.meta,decorations.pathreplacing,calc,fit,backgrounds,shapes.geometric,patterns}
+
+
+%% Lean identifiers: typewriter, with URL-style line breaking.
+%% Breaks are allowed only after a dot or an underscore (xurl would break anywhere).
+\DeclareUrlCommand\lean{\urlstyle{tt}\def\UrlBreaks{\do\.\do\_}\def\UrlBigBreaks{}\def\UrlNoBreaks{}}
+
+%% Long formulas: allow slightly looser lines instead of overfull boxes.
+\setlength{\emergencystretch}{2em}
+
+%% Signature, trees and the order --------------------------------------------
+\newcommand{\Bot}{\bot}
+\newcommand{\Top}{\top}
+\newcommand{\BF}{\{\Bot,f\}}
+\newcommand{\BFT}{\{\Bot,f,\Top\}}
+\newcommand{\Dir}{[n]}                          % argument positions 1..n
+\newcommand{\pol}{\operatorname{pol}}           % polarity of a path
+\newcommand{\dom}{\operatorname{dom}}
+\newcommand{\Trees}{\mathcal{T}}                % all trees
+\newcommand{\TreesReg}{\mathcal{T}_{\mathrm{reg}}}
+\newcommand{\TreesFin}{\mathcal{T}_{\mathrm{fin}}}
+\newcommand{\Cls}{\mathcal{C}}                  % a class of trees
+\newcommand{\fall}{f^{\omega}}                  % the tree with f at every path
+\newcommand{\eps}{\varepsilon}
+\newcommand{\entails}{\models}
+
+%% Words ----------------------------------------------------------------------
+\newcommand{\len}[1]{\lvert #1\rvert}
+\newcommand{\wsub}[3]{#1[#2{:}#3]}             % factor w[i:j]
+\newcommand{\wpre}[2]{#1[{:}#2]}               % prefix w[:i]
+\newcommand{\wsuf}[2]{#1[#2{:}]}               % suffix w[i:]
+\newcommand{\pre}{\preceq}                     % prefix order on words
+\newcommand{\Alp}{A}                           % alphabet of a reader
+\newcommand{\lcsuf}{\operatorname{lcs}}        % length of the longest common suffix (in blocks)
+
+%% Cones, atoms and derivations -------------------------------------------
+\newcommand{\Cone}[2]{C^{#1}(#2)}              % cone of sign #1 of the tree #2
+\newcommand{\sgp}{{+}}
+\newcommand{\sgm}{{-}}
+\newcommand{\flip}[1]{\overline{#1}}           % opposite sign
+\newcommand{\SV}{V^{\pm}}                      % signed variables
+\newcommand{\Atoms}{\mathcal{A}}
+\newcommand{\der}{\vdash}                      % derivation by rules
+\newcommand{\mv}{\Rightarrow}                  % derivation by moves
+\newcommand{\LC}{\mathrm{LC}}                  % least closure
+\newcommand{\Hull}{\mathrm{Hull}}
+\newcommand{\NegV}{\mathsf{Neg}}               % signed variables with a forbidden root
+\newcommand{\FctV}{\mathsf{Fct}}               % signed variables reachable from facts
+\newcommand{\Up}{\mathsf{U}}                   % upper run
+\newcommand{\Dn}{\mathsf{D}}                   % lower run
+\newcommand{\stepU}{\delta^{\uparrow}}
+\newcommand{\stepD}{\delta^{\downarrow}}
+
+%% Readers and holes ----------------------------------------------------------
+\newcommand{\Rej}{\mathsf{Rej}}
+\newcommand{\Adm}{\mathsf{Adm}}
+\newcommand{\dead}{\dagger}
+\newcommand{\Chan}{\mathsf{Ch}}                % channel
+\newcommand{\Vis}{\mathsf{Vis}}                % visited states
+\newcommand{\tot}[1]{\lVert #1\rVert}          % total length of a tuple
+\newcommand{\dominates}{\sqsubseteq}
+\newcommand{\Hole}{\mathsf{H}}                 % small-hole bound
+\newcommand{\TailB}{\Lambda}                   % rejected-tail bound
+\newcommand{\FreshB}{\mathsf{J}}               % fresh-tuple bound
+\newcommand{\expo}{\operatorname{exp}}         % iterated exponential
+\newcommand{\cov}{\widehat}                    % cover of a hole
+
+%% Fresh tuples ---------------------------------------------------------------
+\newcommand{\mk}[2]{\sigma^{#1}_{#2}}          % marker of level #1 of coordinate #2
+\newcommand{\Act}{\mathrm{Act}}
+\newcommand{\Anc}{\mathrm{Anc}}
+\newcommand{\dcut}{\operatorname{cut}}
+\newcommand{\lab}{\operatorname{lab}}
+\newcommand{\Marg}{\mathsf{m}}                 % deletion margin
+
+%% Rejected tails ---------------------------------------------------------------
+\newcommand{\onset}{\operatorname{on}}
+\newcommand{\per}{\operatorname{per}}
+\newcommand{\Dict}{\mathcal{D}}
+\newcommand{\node}{\operatorname{node}}
+\newcommand{\gap}{\operatorname{gap}}
+\newcommand{\Lb}{\mathsf{L}}                   % search length for closed factors
+\newcommand{\Wb}{\mathsf{B}}                   % window envelope
+\newcommand{\Fb}{\Phi}                         % factor length bound
+\newcommand{\Qc}{\mathsf{Q}}                   % number of periodic factors: 4+2(k-1)(N-1)
+\newcommand{\cmap}{\operatorname{im}}          % cut map (image of a retained cut) of a deletion of positions
+\newcommand{\proj}{\operatorname{pr}}          % projection of the cover of a hole
+
+%% Hyperlink targets of numbered statements -----------------------------------
+%% The class numbers theorems within sections, but the hyperref anchors use only
+%% the number inside the section (definition.1 in Sections 2 and 4, ...), so links
+%% to later statements jumped to earlier ones. Include the section in the anchor.
+\makeatletter
+\@for\pf@env:={theorem,lemma,corollary,proposition,exercise,definition,conjecture,%
+  observation,example,note,remark,claim}\do{%
+  \@ifundefined{theH\pf@env}{}{%
+    \expandafter\def\csname theH\pf@env\endcsname{\theHsection.\arabic{theorem}}}}
+\makeatother
+
+%% Lists of references without a serial comma, as in the rest of the text.
+\renewcommand{\creflastconjunction}{ and\nobreakspace}

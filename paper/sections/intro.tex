@@ -1,0 +1,216 @@
+\section{Introduction}
+\label{sec:intro}
+
+Type inference with subtyping collects the typing requirements of a program as
+\emph{subtype constraints} $s\le t$ between type expressions with unknowns
+\cite{Mitchell91,FuhMishra90,AikenWimmers93,EifrigSmithTrifonov95,Pottier98}.
+Types are finite or infinite trees. When the type language has a least type
+$\Bot$ and a greatest type $\Top$, the subtype order is \emph{non-structural}:
+$\Bot\le t\le\Top$ holds for every tree $t$, so the order relates trees of
+different shapes. For instance, with a binary constructor $f$ that is covariant
+in both arguments,
+\[
+  f(\Bot,\,f(\Bot,\Bot))\;\le\;f(f(\Top,\Bot),\,\Top),
+\]
+although the two trees have no common shape.
+
+Three questions about a \emph{constraint} $\Gamma$, a finite set of such
+inequalities read as their conjunction, have been studied for this order. \emph{Satisfiability} asks whether $\Gamma$ has a solution; it
+is decidable in polynomial time
+\cite{KozenPalsbergSchwartzbach94,PalsbergWandOKeefe97}. \emph{Entailment}
+asks whether every solution of $\Gamma$ satisfies a further inequality
+$x\le y$; it is the basis of constraint simplification
+\cite{Pottier96,TrifonovSmith96,Rehof97,Pottier01}. Its decidability, posed
+by Rehof in 1996 as Problem~16 of the TLCA list of open problems
+\cite{Rehof96TLCA}, was studied by Niehren and Priesnitz with automata
+\cite{NiehrenPriesnitz99,NiehrenPriesnitz03} and settled positively only
+recently \cite{Zhao26}. Finally, the full \emph{first-order theory} of the
+order is undecidable \cite{SuAikenNiehrenPriesnitzTreinen02}, and for a
+binary covariant constructor, with or without $\Top$, this already holds for
+sentences with the quantifier prefix $\exists\forall\exists$
+\cite{Zhao26U}.
+
+Satisfiability is an existential ($\Sigma_1$) sentence
+$\exists\bar x.\,\bigwedge\Gamma$ in which no negation occurs, and entailment
+is a universal ($\Pi_1$) sentence
+$\forall\bar x.\,\neg\bigwedge\Gamma\vee x\le y$ of a special form: its
+quantifier-free part has a single positive inequality. This paper decides the
+whole first level of the quantifier hierarchy.
+
+\begin{theorem}[Main theorem]\label{thm:main}
+Let $f$ be a constructor of arity $n\ge0$, each of whose arguments is covariant
+or contravariant. It is decidable whether a Boolean combination of $\Sigma_1$
+and $\Pi_1$ sentences over subtype constraints with the signature $\BFT$ is
+true, over arbitrary trees, over regular trees, and over finite trees. A
+sentence is true over the regular trees exactly when it is true over all
+trees. The same holds for the signature $\BF$ when $f$ is covariant. The
+decision procedures are uniform in the arity and the variance.
+\end{theorem}
+
+The function type constructor is the case $n=2$ with a contravariant first
+argument. Since a $\Pi_1$ sentence is the negation of a $\Sigma_1$ sentence,
+the sentences of the theorem are the Boolean combinations of $\Sigma_1$
+sentences; we call the set of the true ones the \emph{$\Sigma_1$ theory}.
+Truth over finite trees can differ from truth over all trees: for a unary
+constructor, $\exists x.\,x\le f(x)\wedge f(x)\le x$ is true over regular
+trees, with the infinite tree $f(f(\cdots))$ as witness, and false over finite
+trees.
+
+\subparagraph*{Disjunctive entailment.}
+A $\Sigma_1$ sentence is true exactly when some clause of a disjunctive normal
+form of its quantifier-free part has a solution. After every compound subterm
+is named by a variable, such a clause has the form
+\begin{equation}\label{eq:intro-clause}
+  \Gamma\;\wedge\;\neg(x_1\le y_1)\;\wedge\;\dots\;\wedge\;\neg(x_k\le y_k),
+\end{equation}
+where $\Gamma$ is a constraint, a conjunction of inequalities, and
+$x_1,y_1,\dots,x_k,y_k$ are variables. It has a solution exactly when
+$\Gamma$ does \emph{not} entail the disjunction
+$x_1\le y_1\vee\dots\vee x_k\le y_k$. So the theorem is equivalent to the
+decidability of \emph{disjunctive entailment}
+\[
+  \Gamma\;\entails\;x_1\le y_1\vee\dots\vee x_k\le y_k,
+\]
+uniformly in the number $k$ of \emph{queries}. Plain entailment is the case
+$k=1$ and satisfiability the case $k=0$.
+
+Disjunctive entailment does not reduce to plain entailment in any direct way,
+because a disjunction can be entailed although none of its disjuncts is. For
+the function type constructor every tree is $\Bot$ or lies above the least
+function type $f(\Top,\Bot)$, so $\forall x.\;x\le\Bot\vee f(\Top,\Bot)\le
+x$ is true, but neither disjunct holds for all $x$. A countermodel of a
+disjunction must refute all disjuncts with a single solution
+(\cref{sec:sent-nonreduction}).
+
+\subparagraph*{From countermodels to holes.}
+A failed inequality $x\le y$ has a \emph{witness}: a path at which the labels
+of the values of $x$ and $y$ are in the wrong order. For $k$ queries we obtain
+$k$ witness paths $w_1,\dots,w_k$, which are words over the argument positions
+$\{1,\dots,n\}$. We show that a tuple of words is the tuple of witnesses of
+some countermodel exactly when it is a \emph{hole} of a finite automaton
+compiled from $\Gamma$ and the queries, a \emph{structural reader}
+(\cref{sec:readers}). The reader has one start state for each query. It reads
+$w_i$ from the $i$th start state, and the tuple is a hole if every run stays
+alive and ends in a \emph{rejected} state, and no \emph{admitted} pair of
+states occurs at a \emph{comparison}: a pair of cuts, one in a word $w_i$ and
+one in a word $w_j$, such that the rest of $w_j$ after its cut is a prefix of
+the rest of $w_i$ after its cut. The words $w_i$ and $w_j$ may be the same
+word or different ones. The pairs of states at the comparisons between $w_i$
+and $w_j$ form the \emph{channel} between the two words. A comparison is a
+place where a subtree that one witness forces into the solution meets a
+subtree that another witness must keep out of it. Here a state is rejected
+when the reader has rejected every way in which the constraint could refute
+the witness, so rejected states are the good ones.
+
+Whether a reader has a hole is not a regular property of the tuple of words,
+since comparisons relate unboundedly long suffixes at unboundedly distant
+cuts. Decidability follows from a bound on the length of a shortest hole. We
+write $\expo_0(x)=x$ and $\expo_{h+1}(x)=2^{\expo_h(x)}$ for iterated
+exponentials.
+
+\begin{theorem}[Small holes]\label{thm:intro-small}
+There is a computable function $\Hole$ such that every structural reader with
+$N$ states and $k$ start states that has a hole has a hole of total length at
+most $\Hole(k,N)$, whatever the size of its alphabet, and
+\[
+  \Hole(k,N)\;\le\;\expo_4\bigl((k+N+20)^{2k+6}\bigr).
+\]
+\end{theorem}
+
+For a fixed number $k$ of queries the bound is four iterated exponentials
+of a polynomial in $N$. A reader compiled from a constraint with $v$
+variables has at most $2^{4v}+1$ states, so the witnesses of a countermodel can be chosen of length
+at most five iterated exponentials of a polynomial in the size of the
+sentence, and the $\Sigma_1$ theory is decidable in elementary space
+(\cref{sec:complexity}). The problem is PSPACE-hard, because plain entailment
+is \cite{HengleinRehof98}. The procedures establish decidability and an
+elementary upper bound; they are not practical algorithms.
+
+\subparagraph*{Why several queries are harder than one.}
+The decision procedure for plain entailment \cite{Zhao26} also reduces a
+countermodel to a hole and bounds a shortest hole, for readers with one start
+state. Its argument does not extend to several words, for three reasons, which
+are summarized in \cref{tab:intro-compare}.
+
+\emph{Several witnesses in one solution.} With $k$ queries a hole is a tuple
+of words, and there are comparisons between different words. Each
+query can fail in two ways, at a path where the smaller side is too large or
+at a path where the larger side is too small, so there is one reader for each
+of the $2^k$ vectors of \emph{modes}.
+
+\emph{Rejected tails.} A run enters the rejected states at some cut and then
+stays in them. With one word, no admitted pair can involve a cut of the
+\emph{rejected tail}, the part of the word after that cut, so a hole can be
+cut off shortly after it. With several words, a cut in the rejected tail of
+one word can still be the host of an admitted comparison with another word.
+If the run can be continued forever, the tail may have to be long in order to
+avoid the other words, and its length must be bounded independently of their
+lengths. This is the largest part of the proof (\cref{sec:tails}). We replace
+such tails by ultimately periodic words, \emph{rays}; we show that rays can be
+chosen so that the constraints between their lengths form a solvable system
+of difference constraints; and we compress the periodic stretches of the
+resulting hole without creating an admitted pair on any channel.
+
+\emph{Shortening all words together.} Deleting a block from one word of a
+tuple can create a comparison with another word. The shortening of
+\cref{sec:fresh} therefore follows one hierarchy of \emph{markers} for the
+whole tuple and deletes the same repeated blocks from all words at the same
+time.
+
+\begin{table}[t]
+\caption{Plain entailment and disjunctive entailment.}
+\label{tab:intro-compare}
+\small\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.21\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.40\linewidth}@{}}
+\toprule
+ & Plain entailment \cite{Zhao26} & Disjunctive entailment (this paper) \\
+\midrule
+witness of a countermodel & one path & one path per query, all realized by one solution \\
+\addlinespace
+readers & one per failure side, with one start state & one per mode vector, $2^k$ in all, with $k$ start states \\
+\addlinespace
+comparisons & within one word & within and between the words of a tuple \\
+\addlinespace
+after the first rejection & no admitted pair; short tails & tails can still be hosts; bounded by rays and compression \\
+\addlinespace
+shortening & hierarchy of one word & one marker hierarchy, the same blocks deleted in all words \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subparagraph*{Contributions.}
+\Cref{fig:overview} shows the structure of the proof.
+\begin{itemize}
+\item We prove that the $\Sigma_1$ theory of non-structural subtyping is
+  decidable for one constructor of any arity and variance with $\Bot$ and
+  $\Top$, over arbitrary, regular and finite trees, and for a covariant
+  constructor with $\Bot$ only (\cref{thm:main}, proved in
+  \cref{sec:decision}).
+\item We give an exact reduction of the countermodels of a disjunctive
+  entailment to the holes of structural readers with $k$ start states
+  (\cref{thm:reduction}).
+\item We prove the small-hole theorem for structural readers
+  (\cref{thm:small-hole}) from two results of independent interest in
+  combinatorics on words with automata: a bound on rejected tails
+  (\cref{thm:tails}) and a bound on minimal tuples of fresh words
+  (\cref{thm:fresh}).
+\item We show that the bound is elementary (\cref{thm:elementary}), discuss
+  the gap to the PSPACE lower bound, and give families of sentences whose
+  shortest witnesses are long (\cref{sec:complexity}).
+\item The decision procedures, their correctness, the small-hole theorem and
+  its elementary bound are mechanized in Lean~4 with Mathlib
+  (\cref{sec:mechanization}).
+\end{itemize}
+
+\input{figures/overview}
+
+\Cref{sec:prelim} fixes trees, the order and sentences. \Cref{sec:sentences}
+reduces sentences to disjunctive entailment, and \cref{sec:readers} reduces
+disjunctive entailment to holes. \Cref{sec:overview} states the two bounds
+and composes them. \Cref{sec:fresh,sec:tails} explain their proofs, with the
+longer arguments in the appendices. \Cref{sec:decision} gives the decision
+procedures, including regular and finite trees and the signature $\BF$, and
+\cref{sec:complexity} the complexity bounds. \Cref{sec:mechanization}
+describes the mechanization, \cref{sec:related} discusses related work, and
+\cref{sec:future,sec:conclusion} discuss future work and conclude. The
+notation is collected in \cref{app:notation}.

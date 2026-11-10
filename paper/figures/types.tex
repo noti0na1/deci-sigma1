@@ -1,0 +1,71 @@
+%% types -- the three types of coordinates at a stable scale.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >={Stealth[length=1.8mm]}, xscale=0.86]
+\def\h{0.32}
+\tikzset{pf/.style={fill=black!18}, ex/.style={fill=black!75}}
+%% fixed
+\begin{scope}
+  \draw (0,0) rectangle (7.4,\h);
+  \node at (1.0,0.5*\h) {head};
+  \draw (2.0,-0.08) -- (2.0,-0.28) node[below] {$J_i$};
+  \draw (2.0,0) -- (2.0,\h);
+  \draw[pf] (2.15,0) rectangle (4.2,\h);
+  \draw[ex] (4.2,0) rectangle (4.3,\h);
+  \draw[pf] (4.3,0) rectangle (6.3,\h);
+  \draw[ex] (6.3,0) rectangle (6.45,\h);
+  \draw[pf] (6.45,0) rectangle (7.4,\h);
+  \node[left] at (0,0.5*\h) {fixed};
+  \node[anchor=west] at (7.6,0.5*\h) {kept; a target word for the others};
+\end{scope}
+%% terminal
+\begin{scope}[yshift=-1.15cm]
+  \draw (0,0) rectangle (7.4,\h);
+  \node at (1.0,0.5*\h) {head};
+  \draw (2.0,-0.08) -- (2.0,-0.28) node[below] {$J_i$};
+  \draw (2.0,0) -- (2.0,\h);
+  \draw[pf] (2.2,0) rectangle (3.4,\h);
+  \draw[ex] (3.4,0) rectangle (3.5,\h);
+  \draw[pf] (3.5,0) rectangle (7.4,\h);
+  \draw[pf, densely dashed] (7.4,0) rectangle (9.3,\h);
+  \node at (9.6,0.5*\h) {$\cdots$};
+  \draw[decorate, decoration={brace, mirror, amplitude=3pt}] (3.5,-0.06) -- (7.4,-0.06)
+    node[midway, below=3pt] {long periodic suffix};
+  \node[left] at (0,0.5*\h) {terminal};
+  \node[anchor=west] at (9.9,0.5*\h) {its ray};
+\end{scope}
+%% escaping
+\begin{scope}[yshift=-2.55cm]
+  \draw (0,0) rectangle (7.4,\h);
+  \node at (1.0,0.5*\h) {head};
+  \draw (2.0,-0.08) -- (2.0,-0.28) node[below] {$J_i$};
+  \draw (2.0,0) -- (2.0,\h);
+  \draw[pattern=north east lines, pattern color=black!45] (2.0,0) rectangle (7.4,\h);
+  \draw[pf] (4.4,0) rectangle (5.3,\h);
+  \node at (4.85,0.5*\h) {$\tau$};
+  \draw (4.4,-0.08) -- (4.4,-0.28) node[below] {$c_i$};
+  \draw (5.3,-0.08) -- (5.3,-0.28) node[below] {$c_i'$};
+  \node[left] at (0,0.5*\h) {escaping};
+  %% the ray
+  \draw (0,-1.0) rectangle (4.4,-1.0+\h);
+  \draw[pattern=north east lines, pattern color=black!45] (2.0,-1.0) rectangle (4.4,-1.0+\h);
+  \draw (2.0,-1.0) -- (2.0,-1.0+\h);
+  \foreach \x in {4.4,5.3,6.2,7.1,8.0} {
+    \draw[pf] (\x,-1.0) rectangle (\x+0.9,-1.0+\h);
+    \node at (\x+0.45,-1.0+0.5*\h) {$\tau$};
+  }
+  \node at (9.2,-1.0+0.5*\h) {$\cdots$};
+  \node[anchor=west] at (9.9,-1.0+0.5*\h) {its ray};
+  \node[anchor=west] at (7.6,0.5*\h) {cut at a closed and free factor $\tau$};
+\end{scope}
+\end{tikzpicture}
+\caption{The three types of coordinates at a stable scale. Periodic factors
+with short periods are gray, exceptional positions black, and text without
+such a structure is hatched. A fixed coordinate with an immortal endpoint
+has a tail of few periodic factors and no long periodic suffix; its word is
+kept. A terminal coordinate ends with a long periodic suffix and is
+continued by the ray of this suffix. An escaping coordinate is far from
+periodic at this scale; its tail is cut at one of many closed and free
+factors $\tau$ and continued by $\tau^\omega$.}
+\label{fig:types}
+\end{figure}

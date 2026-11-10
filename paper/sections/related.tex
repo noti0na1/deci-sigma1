@@ -1,0 +1,78 @@
+\section{Related Work}
+\label{sec:related}
+
+\subparagraph*{Satisfiability and entailment.}
+Subtype constraints over trees were introduced for type inference with
+subtyping \cite{Mitchell91,FuhMishra90}. For non-structural subtyping,
+satisfiability is decidable in polynomial time over finite and infinite trees
+\cite{KozenPalsbergSchwartzbach94,PalsbergWandOKeefe97}; over finite
+structural trees it depends on the poset of base types
+\cite{Tiuryn92,PrattTiuryn96,Frey97,NiehrenPriesnitzSu05}. Entailment was
+studied for constraint simplification \cite{Pottier96,TrifonovSmith96,
+Rehof97,Pottier01}. For structural subtyping it is coNP-complete over finite
+trees and PSPACE-complete over infinite trees
+\cite{HengleinRehof97,HengleinRehof98}. For non-structural subtyping,
+Henglein and Rehof proved PSPACE-hardness \cite{HengleinRehof98}; Niehren
+and Priesnitz characterized entailment by automata with comparisons between
+suffixes of paths, proved PSPACE-completeness for a fragment and decided the
+unary case \cite{NiehrenPriesnitz99,NiehrenPriesnitz03}; decidability, TLCA
+Problem~16 \cite{Rehof96TLCA}, was proved in \cite{Zhao26}. Existential
+entailment, which underlies the subsumption of constrained types
+\cite{TrifonovSmith96}, is decided in \cite{Zhao26E}. The present paper uses
+the leaf cones of \cite{Zhao26E} for the reduction to automata and follows
+\cite{Zhao26} in reducing decidability to a bound on shortest holes; the
+readers with several starts, the treatment of rejected tails and the
+simultaneous shortening of tuples are new.
+
+\subparagraph*{The first-order theory.}
+Su, Aiken, Niehren, Priesnitz and Treinen proved that the first-order theory
+of non-structural subtyping is undecidable, for finite and for infinite
+trees, and decidable when all constructors are unary or nullary
+\cite{SuAikenNiehrenPriesnitzTreinen02,SuEtAl06}. Their sentences have
+several quantifier alternations; undecidability already holds for the prefix
+$\exists\forall\exists$, for a binary covariant constructor with or without
+$\Top$, over finite, regular and arbitrary trees \cite{Zhao26U}. For structural subtyping of
+non-recursive types the full first-order theory is decidable
+\cite{KuncakRinard03}. For non-structural subtyping with one binary
+covariant constructor, our result places the boundary: the $\Sigma_1$ level
+is decidable, the $\Sigma_3$ level is not, and the level in between is open
+except for the existential entailments of \cite{Zhao26E}. For unary and
+nullary constructors the whole theory is decidable. Su \cite{Su02} reduces
+first-order questions to the emptiness of constrained tree automata, which
+is undecidable in general; our readers are a decidable special case in which
+the tests compare rests of words.
+
+\subparagraph*{Ordering constraints over feature trees.}
+For feature trees ordered by information, entailment and the existential
+fragment of the first-order theory are well understood: entailment with
+existential quantifiers is PSPACE-complete, and the full first-order theory
+is undecidable \cite{MullerNiehrenTreinen98,MullerNiehrenTreinen01,
+MullerNiehrenPodelski00}. Feature trees have an open alphabet of features,
+so a countermodel can always use a fresh feature. A ranked signature offers
+no fresh direction, and this is the source of the comparisons between
+different witness paths in our holes.
+
+\subparagraph*{Word equations and combinatorics on words.}
+Niehren and Priesnitz observed that entailment involves word equations of a
+restricted kind \cite{NiehrenPriesnitz03}. The existential theory of words
+with concatenation is decidable by Makanin's algorithm
+\cite{Makanin77,Plandowski04,Schulz92}, but the conditions of a hole
+quantify universally over the cuts of the unknown words, and theories of
+words with a quantifier alternation are undecidable \cite{Durnev95}.
+Our proof uses elementary combinatorics on words:
+the periodicity lemma of Fine and Wilf \cite{FineWilf65,Lothaire02}, squares
+and maximal repetitions \cite{CrochemoreRytter95,KolpakovKucherov99}, and an automaton
+of suffixes in the style of Aho and Corasick \cite{AhoCorasick75}. The
+marker hierarchy of \cref{sec:fresh} is a parsing of several words by their
+own suffixes, in the spirit of the hierarchical decompositions used for
+plain entailment \cite{Zhao26}.
+
+\subparagraph*{Other approaches to subtyping.}
+Algebraic subtyping \cite{DolanMycroft17,Dolan16,ParreauxChau22} changes the
+model of types so that constraints can be solved and types simplified by
+automata-theoretic means, and semantic subtyping
+\cite{CastagnaXu11,GesbertGenevesLayaida15} interprets types as sets, with
+decidable subtyping in the presence of Boolean connectives. These systems
+have union, intersection and often negation \emph{types}; our sentences have
+disjunction and negation of \emph{constraints} over the classical tree model
+with $\Bot$, $\Top$ and one constructor.

@@ -1,0 +1,168 @@
+\section{Complexity}
+\label{sec:complexity}
+
+The decision procedures search for holes up to the bound of
+\cref{thm:small-hole}. This section estimates the bound, in the size of the
+reader and in the size of the sentence, and compares it with the known lower
+bounds. Recall that $\expo_0(x)=x$ and $\expo_{h+1}(x)=2^{\expo_h(x)}$.
+
+\subsection{An Elementary Upper Bound}\label{sec:complexity-upper}
+
+\begin{theorem}[Elementary bounds]\label{thm:elementary}
+For all $k\ge0$ and $N\ge1$,
+\begin{align*}
+  \FreshB(k,N)&\le\expo_2\bigl((k+N+16)^4\bigr), &
+  \TailB(k,N)&\le\expo_2\bigl((k+N+20)^{2k+5}\bigr), \\
+  \Hole(k,N)&\le\expo_4\bigl((k+N+20)^{2k+6}\bigr).
+\end{align*}
+The bounds do not depend on the size of the alphabet.
+\end{theorem}
+
+\begin{proof}
+The inequalities are proved in \cref{app:complexity-closed}, by estimating
+the recurrences of \cref{thm:fresh-bound,thm:tails-bound} and the
+composition \eqref{eq:hole-bound}.
+\end{proof}
+
+In outline: for $\FreshB$, the recurrence $\nu_{d+1}\le 4E F^2\nu_d^2$ of
+\cref{thm:fresh-bound} squares its value $kN$ times, so $\log_2\nu_{kN}$ is
+at most $2^{kN}$ times a polynomial in $k$ and $N$, and $\FreshB=kX^{kN+1}$
+is doubly exponential. For $\TailB$, one shows by induction on the scale
+that the logarithms of all scale functions of scale $l$ are bounded by a
+common value $H_l$ with $H_{l+1}\le2^{\ell}H_l$, where
+$\ell=\ell(k,N)\le(k+N+10)(\Qc+N+3)^k+5$: by \cref{lem:closed-free} the search
+length $\Lb_k$ is bounded by a polynomial in the window of degree
+$2^{(k+N+10)(\Qc+N+3)^k}$, because the chain budget is the constant $\Qc+N$, and the
+other scale functions are polynomials of bounded degree in $\Lb_k$, $N!$ and
+the functions of the previous two scales. After the $3(2k+1)+1$ scales, the
+logarithms of the period bound $D$ and of $E_0$ are at most
+$2^{O(k\ell)}$. Each compression pass replaces $E$ by a value that is linear
+in $E$, with a coefficient of the form $2^{k(N-1)}\cdot\mathrm{poly}(D,N!)$
+(\cref{thm:tails-bound}), so the $k(\Qc+3)$ passes multiply the logarithm by a
+factor polynomial in $k$ and $N$. Finally,
+$\Hole(k,N)=\FreshB(k,k(N+\TailB(k,N)+1)+1)$ applies the bound on fresh
+tuples to a table whose size is about $k\TailB(k,N)$.
+
+The innermost argument $(k+N+20)^{2k+5}$ is a polynomial in $N$ for each
+fixed $k$, but not a polynomial in $k$ and $N$ jointly. So, for each fixed
+number $k$ of starts, the bounds on $\FreshB$ and $\TailB$ are doubly
+exponential in $N$ and the bound on $\Hole$ is fourfold exponential in $N$.
+Uniformly in $k$ and $N$, since $(k+N+20)^{2k+6}=2^{(2k+6)\log_2(k+N+20)}$,
+the estimates give $\TailB(k,N)\le\expo_3(O(k\log(k+N+20)))$ and
+$\Hole(k,N)\le\expo_5(O(k\log(k+N+20)))$, while $\FreshB(k,N)\le
+\expo_2((k+N+16)^4)$ is doubly exponential in a polynomial in $k$ and $N$.
+These are upper bounds; we do not know how far they are from the truth.
+
+Three counts in the proof of \cref{thm:tails} keep the bound elementary;
+each replaces a cruder count that would give a tower of exponentials whose
+height grows with $k$ or $N$.
+\begin{itemize}
+\item \emph{Suffix nodes instead of windows.} A closed factor is found by a
+  pigeonhole on suffix nodes (\cref{def:node}), of which there are
+  polynomially many in the window $B$. A pigeonhole on the last $B$ letters
+  before a cut would cost $\len\Alp^{B}$ at each of the nested uses in
+  \cref{lem:closed-free}, and would make the bound depend on the alphabet.
+\item \emph{A constant chain budget.} The suffix chains of a fixed word have
+  at most $\Qc+N$ steps from the initial window of the scale on
+  (\cref{lem:chains}). The obvious bound on the number of steps, by the
+  length of the non-periodic part of the tail, grows from scale to scale,
+  and the number of iterations in \cref{lem:closed-free} with it.
+\item \emph{A linear cap.} In a compression pass, the simple-path bound
+  $2^h$ is applied only to the pieces whose number of pairwise comparable
+  members is bounded by states; the pieces in the rejected tails are counted
+  linearly (\cref{lem:cap}). Applying the bound $2^h$ to all pieces would
+  add one exponential in each of the $k(\Qc+3)$ passes.
+\end{itemize}
+
+\begin{corollary}[Sentences]\label{cor:complexity}
+Let $\varphi$ be a Boolean combination of $\Sigma_1$ and $\Pi_1$ sentences
+of size $m$. Every clause of its normal forms that is realizable over
+$\Trees$ is realized by a solution whose witness paths have total length at
+most $\expo_5(p(m))$ for a fixed polynomial $p$, and the truth of $\varphi$
+over each of the three classes is decidable in space $\expo_5(p(m))$.
+\end{corollary}
+
+\begin{proof}
+A clause has at most $m$ subterms and at most $m$ negated inequalities, so
+its flat constraint has $v\le m$ variables, $v\le m+1$ with the guard of
+\cref{sec:decision-bf}, and $k\le m$ queries. The readers have at most
+$2^{4v}+1$ states (\cref{thm:reduction}), and
+$\expo_4((m+2^{4m+4}+21)^{2m+6})\le\expo_5((4m+6)(2m+6))$, because
+$m+2^{4m+4}+21\le2^{4m+6}$. The search of
+\cref{thm:decide-arbitrary} enumerates the clauses, the mode vectors and the
+tuples one after the other and stores one tuple at a time; the tests of
+satisfiability, of finite satisfiability and of the hole conditions need
+space polynomial in the size of the reader and the tuple.
+\end{proof}
+
+The bound is far from practical. It is a bound on a brute-force search, obtained from
+shortening arguments that were not designed for efficiency.
+
+\subsection{Lower Bounds}\label{sec:complexity-lower}
+
+\begin{proposition}[Hardness]\label{prop:hardness}
+For a covariant constructor of every fixed arity $n\ge2$, the $\Sigma_1$
+theory over $\BFT$ is PSPACE-hard over each of the three classes of trees,
+already for plain entailment.
+\end{proposition}
+
+\begin{proof}
+Plain entailment is a $\Pi_1$ sentence (\cref{sec:prelim-constraints}), and
+it is PSPACE-hard: for $n=2$ over infinite trees by Henglein and Rehof
+\cite{HengleinRehof98}, and for every $n\ge2$ and each of the three classes
+by \cite{Zhao26}, by a reduction from the universality of nondeterministic
+finite automata.
+\end{proof}
+
+For the arities $0$ and $1$, to which \cref{prop:hardness} does not apply,
+Boolean combinations of sentences are still NP-hard, since propositional
+satisfiability reduces to them as soon as two distinct trees, such as $\Bot$
+and $\Top$, are definable; for $n\ge2$ this is subsumed by the proposition.
+
+\subparagraph*{Long witnesses.}
+Shortest holes can be long. For one query and a covariant constructor of
+arity $n\ge2$, there are constraints with $O(\beta)$ variables that have
+finite solutions and whose shortest witness paths have length exponential in
+$\beta$, over each of the three classes \cite{Zhao26}: the constraint lets
+an automaton accept every word except the extensions of the record of a
+binary counter. With two queries there is a second, different mechanism,
+which uses the channels between the two words.
+
+\begin{example}[Witnesses forced by the least common multiple]
+\label{ex:lcm}
+For $r\ge1$ moduli $p_1,\dots,p_r\ge1$ with least common multiple $L$,
+there is a
+structural reader with two starts and $O(p_1+\dots+p_r)$ states, over the
+alphabet $\{1,2\}$, whose holes are exactly the tuples
+\[
+  W_t=\bigl((1^{tL}2)^r,\;1^{tL}2\bigr),\qquad t\ge1,
+\]
+so its shortest hole has total length $(r+1)(L+1)$. The first word passes
+$r$ stages; stage $j$ counts a block of letters $1$ modulo $p_j$ and lets
+the word proceed only if the block length is divisible by $p_j$. The
+admitted pairs are the pairs of a state at the beginning of a block and a
+state inside a block, in either order and in both words, which forces all
+blocks to have the same length. For a binary covariant constructor, there is
+a constraint with $O(p_1+\dots+p_r)$ variables and literals and two queries
+that has finite solutions and whose countermodels, over each of the three
+classes, have exactly these tuples as their tuples of witness paths; so the
+same lower bound holds for the witnesses of countermodels. With the first
+$r$ primes as moduli, $L=2^{\Theta(r\log r)}$ while the constraint has
+$O(r^2\log r)$ variables. \Cref{app:complexity-long} gives the construction
+and the proofs.
+\end{example}
+
+\subsection{The Gap}\label{sec:complexity-gap}
+
+Between PSPACE-hardness and the upper bound of \cref{cor:complexity} there
+are five exponentials. Already for plain entailment the exact complexity is
+open, between PSPACE and 2-EXPSPACE \cite{Zhao26}. For disjunctive
+entailment we know no witnesses longer than exponential and no hardness
+result beyond PSPACE. The upper bound is unlikely to be tight: the two
+shortening arguments are composed through the cover of \cref{sec:overview},
+which, for a fixed number of queries, applies a doubly exponential bound to
+a table of doubly exponential size, and each of the two bounds is itself obtained by pigeonhole arguments
+on finite summaries rather than by a search over summaries. For plain and
+for existential entailment, sharper analyses that do not enumerate words give
+procedures in 2-EXPSPACE \cite{Zhao26,Zhao26E}; whether the shortening of
+tuples admits a similar analysis is open (\cref{sec:future}).

@@ -1,0 +1,507 @@
+\section{Witnesses, Modes and Readers}
+\label{sec:readers}
+
+This section characterizes the countermodels of a disjunctive entailment over
+arbitrary trees by the holes of finite automata. We first represent trees by
+two sets of paths, in which the order becomes inclusion and a constraint
+becomes a set of implications between atoms
+(\cref{sec:readers-cones,sec:readers-atoms}). A failed query then has a
+witness path, in one of two modes (\cref{sec:readers-modes}), and a family of
+witnesses belongs to one solution exactly under three conditions on
+derivations (\cref{sec:readers-realization}). Finite automata follow these
+derivations along the witness paths (\cref{sec:readers-runs}), which gives
+the readers and the reduction
+(\cref{sec:readers-def,sec:readers-reduction}). The representation by leaf
+cones is that of \cite{Zhao26E}; proofs omitted here are in
+\cref{app:reduction}. Throughout, trees are trees over $\BFT$ and
+assignments range over all trees.
+
+\subsection{Leaf Cones}\label{sec:readers-cones}
+
+\begin{definition}[Signs and cones]\label{def:cones}
+The \emph{sign} of a leaf $v$ of a tree $t$ is $\sgp$ if $t(v)=\Top$ and
+$\pol(v)=0$, or $t(v)=\Bot$ and $\pol(v)=1$; otherwise it is $\sgm$. For a
+sign $s\in\{\sgp,\sgm\}$, the \emph{cone} of sign $s$ of $t$ is
+\[
+  \Cone st=\{\,w\in\Dir^*\mid\text{some prefix of $w$ is a leaf of $t$ of sign $s$}\,\}.
+\]
+We write $\flip s$ for the opposite sign.
+\end{definition}
+
+For a covariant constructor all polarities are $0$, so $\Cone{\sgp}t$ is the
+set of paths along which $t$ reaches $\Top$ and $\Cone{\sgm}t$ the set of
+paths along which it reaches $\Bot$; \cref{fig:tree-witness} shows an
+example. With contravariant arguments the two labels exchange their roles at
+paths of polarity $1$. A path has at most one prefix that is a leaf, and it
+has none exactly when it is a position labeled $f$. A set $L$ of paths is
+\emph{extension closed} if $w\in L$ implies $wi\in L$ for every $i\in\Dir$.
+
+\begin{theorem}[Leaf representation]\label{thm:cones}
+\begin{enumerate}
+\item\label{it:cones-pair} For every tree $t$, the cones $\Cone{\sgp}t$ and
+  $\Cone{\sgm}t$ are disjoint and extension closed. Conversely, every pair of
+  disjoint extension-closed sets of paths is the pair of cones of exactly one
+  tree.
+\item\label{it:cones-order} For all trees $t$ and $u$:\quad
+  $t\le u\iff\Cone{\sgp}t\subseteq\Cone{\sgp}u$ and
+  $\Cone{\sgm}u\subseteq\Cone{\sgm}t$.
+\item\label{it:cones-node} $\eps\in\Cone{\sgp}t$ iff $t=\Top$, and
+  $\eps\in\Cone{\sgm}t$ iff $t=\Bot$. If $t=f(t_1,\dots,t_n)$, then for every
+  $i\in\Dir$, path $w$ and sign $s$: $iw\in\Cone st$ iff
+  $w\in\Cone{s}{t_i}$ when $i$ is covariant, and iff
+  $w\in\Cone{\flip s}{t_i}$ when $i$ is contravariant.
+\end{enumerate}
+\end{theorem}
+
+So going up in the order adds leaves of sign $\sgp$ and removes leaves of
+sign $\sgm$. The variance enters only through the signs of the leaves; there
+are two cones for each tree, whatever the arity.
+
+\input{figures/tree-witness}
+
+\subsection{Solutions as Closed Sets of Atoms}\label{sec:readers-atoms}
+
+Let $\Gamma$ be a constraint over $V$. A \emph{signed variable} is a pair
+$x^s$ of a variable and a sign; $\SV$ is the set of signed variables and
+$\flip{x^s}=x^{\flip s}$. An \emph{atom} is a pair $(p,w)$ of a signed
+variable and a path, and $\flip{(p,w)}=(\flip p,w)$ is its \emph{opposite}.
+An assignment $\rho$ determines the set of atoms
+\[
+  S_\rho=\{\,(x^s,w)\mid w\in\Cone s{\rho(x)}\,\}.
+\]
+For an argument position $i$ we write $x^{[i]}$ for $x^{\sgp}$ if $i$ is
+covariant and for $x^{\sgm}$ if $i$ is contravariant. \Cref{tab:clauses}
+associates with every literal of $\Gamma$ a set of \emph{moves}, implications
+between two atoms, together with \emph{facts}, atoms that must hold, and
+\emph{forbidden atoms}, which must not. The \emph{rules} of $\Gamma$ are
+its moves and the \emph{extensions} $(p,w)\to(p,wi)$, for all atoms $(p,w)$
+and all $i\in\Dir$.
+
+\begin{table}[t]
+\caption{The rule form of the flat literals, for all paths $w$ and all
+$i\in\Dir$.}
+\label{tab:clauses}
+\centering\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Literal & Moves & Facts & Forbidden atoms \\
+\midrule
+$x\le y$ & $(x^{\sgp},w)\to(y^{\sgp},w)$,\quad $(y^{\sgm},w)\to(x^{\sgm},w)$ & & \\[2pt]
+$f(x_1,\dots,x_n)\le y$ & $(x_i^{[i]},w)\to(y^{\sgp},iw)$,\quad
+   $(y^{\sgm},iw)\to(\flip{x_i^{[i]}},w)$ & & $(y^{\sgm},\eps)$ \\[2pt]
+$y\le f(x_1,\dots,x_n)$ & $(y^{\sgp},iw)\to(x_i^{[i]},w)$,\quad
+   $(\flip{x_i^{[i]}},w)\to(y^{\sgm},iw)$ & & $(y^{\sgp},\eps)$ \\[2pt]
+$x=\Bot$ & & $(x^{\sgm},\eps)$ & \\
+$x=\Top$ & & $(x^{\sgp},\eps)$ & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A set $S$ of atoms is \emph{closed} if it is closed under the rules,
+\emph{consistent} if it contains no atom together with its opposite, and a
+\emph{solution set} of $\Gamma$ if it is closed and consistent, contains the
+facts and contains no forbidden atom.
+
+\begin{lemma}[Rule form]\label{lem:clause-form}
+The map $\rho\mapsto S_\rho$ is a bijection from the solutions of $\Gamma$
+onto the solution sets of $\Gamma$.
+\end{lemma}
+
+The proof translates each literal with \cref{thm:cones}: for instance,
+$f(x_1,\dots,x_n)\le y$ says that the cone of sign $\sgp$ of the constructor
+tree, which consists of the paths $iw$ with $w$ in a cone of $\rho(x_i)$, is
+contained in that of $\rho(y)$, and that the cone of sign $\sgm$ of
+$\rho(y)$ is contained in that of the constructor tree, which does not
+contain $\eps$.
+
+We write $a\der b$ if the atom $b$ is \emph{derivable} from the atom $a$ by
+finitely many rules, and $a\mv b$ if it is derivable by moves only. The
+\emph{least closure} $\LC$ of $\Gamma$ is the set of atoms derivable from
+facts. It is closed and contained in every solution set, so $\Gamma$ is
+satisfiable if and only if $\LC$ is consistent and contains no forbidden
+atom, and then $\LC$ is the least solution set.
+
+The moves read the path of an atom as a stack whose top is its first letter:
+a move replaces the signed variable and pops or pushes one letter at the top,
+or leaves the path unchanged. Extensions add letters at the bottom. Two
+properties of the moves are used throughout.
+
+\begin{lemma}[Duality and normal form]\label{lem:duality}
+\begin{enumerate}
+\item\label{it:dual} If $a\to b$ is a move, so is $\flip b\to\flip a$. Hence
+  $a\mv b$ implies $\flip b\mv\flip a$.
+\item\label{it:ext-first} $(p,u)\der(q,v)$ if and only if
+  $(p,u\sigma)\mv(q,v)$ for some path $\sigma$.
+\end{enumerate}
+\end{lemma}
+
+Two finite sets of signed variables record where the forbidden atoms and the
+facts enter. Both kinds of atoms have the empty path, and we let
+\begin{equation}\label{eq:neg-fct}
+\begin{aligned}
+  \NegV&=\{\,r\in\SV\mid(r,\eps)\text{ is a forbidden atom of }\Gamma\,\},\\
+  \FctV&=\{\,r\in\SV\mid(p,\eps)\mv(r,\eps)\text{ for some fact }(p,\eps)
+  \text{ of }\Gamma\,\}.
+\end{aligned}
+\end{equation}
+An atom whose derivations reach a signed variable of $\NegV$ with the empty
+path cannot belong to a solution set, and an atom that is reached from a
+signed variable of $\FctV$ with the empty path belongs to every solution
+set.
+
+\begin{example}[Rules of a small constraint]\label{ex:guard-rules}
+Let $f$ be binary and covariant, and let
+\[
+  \Gamma=\{\,u\le f(u,u),\quad x\le u,\quad y=\Bot\,\}
+\]
+over the variables $x,y,u$. The inequality $u\le f(u,u)$ ensures that
+$\Top$ does not occur in $u$ (this is the guard of
+\cref{sec:decision-bf}); since $x\le u$, $\Top$ does not occur in $x$
+either, and $y$ is $\Bot$. By \cref{tab:clauses} the moves are, for all paths $w$ and
+$i\in\{1,2\}$,
+\begin{align*}
+  (u^{\sgp},iw)&\to(u^{\sgp},w), & (u^{\sgm},w)&\to(u^{\sgm},iw)
+    &&\text{from }u\le f(u,u),\\
+  (x^{\sgp},w)&\to(u^{\sgp},w), & (u^{\sgm},w)&\to(x^{\sgm},w)
+    &&\text{from }x\le u.
+\end{align*}
+The first pops a letter, the second pushes one, and the last two keep the
+path; in each row the second move is the dual of the first. The only forbidden atom is $(u^{\sgp},\eps)$ and the only fact is
+$(y^{\sgm},\eps)$, so $\NegV=\{u^{\sgp}\}$ and $\FctV=\{y^{\sgm}\}$. The
+least closure consists of the atoms $(y^{\sgm},w)$, which are derived from
+the fact by extensions: it describes the solution with the least set of
+atoms, $y=\Bot$ and $x=u=\fall$. The derivation
+\[
+  (x^{\sgp},12)\to(u^{\sgp},12)\to(u^{\sgp},2)\to(u^{\sgp},\eps)
+\]
+pops the path $12$ and ends in a forbidden atom. So no solution set contains
+$(x^{\sgp},12)$: the tree of $x$ cannot reach $\Top$ along the path $12$,
+nor along any other path, because every path can be popped in this way.
+\end{example}
+
+\subsection{Witnesses and Modes}\label{sec:readers-modes}
+
+By \cref{thm:cones}\eqref{it:cones-order}, an inequality fails in one of two
+ways.
+
+\begin{lemma}[Witnesses]\label{lem:witness}
+Let $\rho$ be an assignment and $(x,y)$ a query. Then $\rho(x)\not\le\rho(y)$
+if and only if there are a path $w$ and a \emph{mode} $\mu\in\{\Top,\Bot\}$
+such that
+\begin{itemize}
+\item $\mu=\Top$,\quad $(x^{\sgp},w)\in S_\rho$ and $(y^{\sgp},w)\notin
+  S_\rho$;\quad or
+\item $\mu=\Bot$,\quad $(y^{\sgm},w)\in S_\rho$ and $(x^{\sgm},w)\notin
+  S_\rho$.
+\end{itemize}
+\end{lemma}
+
+In mode $\Top$ the smaller side is too large along $w$: it has a leaf of
+sign $\sgp$ that the larger side lacks. In mode $\Bot$ the larger side is too
+small. We call the atom that must belong to $S_\rho$ the \emph{seed} of the
+witness and the atom that must not belong to it the \emph{exclusion}; both
+have the path $w$. For queries $(x_1,y_1),\dots,(x_k,y_k)$, a vector of modes
+$\bar\mu=(\mu_1,\dots,\mu_k)$ and a tuple of paths $W=(w_1,\dots,w_k)$, we
+write $A_i=(p_i,w_i)$ for the seed and $B_i=(p'_i,w_i)$ for the exclusion
+of query $i$, so that
+\begin{equation}\label{eq:seeds}
+  (p_i,p'_i)=(x_i^{\sgp},y_i^{\sgp})\ \text{ if }\mu_i=\Top,\qquad
+  (p_i,p'_i)=(y_i^{\sgm},x_i^{\sgm})\ \text{ if }\mu_i=\Bot.
+\end{equation}
+A solution $\rho$ of $\Gamma$ is a countermodel if and only if, for some
+$\bar\mu$ and $W$, the set $S_\rho$ contains every $A_i$ and no $B_i$. The
+signed variables $p_i,p'_i$ depend only on the queries and the modes; the
+tuple $W$ is what the decision procedure has to find. In
+\cref{fig:tree-witness}, for instance, the query $(x,y)$ fails in mode
+$\Top$ with the witness $12$.
+
+\subsection{Realization}\label{sec:readers-realization}
+
+\begin{theorem}[Realization]\label{thm:realization}
+Let $\Gamma$ be satisfiable over $\Trees$, and let $A_1,\dots,A_k$ and
+$B_1,\dots,B_k$ be atoms. Some solution set of $\Gamma$ contains every $A_i$
+and no $B_i$ if and only if
+\begin{enumerate}[label=\textup{(R\arabic*)}]
+\item\label{it:R1} no $A_i$ derives a forbidden atom;
+\item\label{it:R2} $B_i\notin\LC$ and $\flip{A_i}\notin\LC$, for every $i$;
+\item\label{it:R3} $A_j\not\der B_i$ and $A_j\not\der\flip{A_i}$, for all
+  $i$ and $j$, including $i=j$.
+\end{enumerate}
+In this case the \emph{hull} $\LC\cup\{b\mid A_j\der b\text{ for some }j\}$
+is the least such solution set.
+\end{theorem}
+
+The conditions are clearly necessary: a solution set is closed, so it
+contains the hull, and it is consistent and contains no forbidden atom. For
+the converse one has to show that the hull is consistent. If it contained an
+atom $b$ derived from $A_j$ together with $\flip b$ derived from $A_i$, the
+duality of \cref{lem:duality} would turn the second derivation around and
+compose it with the first into a derivation from $A_j$ toward
+$\flip{A_i}$. The extensions, which have no dual, are handled by
+\ref{it:R1}.
+
+Condition \ref{it:R3} is where the $k$ witnesses interact. It involves pairs
+of queries, and also a single query with itself: a seed must not derive its
+own exclusion or its own opposite.
+
+\subsection{Runs along a Path}\label{sec:readers-runs}
+
+The conditions of \cref{thm:realization} are conditions on derivations
+between atoms whose paths are the unknown words $w_i$. Two families of
+finite sets summarize the derivations by moves along a path.
+
+\begin{definition}[Upper and lower runs]\label{def:runs}
+For a signed variable $p$ and a path $w$,
+\[
+  \Up(p,w)=\{\,r\in\SV\mid(p,w)\mv(r,\eps)\,\},\qquad
+  \Dn(p,w)=\{\,r\in\SV\mid(r,\eps)\mv(p,w)\,\}.
+\]
+\end{definition}
+
+The \emph{upper run} $\Up(p,w)$ collects the signed variables reached from
+$(p,w)$ when the whole path has been popped, and the \emph{lower run}
+$\Dn(p,w)$ those from which $(p,w)$ is built by pushing the whole path. Since
+moves only see the top of the stack, $r\in\Up(p,w)$ also means that
+$(p,w\sigma)\mv(r,\sigma)$ for every $\sigma$ by moves that never pop a
+letter of $\sigma$, and similarly for $\Dn$. By duality,
+$\Dn(p,w)=\{\flip r\mid r\in\Up(\flip p,w)\}$.
+
+\begin{lemma}[Runs are deterministic]\label{lem:runs-det}
+There are computable functions $\stepU,\stepD\colon 2^{\SV}\times\Dir\to
+2^{\SV}$ such that $\Up(p,wi)=\stepU(\Up(p,w),i)$ and
+$\Dn(p,wi)=\stepD(\Dn(p,w),i)$ for all $p$, $w$ and $i$. Moreover
+$\stepU(P,i)=\varnothing$ whenever $P\cap\NegV=\varnothing$.
+\end{lemma}
+
+So both runs are computed by reading $w$ from the root, with two
+deterministic automata whose states are sets of signed variables. The last
+statement holds because a letter can be popped only from an atom
+$(y^{\sgp},iw)$ with a literal $y\le f(\dots)$, or from $(y^{\sgm},iw)$ with a
+literal $f(\dots)\le y$, and in both cases the signed variable lies in
+$\NegV$.
+
+\begin{lemma}[Derivations through cuts]\label{lem:cuts}
+Let $(p,u)$ and $(q,v)$ be atoms with $\Up(p,u)\cap\NegV=\varnothing$. Then
+$(p,u)\der(q,v)$ if and only if there are cuts $a$ of $u$ and $b$ of $v$
+such that
+\[
+  \wsuf ua\pre\wsuf vb\qquad\text{and}\qquad
+  \Up(p,\wpre ua)\cap\Dn(q,\wpre vb)\ne\varnothing.
+\]
+Moreover, $(p,u)$ derives a forbidden atom if and only if
+$\Up(p,u)\cap\NegV\ne\varnothing$.
+\end{lemma}
+
+A derivation from $(p,u)$ first extends $u$, then pops a prefix of the path
+down to a lowest point and pushes a prefix of $v$. The hypothesis says that
+the pops do not go beyond $u$, so the lowest point is a cut $a$ of $u$, and
+the rest $\wsuf ua$ is never touched: it survives as a prefix of the rest of
+$v$. This is the origin of the comparisons ``the rest of one word is a prefix
+of the rest of another word'' in the definition of holes. In
+\cref{ex:guard-rules}, the atom $(u^{\sgm},2)$ derives $(x^{\sgm},12)$ by
+pushing the letter $1$ and moving to $x^{\sgm}$. The cuts of the lemma are
+$0$ in the path $2$ and $1$ in the path $12$: the rest $2$ is not touched,
+and $\Up(u^{\sgm},\eps)=\{u^{\sgm},x^{\sgm}\}$ meets
+$\Dn(x^{\sgm},1)=\{u^{\sgm}\}$. The same analysis,
+applied to derivations from facts, shows that $(q,v)\in\LC$ if and only if
+$\Dn(q,\wpre vb)$ meets the set $\FctV$ of \eqref{eq:neg-fct} for some cut
+$b$ of $v$; this uses that $\Gamma$ is satisfiable.
+
+\subsection{Structural Readers and Holes}\label{sec:readers-def}
+
+We now define the automata and their holes abstractly. The alphabet is an
+arbitrary finite set $\Alp$; in the reduction it is $\Dir$.
+
+\begin{definition}[Structural reader]\label{def:reader}
+A \emph{structural reader} with $k$ \emph{starts} over $\Alp$ consists of a
+finite set $S$ of states, a transition function $\delta\colon S\times\Alp\to
+S$, $k$ start states $s_1,\dots,s_k\in S$, which need not be distinct, a
+\emph{dead}
+state $\dead\in S$ with $\delta(\dead,c)=\dead$ for every letter $c$, a set
+$\Rej\subseteq S\setminus\{\dead\}$ of \emph{rejected} states and a relation
+$\Adm\subseteq S\times S$ of \emph{admitted} pairs, such that for every
+$q\in\Rej$ and every letter $c$ with $\delta(q,c)\ne\dead$:
+\begin{enumerate}[label=\textup{(S\arabic*)}]
+\item\label{it:S1} $\delta(q,c)\in\Rej$;
+\item\label{it:S2} $(q',\delta(q,c))\notin\Adm$ for every state $q'$.
+\end{enumerate}
+Its \emph{size} is $N=\len S$.
+\end{definition}
+
+The names anticipate the reduction of \cref{sec:readers-reduction}, where a
+reader follows the derivations from the seed of a witness. A run is
+\emph{dead} when the constraint alone already contradicts the witness. A
+state is \emph{rejected} when the seed can no longer derive a forbidden
+atom: the reader has rejected every way of refuting the witness by a
+forbidden atom. So a rejected state is what a witness has to reach, although
+the word may suggest the opposite. Condition \ref{it:S1} says that rejection
+is permanent, and \ref{it:S2} that a state reached after a rejected state is
+never the second component of an admitted pair. A pair of states is
+\emph{admitted} when it shows a derivation from the seed of one witness
+that contradicts a witness, the same one or another; such pairs matter only
+at the places defined next.
+
+Let $W=(w_1,\dots,w_k)$ be a tuple of words. The word $w_i$ is read from
+$s_i$; we write $q_i(a)=\delta^*(s_i,\wpre{w_i}a)$ for the state of
+coordinate $i$ at the cut $a$, and $q_i(\len{w_i})$ is its \emph{endpoint}.
+The \emph{total length} of $W$ is $\tot W=\len{w_1}+\dots+\len{w_k}$.
+
+\begin{definition}[Comparisons, channels and holes]\label{def:hole}
+Let $i$ and $j$ be coordinates, possibly equal. A \emph{comparison} from the
+\emph{host} $i$ to the \emph{target} $j$ is a pair $(a,b)$ of a cut $a$ of
+$w_i$ and a cut $b$ of $w_j$ such that $\wsuf{w_j}b\pre\wsuf{w_i}a$: the
+rest of the target is a prefix of the rest of the host. The pair of states
+$(q_i(a),q_j(b))$ is the \emph{channel pair} at this comparison, and the
+\emph{channel} from $i$ to $j$ is the set of all channel pairs,
+\[
+  \Chan_{ij}(W)=\{\,(q_i(a),q_j(b))\mid a\text{ a cut of }w_i,\ b\text{ a cut
+  of }w_j,\ \wsuf{w_j}b\pre\wsuf{w_i}a\,\}.
+\]
+Coordinate $i$ is \emph{eligible} if $q_i(a)\ne\dead$ for every cut $a$ and
+its endpoint is rejected. The tuple $W$ is a \emph{hole} if every coordinate
+is eligible and $\Chan_{ij}(W)\cap\Adm=\varnothing$ for all $i$ and $j$.
+\end{definition}
+
+All cuts are included, also the two ends: at $b=\len{w_j}$ the rest of the
+target is empty, so $(a,b)$ is a comparison for every cut $a$ of the host.
+For example, in the tuple $(0110,\,10)$ the comparisons from the host $1$ to
+the target $2$ are $(2,0)$, since $10$ is the rest of $0110$ after the cut
+$2$, then $(0,1)$ and $(3,1)$, since the rest $0$ of the target is a prefix
+of the rests $0110$ and $0$, and $(a,2)$ for the five cuts $a$ of the host.
+In a pair $(q,q')\in\Adm$ the first component is the state of a host and the
+second the state of a target; the relation need not be symmetric.
+\Cref{fig:reader-hole}(a) shows a comparison and its channel pair.
+
+For an eligible coordinate, \ref{it:S1} gives a \emph{first rejected cut}
+$J_i$: the states $q_i(a)$ are rejected exactly for $a\ge J_i$. The prefix
+$\wpre{w_i}{J_i}$ is the \emph{head} of $w_i$ and the suffix
+$\wsuf{w_i}{J_i}$ its \emph{rejected tail}. By \ref{it:S2}, the target cut of
+an admitted channel pair is at most $J_j$. So the tail of a word is never
+involved as a target, but it can be involved as a host, and for $i=j$ a
+channel pair has $a\le b$.
+
+\input{figures/reader-hole}
+
+\subsection{The Reader of a Mode and the Reduction}\label{sec:readers-reduction}
+
+Fix a satisfiable constraint $\Gamma$, queries $(x_1,y_1),\dots,(x_k,y_k)$
+and a vector of modes $\bar\mu$, with the signed variables $p_i,p'_i$ of
+\eqref{eq:seeds} and the sets $\NegV$ and $\FctV$ of \eqref{eq:neg-fct}.
+
+\begin{definition}[The reader $M_{\bar\mu}$]\label{def:compile}
+The states of $M_{\bar\mu}$ are the pairs $(P,Q)$ of sets of signed variables
+with $(Q\cup\flip P)\cap\FctV=\varnothing$, where $\flip P=\{\flip r\mid r\in
+P\}$, and a dead state $\dead$. The transition on a letter $i$ takes $(P,Q)$
+to $(\stepU(P,i),\stepD(Q,i))$ if this pair is a state, and to $\dead$
+otherwise. The $i$th start state is $(\Up(p_i,\eps),\Dn(p'_i,\eps))$ if this
+pair is a state, and $\dead$ otherwise. Moreover
+\begin{align*}
+  (P,Q)\in\Rej&\iff P\cap\NegV=\varnothing,\\
+  ((P_h,Q_h),(P_t,Q_t))\in\Adm&\iff P_t\cap(Q_h\cup\flip{P_h})\ne\varnothing.
+\end{align*}
+\end{definition}
+
+Coordinate $i$ follows the upper run of its seed, in the \emph{upper
+component} $P$, and the lower run of its exclusion, in the \emph{lower
+component} $Q$. It dies when a prefix of
+the path shows that the exclusion or the opposite of the seed lies in the
+least closure, so that every solution contradicts the witness. It is
+rejected when its seed derives no forbidden atom. A pair is admitted when
+the seed of the target derives the exclusion of the host or the opposite of
+the seed of the host, at a comparison of the two paths as in
+\cref{lem:cuts}. With these readings the three conditions of
+\cref{thm:realization} are exactly the conditions of a hole: \ref{it:R2} says
+that no run dies, \ref{it:R1} that every endpoint is rejected, and
+\ref{it:R3} that no channel contains an admitted pair.
+
+\input{figures/guard-reader}
+
+\begin{theorem}[Reduction]\label{thm:reduction}
+$M_{\bar\mu}$ is a structural reader over $\Dir$ with $k$ starts and at most
+$2^{4\len V}+1$ states, computable from $\Gamma$, the queries and $\bar\mu$.
+A tuple $W$ of paths is a hole of $M_{\bar\mu}$ if and only if some solution
+of $\Gamma$ contains the seeds and none of the exclusions of $(\bar\mu,W)$.
+Consequently, for a constraint $\Gamma$ that is satisfiable over $\Trees$,
+\[
+  \Gamma\not\entails_{\Trees}x_1\le y_1\vee\dots\vee x_k\le y_k
+  \iff
+  \text{$M_{\bar\mu}$ has a hole for some $\bar\mu\in\{\Top,\Bot\}^k$.}
+\]
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By \cref{lem:runs-det}, the state of an eligible coordinate $i$ at a cut $a$
+is the pair $(\Up(p_i,\wpre{w_i}a),\Dn(p'_i,\wpre{w_i}a))$. Once $P\cap\NegV$ is empty,
+the next upper set is empty, which gives \ref{it:S1} and \ref{it:S2}. A run
+stays alive exactly when no prefix puts $B_i$ or $\flip{A_i}$ into the least
+closure, which is \ref{it:R2}, and its endpoint is rejected exactly when
+\ref{it:R1} holds. Under \ref{it:R1}, \cref{lem:cuts} states that $A_j\der
+B_i$ or $A_j\der\flip{A_i}$ if and only if there are cuts $b$ of $w_j$ and
+$a$ of $w_i$ with $\wsuf{w_j}b\pre\wsuf{w_i}a$ and
+$\Up(p_j,\wpre{w_j}b)\cap(\Dn(p'_i,\wpre{w_i}a)\cup\Dn(\flip{p_i},\wpre{w_i}a))
+\ne\varnothing$, that is, an admitted pair on the channel from $i$ to $j$.
+The last statement follows with \cref{lem:witness}.
+\end{proof}
+
+\begin{example}[One query: the reader of a small constraint]\label{ex:guard-reader}
+Consider the constraint $\Gamma=\{u\le f(u,u),\ x\le u,\ y=\Bot\}$ of
+\cref{ex:guard-rules}, with $\NegV=\{u^{\sgp}\}$ and $\FctV=\{y^{\sgm}\}$,
+and the query $(x,y)$. \Cref{fig:guard-reader} shows the two readers.
+
+\emph{Mode $\Top$.} The seed is $(x^{\sgp},w)$ and the exclusion
+$(y^{\sgp},w)$: the tree of $x$ should reach $\Top$ along $w$. The upper run
+of the seed is $\Up(x^{\sgp},\eps)=\{x^{\sgp},u^{\sgp}\}$ and
+$\Up(x^{\sgp},w)=\{u^{\sgp}\}$ for $w\ne\eps$, because the only way to pop
+the path of the seed is to move to $u^{\sgp}$ and to pop there. No move ends
+in $(y^{\sgp},w)$, so the lower run of the exclusion is $\{y^{\sgp}\}$ at
+$\eps$ and empty afterwards. The upper component always contains
+$u^{\sgp}\in\NegV$, so no state of the run is rejected, and the reader has
+no hole: the seed always derives the forbidden atom $(u^{\sgp},\eps)$, as in
+\cref{ex:guard-rules}.
+
+\emph{Mode $\Bot$.} The seed is $(y^{\sgm},w)$ and the exclusion
+$(x^{\sgm},w)$: the tree of $y$ should reach $\Bot$ along $w$ and the tree
+of $x$ should not. No move starts from $y^{\sgm}$, so the upper run is
+$\{y^{\sgm}\}$ at $\eps$ and empty afterwards. The lower run of the
+exclusion is $\Dn(x^{\sgm},\eps)=\{x^{\sgm},u^{\sgm}\}$ and
+$\Dn(x^{\sgm},w)=\{u^{\sgm}\}$ for $w\ne\eps$, since $(x^{\sgm},w)$ is
+built from $(u^{\sgm},\eps)$ by pushing $w$ at $u^{\sgm}$ and moving to
+$x^{\sgm}$. Both states are rejected, neither is dead, because
+$y^{\sgm}\in\FctV$ belongs neither to the lower components nor to the
+flipped upper components, and no pair is admitted: for the only nonempty
+upper component, $\{y^{\sgm}\}\cap(\{x^{\sgm},u^{\sgm}\}\cup\{y^{\sgp}\})=
+\varnothing$. So every word is a hole, in particular $w=\eps$. The hull of
+its seed $(y^{\sgm},\eps)$ is the least closure, the solution $y=\Bot$,
+$x=u=\fall$, and indeed $\fall\not\le\Bot$: the entailment
+$\Gamma\entails x\le y$ fails.
+
+\emph{A dead run.} For the reversed query $(y,x)$, the start state of mode
+$\Top$ would be $(\{y^{\sgp}\},\{x^{\sgp}\})$, whose flipped upper component
+contains the fact $y^{\sgm}$; and the start state of mode $\Bot$ would be
+$(\{x^{\sgm}\},\{y^{\sgm}\})$, whose lower component contains it. So both
+readers start in $\dead$ and have no hole: $\Gamma$ entails $y\le x$, as it
+must, since $y=\Bot$ in every solution.
+\end{example}
+
+\begin{example}[Two queries, unary and binary]\label{ex:reader-unary}
+Take the empty constraint and the queries $(x,y)$ and $(y,x)$ of
+\cref{ex:unary}. There are no moves, no facts and no forbidden atoms, so
+$\Up(p,\eps)=\Dn(p,\eps)=\{p\}$, both sets are empty for nonempty paths,
+nothing is dead and every state is rejected. In the mode vector $(\Top,\Bot)$
+the seeds are $(x^{\sgp},w_1)$ and $(x^{\sgm},w_2)$ and the exclusions
+$(y^{\sgp},w_1)$ and $(y^{\sgm},w_2)$: the tree of $x$ should have a leaf of
+sign $\sgp$ on $w_1$ and a leaf of sign $\sgm$ on $w_2$. The reader is shown
+in \cref{fig:reader-hole}(b). The pair $(s_1,s_2)$ is admitted because the
+upper component $\{x^{\sgm}\}$ of the target $s_2$ meets the flipped upper
+component $\flip{\{x^{\sgp}\}}=\{x^{\sgm}\}$ of the host $s_1$, and
+symmetrically for $(s_2,s_1)$.
+
+A channel pair $(s_1,s_2)$ arises from the comparison $(0,0)$, which exists
+when $w_2\pre w_1$, and $(s_2,s_1)$ when $w_1\pre w_2$. So $(w_1,w_2)$ is a hole if and only if
+$w_1$ and $w_2$ are incomparable: two leaves of opposite signs cannot lie on
+one path. For $n=1$ any two words are comparable and there is no hole; the
+other three mode vectors give the same reader up to renaming, so the
+entailment holds. For $n=2$ the tuple $(1,2)$ is a hole. The hull of its
+seeds is the solution $x=f(\Top,\Bot)$, $y=\fall$ for a covariant
+constructor, a countermodel.
+\end{example}

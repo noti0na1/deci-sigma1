@@ -1,0 +1,39 @@
+%% closed-factor -- suffix nodes, a closed factor free of target occurrences.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >={Stealth[length=1.8mm]}]
+\def\h{0.34}
+% host word
+\draw (0,0) rectangle (10.0,\h);
+\node[left] at (0,0.5*\h) {$x$};
+\draw[fill=black!15] (4.4,0) rectangle (7.6,\h);
+\node at (6.0,0.5*\h) {$\tau$};
+% suffix in dictionary at c and at c'
+\draw[pattern=north east lines, pattern color=black!45] (3.3,0) rectangle (4.4,\h);
+\draw[pattern=north east lines, pattern color=black!45] (6.5,0) rectangle (7.6,\h);
+\node[above] at (3.85,\h) {$\sigma$};
+\node[above] at (7.05,\h) {$\sigma$};
+\draw (4.4,-0.08) -- (4.4,-0.3) node[below] {$c$};
+\draw (7.6,-0.08) -- (7.6,-0.3) node[below] {$c'$};
+\node[circle, draw, inner sep=1pt] (q1) at (3.3,-0.95) {$q$};
+\node[circle, draw, inner sep=1pt] (q2) at (6.5,-0.95) {$q$};
+\draw[->] (q1) -- (3.3,-0.08);
+\draw[->] (q2) -- (6.5,-0.08);
+\node[anchor=west] at (7.85,-0.95) {$\node_B(c)=\node_B(c')=(\sigma,q)$};
+% a target suffix ending at an old cut
+\draw (0.9,1.25) rectangle (2.6,1.25+\h);
+\node at (1.75,1.25+0.5*\h) {$v_B(t)$};
+\draw[densely dotted] (0.9,1.25) -- (0.9,\h);
+\draw[densely dotted] (2.6,1.25) -- (2.6,\h);
+\node[anchor=west] at (2.75,1.25+0.5*\h) {an occurrence of the suffix of length $B$ of a target};
+\draw[decorate, decoration={brace, mirror, amplitude=4pt}] (4.45,-1.5) -- (7.6,-1.5)
+  node[midway, below=4pt] {no such occurrence ends in $(c,c']$};
+\end{tikzpicture}
+\caption{A closed factor. The cuts $c<c'$ of the host word $x$ have the same
+suffix node: the same longest suffix $\sigma$ in the suffix dictionary of the
+targets at the window $B$, and the same state $q$ before it. If moreover no
+occurrence of the suffix of length $B$ of a target ends in $(c,c']$, the
+factor $\tau=\wsub xc{c'}$ can be repeated any number of times without
+creating a comparison with a target (\cref{lem:pump}).}
+\label{fig:closed-factor}
+\end{figure}

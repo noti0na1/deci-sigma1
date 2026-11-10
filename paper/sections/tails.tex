@@ -1,0 +1,495 @@
+\section{Rejected Tails}
+\label{sec:tails}
+
+This section explains the proof of \cref{thm:tails}: a reader with a hole
+has a hole whose coordinates with immortal endpoints have short rejected
+tails. If $k=0$, the empty tuple is a hole without tails, and
+\cref{thm:tails} holds with $\TailB(0,N)=0$. So let $k\ge1$. We fix a
+structural reader $M$ with $k$ starts and $N$ states and a hole
+$W=(w_1,\dots,w_k)$, with first rejected cuts $J_i$. The endpoint of $w_1$
+is a rejected state, which differs from $\dead$, so $N\ge2$. Full proofs are
+in \cref{app:tails,app:compression}.
+
+\subsection{The Problem and the Plan}\label{sec:tails-plan}
+
+Let $i$ be a coordinate with an immortal endpoint. After the cut $J_i$ its
+run stays in rejected states, and no cut of the tail is the target of an
+admitted pair. With one word this makes the tail useless, and it can be cut
+off near $J_i$. With several words the tail still matters in the channels
+where $i$ is the \emph{host}: the rest of another word $w_j$ after a cut
+$b\le J_j$ may be a prefix of the rest of $w_i$ after a cut $a$ with an
+admitted pair of states, unless $w_i$ ends too early or its text deviates.
+The tail of $w_i$ may be exactly what makes the texts deviate. Cutting it
+off, or deleting a loop from it, can therefore create an admitted pair, and
+how long the tail must be can depend on the other words, whose lengths are
+not bounded at this stage.
+
+The plan is to make the tails \emph{periodic} first, and to shorten them
+afterwards.
+\begin{enumerate}
+\item \emph{Rays.} We replace the tail of $w_i$, from a cut $c_i\ge J_i$ on,
+  by a periodic continuation $\tau_i^\omega$, where $\tau_i$ is a factor of
+  $w_i$ that is a loop of the run. The infinite word
+  $\wpre{w_i}{c_i}\tau_i^\omega$ is a \emph{ray}
+  (\cref{sec:tails-rays}).
+\item \emph{No new comparisons with the other words.} The factor $\tau_i$ is
+  chosen so that repeating it creates no comparison with the words that are
+  not replaced (\cref{sec:tails-closed}). Which words are replaced is
+  decided by measuring how far each tail is from being periodic, at a
+  suitable scale (\cref{sec:tails-levels}).
+\item \emph{Compatible rays.} Two rays can agree forever from some cuts on.
+  Whether the corresponding pair of states is compared then depends only on
+  the lengths at which the rays are cut off, through a difference constraint.
+  We choose the rays so that these constraints have a solution
+  (\cref{sec:tails-choice}). This yields a hole whose immortal tails consist
+  of a bounded number of periodic stretches and a bounded number of other
+  letters.
+\item \emph{Compression.} Long periodic stretches are shortened by deleting
+  blocks of periods, in all stretches with the same period pattern at once
+  (\cref{sec:tails-compression}).
+\end{enumerate}
+
+\subsection{Rays and Difference Constraints}\label{sec:tails-rays}
+
+\begin{definition}[Rays]\label{def:ray}
+A \emph{ray} is an ultimately periodic infinite word $\Omega=u\tau^\omega$,
+with $\tau$ nonempty. Its \emph{period} $\per(\Omega)$ is the least $p\ge1$
+such that $\Omega[x+p]=\Omega[x]$ for all sufficiently large positions $x$,
+and its \emph{onset} $\onset(\Omega)$ is the least position from which this
+holds. We write $\wpre\Omega L$ for its prefix of length $L$ and
+$\wsuf\Omega a$ for its infinite rest after the cut $a$.
+\end{definition}
+
+For example, $00(10)^\omega=0\,(01)^\omega$ is a ray with period $2$ and
+onset $1$. The presentation $u\tau^\omega$ of a ray is not unique, but its
+period and its onset are.
+
+A ray is read by the reader like a word, from the start state of its
+coordinate; we consider rays whose runs never reach $\dead$. Two rays that
+agree on a long stretch agree forever:
+
+\begin{lemma}[Comparisons of rays]\label{lem:ray-compare}
+Let $\Omega$ and $\Omega'$ be rays and $a,b$ cuts.
+\begin{enumerate}
+\item\label{it:ray-fw} If $\wsuf\Omega a$ and $\wsuf{\Omega'}b$ agree on
+  their first $\max(\onset(\Omega),\onset(\Omega'))+\per(\Omega)+
+  \per(\Omega')$ letters, then $\wsuf\Omega a=\wsuf{\Omega'}b$.
+\item\label{it:ray-onset} If $\wsuf\Omega a=\wsuf{\Omega'}b$ and
+  $b<\onset(\Omega')$, then $\onset(\Omega)-a=\onset(\Omega')-b$ and
+  $\per(\Omega)=\per(\Omega')$.
+\end{enumerate}
+\end{lemma}
+
+Now let rays $\Omega_i$ be given for the coordinates $i$ of a set $I$, each
+with the first rejected cut $J_i$, and consider the prefixes
+$\wpre{\Omega_i}{L_i}$ for lengths $L_i$ that exceed $J_i$ by more than the
+bound of \cref{lem:ray-compare}\eqref{it:ray-fw}. An admitted pair on the
+channel from $i$ to $j$ has a target cut $b\le J_j$, so the rest of the
+target is long and the two rays agree forever from the two cuts. Conversely,
+if they agree forever, the prefixes are compared at these cuts exactly when
+the rest of the target is not longer than the rest of the host
+(\cref{fig:ray}).
+
+\begin{definition}[Ray system]\label{def:ray-system}
+The \emph{ray system} of $(\Omega_i)_{i\in I}$ has a constraint
+\[
+  L_j\;\ge\;L_i+(b-a+1)
+\]
+for all $i\ne j$ in $I$ and all cuts $a$ of $\Omega_i$ and $b\le J_j$ of
+$\Omega_j$ such that the pair of states at $a$ and $b$ is admitted and
+$\wsuf{\Omega_i}a=\wsuf{\Omega_j}b$. A \emph{self event} of $\Omega_i$ is a
+pair of cuts $a\le b\le J_i$ with an admitted pair of states and
+$\wsuf{\Omega_i}a=\wsuf{\Omega_i}b$.
+\end{definition}
+
+The states along a ray are ultimately periodic, so the constraints whose host
+cut $a$ is smaller than $\onset(\Omega_i)+N\per(\Omega_i)$ imply all others,
+and the target cuts are at most $J_j$ (\cref{app:tails-rays}). So the ray
+system is equivalent to a finite system of difference constraints, whose
+graph has an edge $i\to j$ of weight $b-a+1$ for each constraint. For
+example, let $\Omega_1=(01)^\omega$ and $\Omega_2=1(01)^\omega$, and suppose
+that the states at the cut $a=1$ of $\Omega_1$ and the cut $b=0$ of
+$\Omega_2$ form an admitted pair. The rests after these cuts are both
+$(10)^\omega$. In the prefixes of lengths $L_1$ and $L_2$, the rest of the
+target has $L_2$ letters and the rest of the host $L_1-1$, so $(1,0)$ is a
+comparison exactly when $L_2\le L_1-1$. It is avoided by the constraint
+$L_2\ge L_1$, which is $L_2\ge L_1+(b-a+1)$: the target must outlast the
+host.
+
+\begin{lemma}[Prefixes of rays]\label{lem:ray-prefixes}
+\begin{enumerate}
+\item\label{it:rp-hole} If no ray has a self event and the lengths $L_i$
+  satisfy the ray system and exceed $J_i+\max_j\onset(\Omega_j)+2\max_j
+  \per(\Omega_j)$, with the maxima over $j\in I$ (a maximum over the empty
+  set is zero, and for $I=\emptyset$ the assertion is vacuous), then no
+  channel between two coordinates of $I$, equal or
+  not, of the tuple $(\wpre{\Omega_i}{L_i})_{i\in I}$ contains an admitted
+  pair.
+\item\label{it:rp-solve} A system of difference constraints has a solution
+  in natural numbers above any given lower bounds if and only if its graph
+  has no cycle of positive weight.
+\end{enumerate}
+\end{lemma}
+
+\input{figures/ray}
+
+So rays turn the unbounded problem of avoiding each other into a finite
+graph condition. The remaining difficulty is to choose the rays so that
+there is no positive cycle, and so that they create no comparisons with the
+words that stay as they are.
+
+\subsection{Closed Factors}\label{sec:tails-closed}
+
+Let $x$ be the word of an eligible coordinate, with the first rejected cut
+$J$, and let $t_1,\dots,t_m$ be words, the \emph{target words}: they stand
+for the words of the other coordinates, whose rests may be compared with
+rests of $x$. We want cuts $J\le c<c'$ of $x$ such that replacing the tail
+of $x$ after $c$ by repetitions of $\tau=\wsub xc{c'}$ creates no comparison
+in which this coordinate is the host and the target is one of the target
+words. A comparison ends where the target word ends, so what matters at a
+cut $e$ of the host is which rests of target words end there, and with which
+state before them. For rests of bounded length this is finite information.
+
+\begin{definition}[Suffix nodes and closed factors]\label{def:node}
+Let $B\ge0$ be a \emph{window}. For a target word $t$, $v_B(t)$ denotes its
+suffix of length $B$ if $\len t\ge B$; if $\len t<B$, there is no such word,
+and we say that $v_B(t)$ has no occurrences. The \emph{suffix dictionary}
+$\Dict_B$ consists of the empty word and the factors of the words $v_B(t_j)$,
+or of $t_j$ itself if $\len{t_j}<B$. The \emph{suffix node} of a cut $e$ of
+$x$ is the pair
+\[
+  \node_B(e)=\bigl(\sigma,\;q(e-\len\sigma)\bigr),
+  \qquad\sigma\text{ the longest suffix of }\wpre xe\text{ in }\Dict_B,
+\]
+where $q(\cdot)$ is the state of the run of $x$. A factor $\wsub xc{c'}$
+with $c<c'$ is \emph{closed at $B$} if $\node_B(c)=\node_B(c')$, and it is
+\emph{free at $B$} if no occurrence of a word $v_B(t_j)$ ends at a cut of
+$(c,c']$.
+\end{definition}
+
+\begin{example}\label{ex:nodes}
+Let $t=0110$ be the only target word and $B=2$. Then $v_2(t)=10$ and
+$\Dict_2=\{\eps,1,0,10\}$. In the host word $x=101100$, the longest suffix
+of $\wpre x2=10$ in the dictionary is $10$, so $\node_2(2)=(10,q(0))$; at
+the cut $3$ it is $1$, and $\node_2(3)=(1,q(2))$; at the cut $5$ it is again
+$10$, and $\node_2(5)=(10,q(3))$. The factor $\wsub x25=110$ is closed at
+$2$ if $q(0)=q(3)$. It is not free at $2$, because an occurrence of
+$v_2(t)=10$ ends at the cut $5$.
+\end{example}
+
+The dictionary has at most $mB(B+1)/2+1$ words, whatever the alphabet, so
+there are at most $N(mB(B+1)/2+1)$ suffix nodes. Since the dictionary is
+closed under factors, the suffix node after one more letter is a function
+of the suffix node before and of the letter, as in the automaton of Aho and
+Corasick \cite{AhoCorasick75}. Hence along a repetition of a closed factor
+the suffix nodes repeat (\cref{fig:closed-factor}).
+
+\begin{lemma}[Pumping a closed factor]\label{lem:pump}
+Let $\wsub xc{c'}$ be closed and free at $B$, with $c\ge J$, and let
+$x'=\wpre xc\,\wpre{(\tau^\omega)}L$ with $\tau=\wsub xc{c'}$ and $L\ge
+c'-c$. Then $x'$ is eligible with the first rejected cut $J$ and an immortal
+endpoint, and for every target word $t_j$ and all cuts $b$ of $t_j$ and $a$ of
+$x'$: if $\wsuf{t_j}b$ is a prefix of $\wsuf{x'}a$, then it is a prefix of
+$\wsuf x{a^\circ}$ for a cut $a^\circ$ of $x$ that carries the same state as
+the cut $a$ of $x'$.
+\end{lemma}
+
+\input{figures/closed-factor}
+
+A rest of a target word of length at most $B$ that ends at a cut of $x'$ lies in
+the dictionary, so it is a suffix of the word of the suffix node, and it ends
+at a cut of $x$ with the same node. A longer rest ends with $v_B(t_j)$, which
+by freedom ends only at cuts up to $c$, where $x'$ and $x$ coincide.
+
+Closed factors exist by the pigeonhole principle; the point is to find one
+that is free. The occurrences of $v_B(t)$ can be avoided if they are
+sparse, and they are sparse unless $t$ has a periodic suffix at the scale
+of $B$. This is measured by \emph{suffix chains}: for a window $b$ with
+$1\le b\le\len t$ let $\gap_t(b)$ be the distance from the end of $t$ to the
+end of the previous occurrence of $v_b(t)$ in $t$, if there is one; a chain
+is a sequence $b_0<b_1<\cdots$ of windows with $b_{r+1}=b_r+\gap_t(b_r)$,
+and its number of \emph{steps} is the number of its members after the first.
+Along a chain the suffixes $v_{b_r}(t)$ are prefixes of one another.
+
+\begin{example}\label{ex:chain}
+Let $t=ababab$. The suffix $v_1(t)=b$ also ends two letters before the end
+of $t$, so $\gap_t(1)=2$ and the chain from the window $1$ continues with
+$3$. The suffix $v_3(t)=bab$ again ends two letters before the end, so
+$\gap_t(3)=2$, and the next window is $5$. The suffix $v_5(t)=babab$ has no
+other occurrence, and the chain $1<3<5$ stops after two steps
+(\cref{fig:chain}). A periodic suffix thus gives a chain whose gap is the
+period, with about as many steps as the suffix has periods. In contrast,
+for $t=aabbab$ the chain from the window $1$ is $1<3$: the gap of $b$ is
+again $2$, but $bab$ occurs only once. A chain stops at a window whose
+suffix occurs only at the end of $t$, and a long chain with small gaps
+indicates a long periodic suffix.
+\end{example}
+
+\input{figures/chain}
+
+\begin{lemma}[Closed factors free of the target words]\label{lem:closed-free}
+For every number $s$ there are computable functions $\Lb_m$ and $\Wb_m$,
+which depend on $s$ and are nondecreasing in the window, with the following
+property. Let $1\le b_0\le b$, and suppose that every suffix chain of every
+target word that starts at a window of at least $b_0$ has at most $s$
+steps. Then every sequence of $\Lb_m(b)$
+consecutive cuts of $x$ contains cuts $c<c'$ and there is a window $B$ with
+$b\le B\le\Wb_m(b)$ such that $\wsub xc{c'}$ is closed and free at $B$ and
+$B<c'-c\le\Fb(B)$, where $\Fb(B)=(B+1)\,N\,(mB(B+1)/2+1)$.
+\end{lemma}
+
+The proof treats the target words one after the other. For one target word
+it follows a suffix chain as long as the gaps stay below the length needed
+for the remaining ones; the chain stops within $s$ steps, at a window where the
+occurrences of the suffix are far apart. Either a long stretch of the given
+cuts is free at this window, or the occurrences come so regularly that a
+slightly larger window has no occurrence at all after the first one. The
+base case is a pigeonhole on the suffix nodes of cuts that are $B+1$ apart,
+which makes the closed factor longer than its window. The functions $\Lb_m$
+are polynomials in the window whose degree depends on $s$ and $m$; this
+matters for the complexity bound (\cref{sec:complexity}).
+
+\subsection{Scales of Periodicity}\label{sec:tails-levels}
+
+\input{figures/types}
+
+Which coordinates should be replaced by rays, and at which scale? A tail
+that already consists of few periodic stretches should be kept: its word is
+a harmless target word, with short suffix chains. A tail that is far from
+periodic offers many closed factors with different onsets to choose from.
+The two cases must be separated by a gap in scale, because the closed
+factors of one word have to avoid the suffixes of the others. We therefore
+measure periodicity at a sequence of \emph{scales} $l=0,1,2,\dots$, each
+much coarser than the one before. Scale $l$ comes with four numbers, defined
+by a recursion on $l$ in \cref{app:tails-levels} and nondecreasing in $l$:
+\begin{itemize}
+\item $e_l$ bounds the periods that count as short at scale $l$;
+\item $T_l$ bounds the number of positions of a tail that may lie outside
+  its periodic factors;
+\item $Y_l$ is the length from which a periodic suffix counts as long;
+\item $b_l$ is the \emph{initial window} of scale $l$, the smallest window
+  at which closed factors are searched.
+\end{itemize}
+The recursion makes each scale dominate the previous ones: for instance
+$b_{l+1}>(N+1)\,e_l$, and $Y_{l+1}$ exceeds every length that can be
+assembled from $T_l$ exceptional positions and boundedly many periods
+$e_{l+1}$ (inequalities (L1)--(L5) of \cref{app:tails-levels}). The number
+of periodic factors that we allow is governed by the constant
+\[
+  \Qc=4+2(k-1)(N-1).
+\]
+Its value is chosen for the count in \cref{sec:tails-choice}: a coordinate that
+is not almost periodic offers at least $\Qc-1$ suitable rays, and each of
+the other $k-1$ coordinates can spoil at most $2(N-1)$ of them, so one
+remains because $\Qc-1>2(k-1)(N-1)$.
+
+\begin{definition}[Almost periodic tails]\label{def:cover}
+An eligible coordinate $i$ has property $F_l$ if all positions of its
+rejected tail, except at most $T_l$, lie in at most $\Qc+1$ factors of $w_i$
+with periods at most $e_l$. It has property $K_l$ if it has $F_l$ and the
+longest suffix of $w_i$ with a period of at most $e_l$ is shorter than
+$Y_l$.
+\end{definition}
+
+So $F_l$ says that the tail consists of few periodic stretches, up to few
+exceptional positions, and $K_l$ says in addition that the word does not
+end with a long periodic stretch. For instance, for three different
+letters $a,b,c$, a tail $(ab)^{r}c\,(ba)^{r'}$ has $F_l$ for every $l$, with
+two factors of period $2$ and one exceptional position, whatever $r$ and
+$r'$ are, and it has $K_l$ exactly when $2r'<Y_l$. In contrast, a tail
+fails $F_l$ when its periodic stretches with periods up to $e_l$ are so
+many and so short that any $\Qc+1$ of them leave more than $T_l$ positions
+uncovered.
+
+Both properties are inherited from a scale to the next
+(\cref{lem:levels-mono}); for $K_l$ this uses the periodicity lemma of Fine
+and Wilf \cite{FineWilf65}. There are $2k$ properties $F_l,K_l$ of the $k$
+coordinates, each of which changes at most once as $l$ grows, so among the
+scales up to $3(2k+1)$ there is a \emph{stable} scale $l\ge2$: no coordinate
+changes its status with respect to $F$ between $l-1$ and $l$, or with
+respect to $K$ between $l-2$ and $l-1$. At a stable scale every coordinate
+is of exactly one of three types (\cref{fig:types}).
+\begin{itemize}
+\item \emph{Fixed}: the endpoint is mortal, or the coordinate has $K_{l-2}$.
+  Its word is kept. Its suffix chains from the initial window $b_l$ of
+  scale $l$ on have at most $\Qc+N$ steps (\cref{lem:chains}); for a mortal
+  endpoint this follows from \cref{lem:distinct}.
+\item \emph{Terminal}: the endpoint is immortal and the coordinate has
+  $F_{l-1}$ but not $K_{l-1}$. Its word ends with a long suffix of period at
+  most $e_{l-1}$, and it is continued by the ray of this suffix. The ray
+  contains the whole word $w_i$.
+\item \emph{Escaping}: the endpoint is immortal and the coordinate does not
+  have $F_l$. Its tail is cut at a suitable closed factor and continued
+  periodically.
+\end{itemize}
+The number of steps of a suffix chain of a fixed word does not grow with the
+scale; this is what keeps the recursion of the numbers $e_l,T_l,Y_l,b_l$,
+and with it the final bound, elementary.
+
+\subsection{Choosing Compatible Rays}\label{sec:tails-choice}
+
+We fix a stable scale $l$. The target words are the words of the fixed
+coordinates. For a terminal
+coordinate, the last $pN!$ letters of its periodic suffix, $p$ the period,
+form a factor that is closed and free at a suitable window
+(\cref{lem:terminal}). For an escaping coordinate $v$, \cref{lem:closed-free}
+provides a closed and free factor in every stretch of $\Lb_k(b_l)$ cuts of
+the tail, a \emph{candidate}. If the rays of the candidates had at most $\Qc+1$ different
+onsets, the periodic stretches from these onsets would cover the tail up to
+$T_l$ positions, and $v$ would have $F_l$. So there are candidates whose
+rays have at least $\Qc+2$ different onsets, of which at most three lie at
+or before $J_v$ (\cref{lem:candidates}); this leaves $\Qc-1$ candidate rays
+with different onsets after $J_v$.
+
+It remains to exclude positive cycles in the ray system. A constraint $i\to
+j$ requires the rays to agree forever from cuts $a$ and $b\le J_j$. If the
+onset of $\Omega_j$ lies after $J_j$, \cref{lem:ray-compare} aligns the
+onsets, and the stretch $X_j=\wsub{\Omega_j}{J_j}{\onset(\Omega_j)}$ of the
+target between its first rejected cut and its onset is copied into the host
+just before the onset of the host. Following a cycle backwards from an
+escaping coordinate $v$, these stretches grow strictly, so the cycle cannot
+return to $v$, unless one of three \emph{forbidden overlaps} of $v$ with
+the ray of another coordinate $u$ occurs (\cref{def:overlaps}). In the
+first, $X_v$ is a suffix of the text of the ray of $u$ before its onset,
+the onset of $u$ lies after $J_u$, and $X_u$ is not longer than $X_v$. In
+the second, $X_v$ is such a suffix, the onset of $u$ lies at or before
+$J_u$, and the two rays have the same periodic part. In the third, the
+roles are exchanged: $X_u$ is a nonempty suffix of the text of the ray of
+$v$ before its onset, and $X_v$ is not longer than $X_u$.
+
+\begin{lemma}[Compatible candidates]\label{lem:compatible}
+\begin{enumerate}
+\item\label{it:compat-count} For a terminal ray or an escaping ray chosen
+  earlier, of a coordinate $u\ne v$, at most $2(N-1)$ candidates of $v$ with
+  pairwise different onsets after $J_v$ have a forbidden overlap with it.
+\item\label{it:compat-cycle} A ray with its onset after its first rejected
+  cut that has no forbidden overlap with any other ray lies on no cycle of
+  the ray system.
+\end{enumerate}
+\end{lemma}
+
+The count in \eqref{it:compat-count} is again an application of
+\cref{lem:distinct}: different candidates with the same kind of overlap give
+cuts at or before a first rejected cut that carry different states. Since
+$\Qc-1>2(k-1)(N-1)$, the escaping coordinates can be treated one after the
+other, each taking one of its $\Qc-1$ candidates that has no forbidden
+overlap with the at most $k-1$ rays chosen before. Cycles then pass through terminal rays only, and for these the
+lengths of the original words satisfy all constraints, because $W$ is a hole.
+So there is no positive cycle. Solving the ray system above sufficiently
+large lower bounds and applying \cref{lem:pump,lem:ray-prefixes} gives:
+
+\begin{proposition}[Holes with periodic tails]\label{prop:run-cover}
+There are computable numbers $D$ and $E_0$, depending on $k$ and $N$, such
+that every structural reader with a hole has a hole in which the rejected
+tail of every coordinate with an immortal endpoint is covered, up to $E_0$
+positions in total, by at most $\Qc+3$ maximal periodic factors with periods
+at most $D$ and lengths at least $2D$.
+\end{proposition}
+
+\subsection{Compressing the Pieces}\label{sec:tails-compression}
+
+A \emph{piece} of period $d$ in a tuple is a maximal factor of one word that
+has period $d$, length at least $2d$ and a primitive \emph{root}, its first
+$d$ letters; a word is primitive if it is not a power of a shorter word.
+Pieces are the runs, or maximal repetitions, of combinatorics on words
+\cite{KolpakovKucherov99}; we say piece because run already means the run of
+an automaton. The maximal periodic factors of \cref{prop:run-cover} are
+pieces. The pieces whose roots are conjugates (rotations) of a primitive
+word $\zeta$ form the \emph{class} of $\zeta$. The \emph{follower} of a
+piece is the rest of its word after it. For example, the word $abababb$ has
+the piece $ababab$ of period $2$, with the root $ab$ and the follower $b$,
+and the piece $bb$ of period $1$, with the root $b$ and the empty follower;
+in $bababa$ the whole word is a piece of the class of $ab$, with the root
+$ba$.
+
+\input{figures/compression}
+
+Inside a piece of period $d$ the states of the run are periodic with period
+$m_d=d\cdot N!$ after $\alpha_d=Nd$ letters. So a block of $m_d$ letters
+can be deleted from the interior of a piece without changing the later
+states. Deleting blocks from one piece only would be visible to
+comparisons that align this piece with a piece of the same class in another
+word, or in the same word. Two pieces can be aligned by a comparison that
+continues beyond them only if their followers are comparable, which leads to
+the following conditions (\cref{fig:compression}). They use three lengths:
+\[
+  \beta_d=\alpha_d+m_d,\qquad\kappa_d=2\beta_d+m_d,\qquad
+  \phi_d=6\beta_d+2m_d.
+\]
+The deleted blocks begin $\beta_d$ letters after the start of a piece: this
+skips the transient $\alpha_d$ of the states and one more block. The number
+$\kappa_d$ is the threshold for the difference of the lengths of two pieces
+with comparable followers. Pieces that differ by less are shortened alike.
+A difference of at least $\kappa_d$ is kept, and it ensures that where the
+shorter piece begins, the states of the longer one are already periodic, so
+that it does not matter how many blocks each of them has lost. Finally,
+$\phi_d$ is the length that a shortened piece keeps; it leaves room for the
+$\beta_d$ letters before the deleted blocks and for $5\beta_d+2m_d$ letters
+after them, so that both ends of the piece and the letters next to them are
+not affected. For instance, for $N=3$ and $d=2$ we get $\alpha_d=6$,
+$m_d=12$, $\beta_d=18$, $\kappa_d=48$ and $\phi_d=132$.
+
+\begin{definition}[Admissible deletion]\label{def:admissible}
+An \emph{admissible deletion} of the class of $\zeta$, with $d=\len\zeta$,
+deletes $x_P$ blocks of $m_d$ letters from every piece $P$ of the class,
+starting $\beta_d$ letters after the start of $P$, such that
+\begin{itemize}
+\item a piece that is shortened keeps at least $\phi_d$ letters;
+\item two pieces with comparable followers whose lengths differ by less
+  than $\kappa_d$ lose the same number of blocks;
+\item if $P$ and $R$ have comparable followers and $R$ is longer than $P$
+  by at least $\kappa_d$, it remains longer by at least $\kappa_d$.
+\end{itemize}
+\end{definition}
+
+\begin{lemma}[Admissible deletions]\label{lem:admissible}
+The result of an admissible deletion dominates the original tuple. If the
+tuple is a hole, the result is a hole with the same endpoints, its first
+rejected cuts are the images of the original ones, and pieces of other
+classes with periods at most $d$ and lengths at least $2d$ are not affected.
+\end{lemma}
+
+The numbers $x_P$ are the solution of another system of difference
+constraints, and the least solution is small unless long chains of
+constraints force a piece to stay long. Such a chain is a path in the graph
+that joins pieces with comparable followers. Comparability of followers is
+comparability in the forest of the prefix order, and a simple path in the
+comparability graph of a forest of height $h$ has at most $2^h-1$ vertices.
+For the pieces that end at or before the first rejected cut of their word,
+or lie in words with mortal endpoints, comparable followers begin at cuts
+with different states (\cref{lem:distinct}), so their height is at most
+$k(N-1)$. The other pieces end in the rejected tails of immortal
+coordinates, and their number is bounded by \cref{prop:run-cover}.
+Splitting a path at these pieces gives a bound that is \emph{linear} in
+their number.
+
+\begin{lemma}[The cap]\label{lem:cap}
+Suppose that every set of pieces of the class that have pairwise comparable
+followers and are not among $r$ exceptional pieces has at most $h$ elements.
+Then there is an admissible deletion after which every piece of the class
+has length at most
+\[
+  \phi_d+m_d+\bigl((r+1)\,2^{h}-1\bigr)(\kappa_d+m_d).
+\]
+\end{lemma}
+
+Starting from the hole of \cref{prop:run-cover}, we call the at most
+$k(\Qc+3)$ pieces that cover its immortal tails the \emph{designated}
+pieces. We compress the class of a designated piece of the largest period,
+count the positions of the shortened designated pieces of this class among
+the uncovered positions, and repeat with the remaining designated pieces.
+After at most $k(\Qc+3)$ passes all immortal tails are short.
+
+\begin{theorem}[Rejected tails, with the bound]\label{thm:tails-bound}
+For $k\ge1$ and $N\ge1$, let $E_0$ and $D$ be as in \cref{prop:run-cover},
+let $g=k(\Qc+3)$, and define
+\[
+  E_{r+1}=E_r+(g-r)\,\Bigl(\phi_D+m_D+\bigl((2(g-r)+E_r+1)\,2^{k(N-1)}-1\bigr)
+  (\kappa_D+m_D)\Bigr).
+\]
+Then \cref{thm:tails} holds with
+$\TailB(k,N)=E_g\le\expo_2\bigl((k+N+20)^{2k+5}\bigr)$ for $k\ge1$ and
+$N\ge1$, and with $\TailB(0,N)=0$.
+\end{theorem}
+
+The closed form is proved in \cref{app:complexity-closed}.

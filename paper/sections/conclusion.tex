@@ -1,0 +1,24 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have shown that the $\Sigma_1$ theory of non-structural subtyping is
+decidable for one type constructor of any arity and variance with $\Bot$ and
+$\Top$, over arbitrary, regular and finite trees, and for a covariant
+constructor with $\Bot$ only. Equivalently, it is decidable whether a
+constraint entails a disjunction of inequalities. For a binary covariant
+constructor, where the $\exists\forall\exists$ fragment is undecidable, this
+locates the boundary of decidability in the quantifier hierarchy between the
+first and the third level.
+
+The proof reduces a countermodel with $k$ failed inequalities to a tuple of
+$k$ words that avoids forbidden pairs of states wherever the rest of one
+word is a prefix of the rest of another, and bounds the length of a shortest
+such tuple. The two halves of the bound treat two different phenomena. Words
+that can be continued forever must be prevented from running into each
+other, which leads to periodic continuations, difference constraints between
+their lengths, and the compression of their periodic stretches. After the tails are
+bounded, the cover turns the hole into a fresh tuple, which is shortened by
+deleting the same repeated blocks from all its words along a hierarchy of
+markers. The resulting bound is elementary, and
+the whole argument, from the semantics of trees to the closed form of the
+bound, is checked in Lean.

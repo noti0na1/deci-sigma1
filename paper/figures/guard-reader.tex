@@ -1,0 +1,38 @@
+%% guard-reader -- the two readers of the worked example with a nonempty constraint.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >={Stealth[length=2mm]},
+    st/.style={draw, circle, minimum size=7mm, inner sep=0pt},
+    rj/.style={st, double, double distance=1pt}]
+%% mode top
+\begin{scope}
+  \node[st] (t0) at (0,0) {$t_0$};
+  \node[st] (t1) at (2.2,0) {$t_1$};
+  \draw[<-] (t0) -- ++(-0.9,0);
+  \draw[->] (t0) -- node[above] {$1,2$} (t1);
+  \draw[->] (t1) edge[loop right] node {$1,2$} (t1);
+  \node[anchor=west, align=left] at (-0.9,-1.05)
+    {$t_0=(\{x^{\sgp},u^{\sgp}\},\{y^{\sgp}\})$\\[1pt] $t_1=(\{u^{\sgp}\},\varnothing)$};
+  \node at (1.3,-2.05) {(a) mode $\Top$: no state is rejected};
+\end{scope}
+%% mode bot
+\begin{scope}[xshift=7.0cm]
+  \node[rj] (s0) at (0,0) {$s_0$};
+  \node[rj] (s1) at (2.2,0) {$s_1$};
+  \draw[<-] (s0) -- ++(-0.9,0);
+  \draw[->] (s0) -- node[above] {$1,2$} (s1);
+  \draw[->] (s1) edge[loop right] node {$1,2$} (s1);
+  \node[anchor=west, align=left] at (-0.9,-1.05)
+    {$s_0=(\{y^{\sgm}\},\{x^{\sgm},u^{\sgm}\})$\\[1pt] $s_1=(\varnothing,\{u^{\sgm}\})$};
+  \node at (1.3,-2.05) {(b) mode $\Bot$: both states are rejected};
+\end{scope}
+\end{tikzpicture}
+\caption{The readers of $\Gamma=\{u\le f(u,u),\ x\le u,\ y=\Bot\}$ and the
+query $(x,y)$ (\cref{ex:guard-reader}). A state is the pair of the upper run
+of the seed and the lower run of the exclusion; rejected states are drawn
+with a double circle, and the dead state, which is not reachable here, is
+not shown. (a) In mode $\Top$ the upper component always contains
+$u^{\sgp}\in\NegV$, so there is no hole. (b) In mode $\Bot$ every word is a
+hole, since no pair of states is admitted.}
+\label{fig:guard-reader}
+\end{figure}

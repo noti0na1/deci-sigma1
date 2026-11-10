@@ -1,0 +1,62 @@
+%% reader-hole -- a channel between two words of a tuple, and the reader of the worked example.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\small, >={Stealth[length=2mm]}]
+%% Left: a channel between a host word and a target word.
+\begin{scope}
+  \def\h{0.36}
+  % host word
+  \draw (0,0) rectangle (6.4,\h);
+  \fill[black!12] (2.2,0) rectangle (5.0,\h);
+  \draw (2.2,0) -- (2.2,\h);
+  \draw (5.0,0) -- (5.0,\h);
+  \node[left] at (0,0.5*\h) {$w_i$};
+  \node[above, font=\scriptsize] at (2.2,\h) {cut $a$};
+  \node[font=\scriptsize] at (3.6,0.5*\h) {$\wsub{w_i}{a}{a+\len{w_j}-b}$};
+  % target word
+  \draw (0.6,-1.5) rectangle (5.0,-1.5+\h);
+  \fill[black!12] (2.2,-1.5) rectangle (5.0,-1.5+\h);
+  \draw (2.2,-1.5) -- (2.2,-1.5+\h);
+  \node[left] at (0.6,-1.5+0.5*\h) {$w_j$};
+  \node[below, font=\scriptsize] at (2.2,-1.5) {cut $b$};
+  \node[font=\scriptsize] at (3.6,-1.5+0.5*\h) {$\wsuf{w_j}{b}$};
+  \draw[densely dotted] (2.2,0) -- (2.2,-1.5+\h);
+  \draw[densely dotted] (5.0,0) -- (5.0,-1.5+\h);
+  \node[font=\scriptsize] at (3.6,-0.57) {equal};
+  % states
+  \node[circle, draw, inner sep=1pt, font=\scriptsize] (qa) at (2.2,1.25) {$q_i(a)$};
+  \node[circle, draw, inner sep=1pt, font=\scriptsize] (qb) at (2.2,-2.7) {$q_j(b)$};
+  \draw[->] (qa) -- (2.2,\h+0.32);
+  \draw[->] (qb) -- (2.2,-1.5-0.32);
+  \node[font=\scriptsize, align=left, anchor=west] at (3.1,1.25)
+    {$(q_i(a),q_j(b))\in\Chan_{ij}(W)$};
+  \node[font=\scriptsize, align=center] at (3.2,-3.45) {(a) a comparison $(a,b)$: host $i$, target $j$};
+\end{scope}
+%% Right: the reader of the worked example.
+\begin{scope}[xshift=8.0cm, yshift=-0.2cm,
+    st/.style={draw, circle, double, double distance=1pt, minimum size=7mm, inner sep=0pt, font=\scriptsize}]
+  \node[st] (s1) at (0,0.7) {$s_1$};
+  \node[st] (s2) at (0,-1.6) {$s_2$};
+  \node[st] (z) at (2.6,-0.45) {$z$};
+  \draw[<-] (s1) -- ++(-0.9,0);
+  \draw[<-] (s2) -- ++(-0.9,0);
+  \draw[->] (s1) -- node[above, sloped, font=\scriptsize] {$1,\dots,n$} (z);
+  \draw[->] (s2) -- node[below, sloped, font=\scriptsize] {$1,\dots,n$} (z);
+  \draw[->] (z) edge[loop above] node[font=\scriptsize] {$1,\dots,n$} (z);
+  \draw[dashed, <->] (s1) -- node[left, font=\scriptsize] {$\Adm$} (s2);
+  \node[font=\scriptsize, align=left, anchor=west] at (-1.3,2.1)
+    {$s_1=(\{x^{\sgp}\},\{y^{\sgp}\})$,\quad $s_2=(\{x^{\sgm}\},\{y^{\sgm}\})$,\\[1pt] $z=(\varnothing,\varnothing)$};
+  \node[font=\scriptsize, align=center] at (1.3,-3.25) {(b) the reader of \cref{ex:reader-unary}};
+\end{scope}
+\end{tikzpicture}
+\caption{(a) A comparison of a tuple $W$ and its channel pair: the rest of
+the target word $w_j$ after the cut $b$ is a prefix of the rest of the host
+word $w_i$ after the cut $a$, and the pair of the states at the two cuts
+belongs to the channel from $i$ to $j$. The tuple is a hole only if no such
+pair is admitted, for all $i$ and $j$, including $i=j$. (b) The reader of
+the empty constraint with the queries $(x,y)$ and $(y,x)$ in the mode vector
+$(\Top,\Bot)$. All three states are rejected (double circles), the dead
+state is not shown, and the admitted pairs are $(s_1,s_2)$ and
+$(s_2,s_1)$.}
+\label{fig:reader-hole}
+\end{figure}

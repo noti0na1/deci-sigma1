@@ -1,0 +1,568 @@
+\section{Proofs for Section~\ref{sec:tails}: Rejected Tails}
+\label{app:tails}
+
+Throughout, $M$ is a structural reader with $k\ge1$ starts and $N\ge2$
+states, which holds for every reader with a start and a hole
+(\cref{sec:tails}), $W$ is a hole, $J_i$ is the first rejected cut of coordinate $i$ and
+$q_i(a)$ its state at the cut $a$. We use the periodicity lemma of Fine and
+Wilf \cite{FineWilf65} in the following form: if a word of length at least
+$p+p'$ has the periods $p$ and $p'$, it has the period $\gcd(p,p')$;
+consequently, if a factor of length at least $p+g$ of a word with period $p$
+has period $g$, the whole word has period $g$. A word has \emph{period} $p$
+on an interval of positions if letters of the interval at distance $p$ are
+equal. We also use the following consequence of \cref{lem:distinct}.
+
+\begin{lemma}[Periodic stretches before the first rejected cut]
+\label{lem:before-J}
+Let coordinate $i$ be eligible and let $w_i$ have period $p\ge1$ on an
+interval $[s,e)$ with $s\le J_i\le e$. Then $J_i-s<Np$.
+\end{lemma}
+
+\begin{proof}
+Otherwise the $N+1$ cuts $s,s+p,\dots,s+Np$ are at most $J_i$, and two of
+them, $a<a'$, carry the same state. The texts $\wsub{w_i}{a}{a+J_i-a'}$ and
+$\wsub{w_i}{a'}{J_i}$ are equal by periodicity, so the rejected state
+$q_i(J_i)$ is reached at the cut $a+J_i-a'<J_i$, a contradiction.
+\end{proof}
+
+\subsection{Rays and Difference Constraints}\label{app:tails-rays}
+
+\begin{proof}[Proof of \cref{lem:ray-compare}]
+\eqref{it:ray-fw} Let $A$ be the maximum of the two onsets. From the
+position $A$ on, the word $\wsuf\Omega a$ has period $\per(\Omega)$ and
+$\wsuf{\Omega'}b$ has period $\per(\Omega')$, and they agree on the
+$\per(\Omega)+\per(\Omega')$ positions from $A$ on. By Fine and Wilf both
+have the period $g=\gcd(\per(\Omega),\per(\Omega'))$ on this interval, hence
+from $A$ on, and two words with period $g$ from $A$ on that agree on $g$
+positions after $A$ agree from $A$ on. \eqref{it:ray-onset} The infinite
+word $Z=\wsuf{\Omega'}b$ is ultimately periodic with the least period
+$\per(\Omega')$, and the least position from which it has this period is
+$\onset(\Omega')-b>0$. Since $Z=\wsuf\Omega a$, the same holds with
+$\per(\Omega)$ and $\max(\onset(\Omega)-a,0)$.
+\end{proof}
+
+A system of difference constraints over a finite set $I$ is a finite set of
+constraints $L_j\ge L_i+c$ with $i,j\in I$ and integers $c$; its graph has
+an edge $i\to j$ of weight $c$ for each constraint.
+
+\begin{proof}[Proof of \cref{lem:ray-prefixes}]
+\eqref{it:rp-solve} Summing the constraints along a cycle shows that a
+solution excludes cycles of positive weight. Conversely, if there is no such
+cycle, let $L^0_j$ be the largest weight of a path that ends in $j$,
+including the empty path; it is finite, attained by a path without repeated
+vertices, and satisfies all constraints. So does $L^0_j+c$ for every
+constant $c$, which exceeds any given lower bounds for large $c$.
+
+\eqref{it:rp-hole} Consider an admitted pair on the channel from $i$
+to $j$ of the tuple of prefixes, at cuts $a\le L_i$ and $b\le L_j$ with
+$\wsub{\Omega_j}b{L_j}\pre\wsub{\Omega_i}a{L_i}$. By \ref{it:S2}, $b\le
+J_j$, so the two rests agree on $L_j-J_j$ letters, and
+$\wsuf{\Omega_i}a=\wsuf{\Omega_j}b$ by
+\cref{lem:ray-compare}\eqref{it:ray-fw}. If $i=j$, then $a\le b$ because
+$L_j-b\le L_i-a$, and the pair is a self event. If $i\ne j$, the ray system
+has the constraint $L_j\ge L_i+(b-a+1)$, which contradicts $L_j-b\le L_i-a$.
+\end{proof}
+
+The ray system is equivalent to a finite system. Let $\Omega$ be one of the
+rays, with onset $A$ and period $p$, and let $\varphi$ be the map on states
+that reads the word $\wsub\Omega A{A+p}$; it is also the word between the
+cuts $A+jp$ and $A+(j+1)p$ for every $j$. Among the $N+1$ states
+$\varphi^0(q),\dots,\varphi^N(q)$, where $q$ is the state at the cut $A$, two
+are equal, $\varphi^{h}(q)=\varphi^{h+c}(q)$ with $c\ge1$ and $h+c\le N$, so
+$\varphi^j(q)=\varphi^{j-c}(q)$ for all $j\ge N$. Hence every cut $a\ge
+A+Np$ of $\Omega$ has a cut $a^-$ with $A\le a^-<A+Np$ and $a^-\equiv a$
+modulo $p$, which carries the same state and has the same infinite rest. If
+the cuts $a$ and $b$ give a constraint $L_j\ge L_i+(b-a+1)$ of the ray system,
+the cuts $a^-$ and $b$ give the constraint $L_j\ge L_i+(b-a^-+1)$, which
+implies it. So the constraints with host cuts $a<\onset(\Omega_i)+
+N\per(\Omega_i)$ imply all others; their target cuts are at most $J_j$, so
+there are finitely many of them, and \cref{lem:ray-prefixes}\eqref{it:rp-solve}
+applies to them.
+
+\subsection{Closed Factors}\label{app:tails-closed}
+
+Let $x$ be a word read from a state $q_0$, with states $q(e)$, let
+$t_1,\dots,t_m$ be the target words and $B$ a window, with the dictionary $\Dict_B$
+of \cref{def:node}. The dictionary is closed under factors. For a word $y$
+let $\sigma(y)$ be its longest suffix in $\Dict_B$.
+
+\begin{lemma}[Suffix nodes]\label{lem:nodes}
+\begin{enumerate}
+\item\label{it:nodes-step} $\sigma(yc)=\sigma(\sigma(y)c)$ for every word
+  $y$ and letter $c$. Hence $\node_B(e+1)$ is a function of $\node_B(e)$ and
+  the letter at the position $e$.
+\item\label{it:nodes-suffix} If $\node_B(e)=\node_B(e')$ and a word
+  $u\in\Dict_B$ ends at the cut $e$, then $u$ ends at $e'$ and
+  $q(e-\len u)=q(e'-\len u)$. In particular $q(e)=q(e')$.
+\item\label{it:nodes-count} There are at most $N(mB(B+1)/2+1)$ suffix nodes.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\eqref{it:nodes-step} A suffix of $yc$ in the dictionary is empty or of the
+form $uc$ with $u$ a suffix of $y$ and $u\in\Dict_B$, since the dictionary
+is closed under factors; then $u$ is a suffix of $\sigma(y)$. The state
+component of the node after the letter is obtained from the node by reading
+a prefix of $\sigma(y)c$. \eqref{it:nodes-suffix} $u$ is a suffix of the
+word $\sigma$ of the common node $(\sigma,q)$, and the state before $u$ is
+obtained from $q$ by reading $\sigma$ without its suffix $u$.
+\eqref{it:nodes-count} A word of length at most $B$ has at most $B(B+1)/2$
+nonempty factors.
+\end{proof}
+
+\begin{proof}[Proof of \cref{lem:pump}]
+Let $h=c'-c$. By \cref{lem:nodes}\eqref{it:nodes-step} and
+$\node_B(c)=\node_B(c')$, the suffix nodes of $x'$ are periodic with period
+$h$ from the cut $c$ on. So every cut $e$ of $x'$ has a cut $e^\circ\le c'$
+of $x$ with the same suffix node, with $e^\circ=e$ if $e\le c$ and
+$c<e^\circ\le c'$ otherwise; in particular the states of $x'$ are states of
+$x$ at cuts in $[J,c']$ from $J$ on, and they are periodic from $c$ on. So
+$x'$ is eligible with the same first rejected cut, by \ref{it:S1}, and its
+endpoint lies on a cycle of states other than $\dead$.
+
+Let $u=\wsuf{t_j}b$ be a prefix of $\wsuf{x'}a$, and let $e=a+\len u$ be
+the cut of $x'$ at which this occurrence of $u$ ends. If $\len u\le B$,
+then $u\in\Dict_B$, and by \cref{lem:nodes}\eqref{it:nodes-suffix} $u$ ends
+at the cut $e^\circ$ of $x$, with the same state before it; so
+$a^\circ=e^\circ-\len u$ is as required. If $\len u>B$, then $v_B(t_j)$ is a
+suffix of $u$ and ends at $e$ in $x'$, hence at $e^\circ$ in $x$, by the
+same lemma. Since the factor is free, $e^\circ\le c$, so $e\le c$ and the
+occurrence of $u$ lies in the common prefix $\wpre xc$ of $x$ and $x'$.
+\end{proof}
+
+\subparagraph*{Suffix chains.}
+For a word $t$ and a window $b$ with $1\le b\le\len t$, let $\gap_t(b)$ be
+the least $h\ge1$ such that $v_b(t)$ ends at the cut $\len t-h$ of $t$, if
+there is one. A \emph{suffix chain} of $t$ is a sequence $b_0<b_1<\dots<b_r$
+of windows with $b_{u+1}=b_u+\gap_t(b_u)$; it has $r$ \emph{steps} and
+$r+1$ \emph{members}.
+\begin{enumerate}[label=\textup{(C\arabic*)}]
+\item\label{it:C1} If $b\le b'$ and $\gap_t(b')$ is defined, then
+  $\gap_t(b)\le\gap_t(b')$: an occurrence of the longer suffix ends with an
+  occurrence of the shorter one.
+\item\label{it:C2} If $h=\gap_t(b)$, then $v_b(t)\pre v_{b+h}(t)$. So along
+  a chain the rest of $t$ after the cut $\len t-b_{u'}$ has the rest after
+  $\len t-b_u$ as a prefix, for $u<u'$.
+\item\label{it:C3} Let $g$ be a nondecreasing function, $G(b)=b+g(b)$,
+  $b_0\ge1$, and suppose every chain of $t$ that starts at a window of at
+  least $b_0$ has at most $s$ steps. Then for every $b\ge b_0$ there is a
+  window $\hat b$ with $b\le\hat b\le G^{s}(b)$, the $s$-fold iterate, such
+  that $\gap_t(\hat b)$ is undefined or greater than $g(\hat b)$: follow the
+  chain from $b$ as long as the gap is at most $g$. If $b>\len t$, then
+  $\hat b=b$.
+\item\label{it:C4} If $v_{b+g}(t)$ ends at a cut $e$ of a word and $v_b(t)$
+  ends at a cut $e'$ of it with $e-g\le e'<e$, then $\gap_t(b)\le e-e'$:
+  both occurrences lie inside the occurrence of $v_{b+g}(t)$.
+\end{enumerate}
+
+Let $\Fb(B)=(B+1)\,N\,(mB(B+1)/2+1)$, and for a number $s$ define
+\begin{align*}
+  \Lb_0(b)&=\Fb(b)+1, & \Wb_0(b)&=b,\\
+  \Lb_{r+1}(b)&=2\Lb_r(b^*)+\Lb_r\bigl(b^*+\Lb_r(b^*)\bigr)+2, &
+  \Wb_{r+1}(b)&=\Wb_r\bigl(b^*+\Lb_r(b^*)\bigr),
+\end{align*}
+where $b^*=G_r^{s}(b)$ is the $s$-fold iterate of $G_r(b)=b+\Lb_r(b)$. All
+these functions are nondecreasing in $b$, and $\Wb_r(b)\ge b$.
+
+\begin{proof}[Proof of \cref{lem:closed-free}]
+We prove, by induction on $r\le m$: if the chains of the target words
+$t_1,\dots,t_r$ that start at a window of at least $b_0$ have at most $s$
+steps and $b\ge b_0\ge1$, then among any $\Lb_r(b)$ consecutive cuts of $x$
+there are cuts $c<c'$, and there is a window $B$ with $b\le B\le\Wb_r(b)$,
+such that $\node_B(c)=\node_B(c')$, no occurrence of $v_B(t_u)$ with $u\le r$
+ends in $(c,c']$, and $B<c'-c\le\Fb(B)$. The dictionary is always that of
+all $m$ target words.
+
+For $r=0$ let $B=b$ and let $\nu=N(mb(b+1)/2+1)$ bound the number of suffix
+nodes. Among the $\nu+1$ cuts $u,u+(b+1),\dots,u+\nu(b+1)$, which lie within
+$\Fb(b)+1$ consecutive cuts, two have the same node; their distance is a
+positive multiple of $b+1$ and at most $\nu(b+1)=\Fb(b)$.
+
+For the step from $r$ to $r+1$, let $t=t_{r+1}$. By \ref{it:C3} with
+$g=\Lb_r$ there is a window $\hat b$ with $b\le\hat b\le b^*$ such that
+$\gap_t(\hat b)$ is undefined or greater than $\Lb_r(\hat b)$. Let $I$ be
+the given set of $\Lb_{r+1}(b)$ consecutive cuts and $O$ the set of cuts of
+$I$ at which $v_{\hat b}(t)$ ends.
+
+If $I$ contains $\Lb_r(\hat b)$ consecutive cuts outside $O$, the induction
+hypothesis for the window $\hat b$ gives $c<c'$ among them and a window
+$B\ge\hat b$. No occurrence of $v_B(t)$ ends in $(c,c']$, because it would
+end with an occurrence of $v_{\hat b}(t)$, and $B\le\Wb_r(\hat b)\le
+\Wb_{r+1}(b)$.
+
+Otherwise every $\Lb_r(\hat b)$ consecutive cuts of $I$ contain an element
+of $O$. Let $e_0$ be the first element of $O$; it is among the first
+$\Lb_r(\hat b)$ cuts of $I$. Let $b^+=\hat b+\Lb_r(\hat b)$. No occurrence
+of $v_{b^+}(t)$ ends at a cut $e>e_0$ of $I$: such a cut belongs to $O$, the
+largest element $e'$ of $O$ below $e$ satisfies $e-e'\le\Lb_r(\hat b)$, and
+\ref{it:C4} gives $\gap_t(\hat b)\le\Lb_r(\hat b)$, a contradiction. The
+cuts of $I$ after $e_0$ number at least $\Lb_{r+1}(b)-\Lb_r(b^*)\ge
+\Lb_r(b^+)$, since $b^+\le b^*+\Lb_r(b^*)$. The induction hypothesis for the
+window $b^+$, applied to these cuts, gives $c<c'$ and $B$ with $b^+\le
+B\le\Wb_r(b^+)\le\Wb_{r+1}(b)$, and no occurrence of $v_B(t)$ ends in
+$(c,c']$.
+\end{proof}
+
+\subsection{The Scale Functions}\label{app:tails-levels}
+
+Let $\Qc=4+2(k-1)(N-1)$ and $s=\Qc+N$, and let $\Fb$, $\Lb_k$, $\Wb_k$ be the
+functions of \cref{app:tails-closed} for $m=k$ and this $s$. Put
+$e_{-1}=1$, $X_{-1}=X_{-2}=0$, $Y_{-1}=T_{-1}=0$, and for $l\ge0$
+\begin{align*}
+  b_l&=(N+1)\,e_{l-1}+(\Qc+2)(X_{l-2}+1), \qquad
+  T'_l=\Lb_k(b_l),\qquad B_l=\Wb_k(b_l),\\
+  e_l&=\max\bigl(\Fb(B_l),\,e_{l-1}\bigr), \qquad
+  T_l=(\Qc+2)(3T'_l+3),\\
+  Y_l&=1+(X_{l-1}+N+2)\,e_lN!+Ne_l+3(\Qc+3)e_l+T_{l-1}+Y_{l-1}, \\
+  X_l&=(\Qc+2)(1+2e_l)+T_l+Y_l+N .
+\end{align*}
+As in \cref{sec:tails-levels}, $b_l$ is the \emph{initial window} of scale
+$l$, $e_l$ bounds periods, $T_l$ uncovered positions and $Y_l$ periodic
+suffixes; moreover $T'_l$ is the length of the stretches in which closed
+factors are searched, $B_l$ bounds their windows, and $X_l$ bounds the
+members of suffix chains. These functions are defined for all $k\ge1$ and $N\ge1$. They
+are nondecreasing in $l$, and they satisfy the following inequalities:
+\begin{enumerate}[label=\textup{(L\arabic*)}]
+\item\label{it:L1} $b_{l+1}>(N+1)e_l$ and $b_{l+2}\ge(\Qc+2)(X_l+1)$;
+\item\label{it:L2} $\Fb(B_l)\le e_l<T'_l$;
+\item\label{it:L3} $Y_{l+1}>Ne_{l+1}+T_l+2(\Qc+1)e_{l+1}$;
+\item\label{it:L4} $Y_l\ge1+(X_{l-1}+N)\,e_lN!+2e_lN!+Ne_l$;
+\item\label{it:L5} $X_l\ge2(\Qc+1)e_l+T_l+Y_l+N$.
+\end{enumerate}
+All but \ref{it:L2} are immediate from the definitions. For \ref{it:L2},
+induction on $r$ gives $\Fb(\Wb_r(b))<\Lb_r(b)$: for $r=0$ this is
+$\Fb(b)<\Fb(b)+1$, and $\Wb_{r+1}(b)=\Wb_r(y)$ with $y=b^*+\Lb_r(b^*)$, where
+$\Fb(\Wb_r(y))<\Lb_r(y)\le\Lb_{r+1}(b)$. Moreover $e_{l-1}<b_l\le B_l<
+\Fb(B_l)$, so $e_l=\Fb(B_l)<\Lb_k(b_l)=T'_l$.
+
+\begin{lemma}[Monotone scales]\label{lem:levels-mono}
+For an eligible coordinate, $F_l$ implies $F_{l+1}$ and $K_l$ implies
+$K_{l+1}$.
+\end{lemma}
+
+\begin{proof}
+The first statement holds because $e_l$ and $T_l$ are nondecreasing. Assume
+$K_l$ for the word $w$ with the first rejected cut $J$, and suppose $w$ has
+a suffix of length at least $Y_{l+1}$ with a period $p\le e_{l+1}$, on the
+interval $[s,\len w)$. By \cref{lem:before-J} fewer than $Ne_{l+1}$ of its
+positions lie before $J$. Of the others at most $T_l$ are not covered by the
+at most $\Qc+1$ factors of property $F_l$, so by \ref{it:L3} one of
+these factors, with a period $g\le e_l$, meets the suffix in an interval of
+more than $2e_{l+1}\ge p+g$ positions. By Fine and Wilf the suffix has
+period $g\le e_l$, and its length is at least $Y_{l+1}\ge Y_l$, contradicting
+$K_l$.
+\end{proof}
+
+\begin{lemma}[Chains of fixed words]\label{lem:chains}
+Let coordinate $i$ be eligible.
+\begin{enumerate}
+\item\label{it:chains-mortal} If its endpoint is mortal, every suffix chain
+  of $w_i$ has at most $N-1$ members.
+\item\label{it:chains-K} If it has $K_m$, every suffix chain of $w_i$ has at
+  most $X_m+N$ members.
+\item\label{it:chains-window} If it has $K_m$, every suffix chain of $w_i$
+  that starts at a window of at least $(\Qc+2)(X_m+1)$ has at most $\Qc+N$
+  steps.
+\end{enumerate}
+Consequently, at a stable scale $l$, the suffix chains of the word of a
+fixed coordinate that start at a window of at least $b_l$ have at most
+$\Qc+N$ steps, and all its suffix chains have at most $X_{l-2}+N$ steps.
+\end{lemma}
+
+\begin{proof}
+Let $w=w_i$ and $J=J_i$. By \ref{it:C2} the members $b_u$ of a
+chain give cuts $\len w-b_u$ at which comparable rests begin.
+\eqref{it:chains-mortal} follows from \cref{lem:distinct}: the states at
+these cuts are pairwise different and differ from the endpoint.
+
+\eqref{it:chains-K} We count the members by their cuts $c=\len w-b_u$. At most
+$N-1$ are at most $J$, by \cref{lem:distinct}\eqref{it:distinct-head}, at most $T_m$ are uncovered positions of the tail, and at most $Y_m$ are
+among the last $Y_m$ positions. Finally consider one of the factors of property $F_m$, with a period
+$g\le e_m$, and extend it to a maximal interval $[s,e)$ of period $g$. If
+$e=\len w$, all its positions are among the last $Y_m$, by $K_m$. Otherwise the letter at
+$e$ differs from the letter at $e-g$. If two members had cuts $c_1<c_2\le
+e-g$ in this interval, the rest after $c_2$ would be a prefix of the rest
+after $c_1$, and comparing the positions $e-c_2$ and $e-c_2-g$ of the two
+rests would give $w[e]=w[e-g]$. So at most one member has its cut in
+$[s,e-g]$, and at most $g$ in $(e-g,e)$. With \ref{it:L5} the total is at
+most $X_m+N$.
+
+\eqref{it:chains-window} Let $b_0$ be the first member of the chain,
+$U=v_{b_0}(w)$, and $P=\Qc+1$. By \ref{it:C2}, every member $b_u$ gives an
+occurrence of $U$ in $w$ that begins at the cut $\len w-b_u$. At most $N-1$ of
+them begin at or before $J$, by \cref{lem:distinct}. We show that at most
+$P$ occurrences of $U$ begin in the tail; then the chain has at most
+$P+N-1$ members. This is clear if $\len w-J<b_0$. Otherwise the last $b_0$
+positions lie in the tail. Let $R=Y_m+T_m+2e_mP+1$; by \ref{it:L5},
+$b_0\ge1+T_m+PR$, so one of the factors of property $F_m$, with a period $p\le e_m$,
+meets the last $b_0$ positions in an interval $[a,e)$ of more than $R$
+positions. Extend this interval to the right, keeping the period $p$, up to
+the first position $d$ with $w[d]\ne w[d-p]$, or to the end of $w$. It does
+not reach the end: otherwise $w$ would have a suffix of period $p\le e_m$
+and length more than $R>Y_m$, contrary to $K_m$. So $d<\len w$, and in the
+coordinates of $U$, with $\iota=a-(\len w-b_0)$ and $\beta=d-(\len w-b_0)$, the
+interval $[\iota,\beta)$ has more than $R$ positions and period $p$, and the
+letters at $\beta$ and $\beta-p$ differ, a \emph{break}.
+Consider an occurrence of $U$ that begins at a cut $c\ge J$. Of the $R$
+positions before its break $c+\beta$, at most $T_m$ are uncovered, so one
+of the factors of property $F_m$, say $f$, contains more than $2e_m$ of them. By Fine and
+Wilf $f$ has period $p$, so $f$ does not contain the break: it ends at or
+before $c+\beta$. We charge the occurrence to $f$. If a later occurrence, at
+$c'>c$, were charged to the same factor, then more than $2e_m\ge p$ of the
+$R$ positions before $c'+\beta$ would lie before $c+\beta$, so the
+positions $c+\beta$ and $c+\beta-p$ would both lie in the interval of period
+$p$ of the later occurrence, contradicting the break. So the occurrences
+that begin in the tail are charged to different factors.
+
+The last statement follows from \eqref{it:chains-mortal}, from
+\eqref{it:chains-K} and \eqref{it:chains-window} for $m=l-2$, and from
+\ref{it:L1}.
+\end{proof}
+
+\subsection{Terminal Rays and Candidates}\label{app:tails-candidates}
+
+A ray $\Omega$ \emph{agrees with a word $w$ up to $E$} if $E\le\len w$ and
+$\wpre\Omega E=\wpre wE$. For cuts $J\le c<c'$ of $w$, the ray
+$\wpre wc\,\tau^\omega$ of the factor $\tau=\wsub wc{c'}$ agrees with $w$ up
+to $c'$, its onset is at most $c$ and its period at most $c'-c$. If a ray
+agrees with $w_i$ up to $E$, its states at the cuts up to $E$ are the states
+$q_i$.
+
+\begin{lemma}[Terminal rays]\label{lem:terminal}
+Let coordinate $i$ be eligible, and let $w=w_i$ have a suffix of length at
+least $Y_m$ with a period $p\le e_m$. Let $h=pN!$, $c'=\len w$ and
+$c=c'-h$. Then $J_i\le c$, and there is a window $B$ such that
+$\wsub wc{c'}$ is closed at $B$ for every dictionary of words of length at
+most $B$, $w$ has period $p$ on $[c-B,c')$, and no occurrence of $v_B(t)$
+ends in $(c,c']$ for any word $t$ whose suffix chains have at most
+$X_{m-1}+N$ steps.
+\end{lemma}
+
+\begin{proof}
+Let $[s,c')$ be the suffix of period $p$ and $B=1+(X_{m-1}+N)h+h$. By
+\ref{it:L4}, $s+Np\le c-B$, so $J_i<c-B$ by \cref{lem:before-J}. On a word
+of period $p$ the states at the cuts that are at least $Np$ after its
+beginning are periodic with period $pN!$: reading $p$ letters is a map on
+the states whose $N$th iterate lands on a cycle, of a length dividing $N!$.
+So $q_i(c-B)=q_i(c'-B)$, and the $B$ letters before $c$ and before $c'$ are
+equal, since $p$ divides $h$. Hence the state and the longest suffix in any
+dictionary of words of length at most $B$ are the same at $c$ and $c'$.
+
+Let $t$ be a word whose chains have at most $X_{m-1}+N$ steps. By
+\ref{it:C3} with the constant function $g=h$ there is a window $\hat b\le
+1+(X_{m-1}+N)h$ such that $\gap_t(\hat b)$ is undefined or greater than $h$.
+Suppose $v_B(t)$ ends at a cut $e\in(c,c']$. The word $w$ has period $h$ on
+$[c-B,c')$, and $B\ge\hat b+h$, so $v_{\hat b}(t)$ ends at $e$ and at $e-h$,
+both inside this occurrence of $v_B(t)$. By \ref{it:C4},
+$\gap_t(\hat b)\le h$, a contradiction.
+\end{proof}
+
+\begin{lemma}[Candidates]\label{lem:candidates}
+Let $l\ge1$, let $v$ be an eligible coordinate without $F_l$, and let the
+target words be at most $k$ words whose suffix chains from the window $b_l$ on
+have at most $\Qc+N$ steps. Then there are cuts $J_v\le c_r<c'_r$ of $w_v$ and
+windows $B_r\ge b_l$, for $r$ in a finite set, such that
+\begin{enumerate}
+\item\label{it:cand-closed} $\wsub{w_v}{c_r}{c'_r}$ is closed and free at
+  $B_r$, and $B_r<c'_r-c_r\le e_l$;
+\item\label{it:cand-many} the rays $\Omega^r=\wpre{w_v}{c_r}\tau_r^\omega$
+  of these factors have at least $\Qc-1$ pairwise different onsets greater
+  than $J_v$;
+\item\label{it:cand-cover} for each of them, all positions of
+  $[J_v,c_r)$ except at most $(\Qc+3)(3T'_l+3)$ lie in at most $\Qc+2$ factors
+  of $w_v$ with periods at most $e_l$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Let $w=w_v$ and $J=J_v$, and divide the cuts from $J$ on into
+segments of $T'_l$ consecutive cuts. By \cref{lem:closed-free}, applied
+with $m=k$ after adding empty words to the target words if there are fewer than
+$k$, and by \ref{it:L2}, every complete segment $r$ contains cuts
+$c_r<c'_r$ with \eqref{it:cand-closed}. The ray $\Omega^r$ agrees with $w$ up to $c'_r$ and
+has a period of at most $e_l$, so $w$ has this period on the interval
+$[\onset(\Omega^r),c'_r)$, which contains the position $c_r$ of segment $r$.
+
+For a set $\mathcal R$ of segments, the intervals
+$[\onset(\Omega^r),c'_r)$, $r\in\mathcal R$, with the same onset are
+contained in the longest of them. If the rays of the segments below some
+segment $r_0$ have at most $g$ different onsets, we thus obtain at most $g$
+factors with periods at most $e_l$ that contain a position of each of these
+segments. A maximal interval of positions of $[J,c_{r_0})$ outside these
+factors contains no complete segment below $r_0$, so it has fewer than
+$3T'_l$ positions, and there are at most $g+1$ such intervals. For
+$g=\Qc+1$ and all segments, with the incomplete last segment, this would give
+$F_l$, by the definition of $T_l$. So the rays have at least $\Qc+2$ different
+onsets. Let $r_0$ be the first segment such that the segments up to $r_0$
+show $\Qc+2$ different onsets, and choose one segment for each of these
+onsets; for these, \eqref{it:cand-cover} holds by the same count with
+$g=\Qc+2$.
+
+At most three of the $\Qc+2$ onsets are at most $J$. Indeed, let two of the
+chosen rays have onsets at most $J$ and $c'_r\ge J+2e_l$. Both agree with
+$w$ on $[J,J+2e_l)$, an interval after both onsets of at least the sum of
+the two periods, so they are equal by
+\cref{lem:ray-compare}\eqref{it:ray-fw}, and have the same onset. And
+$c'_r<J+2e_l<J+2T'_l$ holds for the first two segments only.
+\end{proof}
+
+\subsection{Forbidden Overlaps}\label{app:tails-overlaps}
+
+For a ray $\Omega_u$ of a coordinate $u$ write $A_u=\onset(\Omega_u)$,
+$\Pi_u=\wsuf{\Omega_u}{A_u}$ for its periodic part, and
+$X_u=\wsub{\Omega_u}{J_u}{A_u}$ for the \emph{stretch} between the first
+rejected cut and the onset, the empty word if $A_u\le J_u$.
+
+\begin{definition}[Forbidden overlaps]\label{def:overlaps}
+Let $\Omega_v$ and $\Omega_u$ be rays of coordinates $v\ne u$ with
+$J_v<A_v$. The ray $\Omega_v$ has a \emph{forbidden overlap} with
+$\Omega_u$ if one of the following holds.
+\begin{enumerate}[label=\textup{(O\arabic*)}]
+\item\label{it:O1} $J_u<A_u$, $X_v$ is a suffix of $\wpre{\Omega_u}{A_u}$,
+  and $\len{X_u}\le\len{X_v}$.
+\item\label{it:O2} $A_u\le J_u$, $X_v$ is a suffix of
+  $\wpre{\Omega_u}{A_u}$, and $\Pi_v=\Pi_u$.
+\item\label{it:O3} $X_u$ is not empty and is a suffix of
+  $\wpre{\Omega_v}{A_v}$, and $\len{X_v}\le\len{X_u}$.
+\end{enumerate}
+\end{definition}
+
+If both onsets lie after the first rejected cuts, \ref{it:O2} does not
+apply and \ref{it:O1} for $(v,u)$ is \ref{it:O3} for $(u,v)$; so the
+relation ``no forbidden overlap'' is symmetric for such rays.
+
+\begin{proof}[Proof of \cref{lem:compatible}]
+\eqref{it:compat-cycle} Consider a constraint $h\to x$ of the ray system,
+from cuts $a$ and $b\le J_x$ with $\wsuf{\Omega_h}a=\wsuf{\Omega_x}b$, and
+suppose $J_x<A_x$. By \cref{lem:ray-compare}\eqref{it:ray-onset},
+$A_h-a=A_x-b>0$. Hence $\wsub{\Omega_x}b{A_x}=\wsub{\Omega_h}a{A_h}$, the
+stretch $X_x$ is a suffix of $\wpre{\Omega_h}{A_h}$, and $\Pi_h=\Pi_x$.
+
+Let $v$ be as in the statement and suppose it lies on a cycle. We follow the
+cycle backwards from $v$ and show that every vertex $x$ on the way satisfies
+$J_x<A_x$, $\Pi_x=\Pi_v$, $X_v$ is a suffix of $X_x$, and $x=v$ or
+$\len{X_v}<\len{X_x}$. This holds for $x=v$. Let $h\to x$ be the edge of the
+cycle into such an $x$. By the first paragraph, $X_x$, and with it $X_v$, is
+a suffix of $\wpre{\Omega_h}{A_h}$, and $\Pi_h=\Pi_v$. If $h=v$, then $x\ne
+v$, and $X_x$ is a nonempty suffix of $\wpre{\Omega_v}{A_v}$ that is longer
+than $X_v$: this is \ref{it:O3}. If $h\ne v$ and $A_h\le J_h$, we have
+\ref{it:O2}. If $J_h<A_h$ and $\len{X_h}\le\len{X_v}$, we have \ref{it:O1}.
+All three are excluded, so $h\ne v$, $J_h<A_h$ and $\len{X_v}<\len{X_h}$;
+and since $X_v$ and $X_h$ are both suffixes of $\wpre{\Omega_h}{A_h}$, the
+first is a suffix of the second. So the invariant passes to $h$ with $h\ne
+v$, and the cycle never returns to $v$.
+
+\eqref{it:compat-count} Let $\Omega^r$, $r\in\mathcal R$, be candidates of
+$v$ with pairwise different onsets $A^r>J_v$, each agreeing with $w_v$ up to
+its cut $c'_r$, so that the stretches $X^r=\wsub{w_v}{J_v}{A^r}$ are
+prefixes of one another, of different lengths. Let $\Omega_u$ agree with
+$w_u$ up to some cut $E_u\ge\max(A_u,J_u)$.
+
+For \ref{it:O1}, each $r$ with this overlap gives the cut
+$a_r=A_u-\len{X^r}\le J_u$ of $w_u$, at which $X^r$ begins. If two of them,
+$a_{r'}<a_r$, carried the same state, the texts of $w_u$ after them would
+agree up to $J_u$, because $X^r$ is a prefix of $X^{r'}$ and $J_u-a_r\le
+\len{X^r}$, and the rejected state would be reached before $J_u$. So at most
+$N-1$ candidates have the overlap \ref{it:O1}. For \ref{it:O3}, the word
+$Y=X_u$ ends at $A^r$ in $w_v$ and begins at a cut $A^r-\len Y\le J_v$; two
+such cuts with the same state are followed by the same text $Y$, which
+reaches beyond $J_v$, with the same contradiction.
+
+For \ref{it:O2} we use in addition that each candidate agrees with $w_v$ on
+at least $(N+1)\nu$ letters from its onset, where $\nu=\per(\Omega_u)$; this
+holds by \cref{lem:candidates}\eqref{it:cand-closed} and \ref{it:L1} when
+$\nu\le e_{l-1}$. Let $f=J_u-A_u$; by \cref{lem:before-J}, $f<N\nu$. The
+overlap gives the cut $a_r=A_u-\len{X^r}\le A_u$ of $w_u$, followed by
+$X^r$ and then by $\Pi_u$ up to $J_u$. Let $a_{r'}<a_r$ be two such cuts;
+then $X^{r'}=X^rZ$ with $Z=\wsub{w_v}{A^r}{A^{r'}}$. The word $w_v$ has
+period $\nu$ on $[A^r,A^r+(N+1)\nu)$ and reads $\Pi_u$ there. If
+$\len Z\le N\nu$, the ray $\Omega^{r'}$, whose periodic part $\Pi_u$ begins
+at $A^{r'}$ and which agrees with $w_v$ beyond $A^{r'}+\nu$, would have
+period $\nu$ from $A^r$ on, so its onset would be at most $A^r<A^{r'}$. So
+$\len Z>N\nu>f$, and $Z$ begins with the first $f$ letters of $\Pi_u$. Hence
+the texts of $w_u$ after $a_{r'}$ and after $a_r$ agree on
+$\len{X^r}+f=J_u-a_r$ letters, and equal states at the two cuts would give a
+rejected state before $J_u$. So at most $N-1$ candidates have the overlap
+\ref{it:O2}. Since \ref{it:O1} and \ref{it:O2} exclude each other for a
+fixed $u$, at most $2(N-1)$ candidates have a forbidden overlap with
+$\Omega_u$.
+\end{proof}
+
+\subsection{Holes with Periodic Tails}\label{app:tails-runcover}
+
+\begin{proof}[Proof of \cref{prop:run-cover}]
+Let $W$ be a hole and $l$ a stable scale, $2\le l\le3(2k+1)$, with the
+fixed, terminal and escaping coordinates of \cref{sec:tails-levels}. The
+target words are the words of the fixed coordinates; by \cref{lem:chains} their
+suffix chains have at most $X_{l-2}+N$ steps, and at most $\Qc+N$ steps from
+the window $b_l$ on.
+
+\emph{Terminal rays.} A terminal coordinate $i$ has $F_{l-1}$ and not
+$K_{l-1}$, so $w_i$ has a suffix of length at least $Y_{l-1}$ with a period
+$p\le e_{l-1}$. \Cref{lem:terminal} for $m=l-1$ gives the factor
+$\tau_i=\wsub{w_i}{c_i}{\len{w_i}}$, closed and free at a window with
+respect to the target words, and the ray $\Omega_i=\wpre{w_i}{c_i}\tau_i^\omega$,
+which has period $p$ from $c_i-B$ on. It agrees with $w_i$ up to
+$\len{w_i}$, and its period is at most $e_{l-1}$.
+
+\emph{Escaping rays.} We treat the escaping coordinates in some order. Let
+$v$ be the next one and $\mathcal U$ the set of terminal coordinates and of
+escaping coordinates treated before, at most $k-1$ coordinates.
+\Cref{lem:candidates} gives $\Qc-1$ candidates of $v$ with different onsets
+after $J_v$. Each ray of $\mathcal U$ with its onset at or before its first
+rejected cut is terminal and has a period of at most $e_{l-1}$, so
+\cref{lem:compatible}\eqref{it:compat-count} applies: each ray of
+$\mathcal U$ excludes at most $2(N-1)$ candidates, and since
+$\Qc-1>2(k-1)(N-1)$ some candidate of $v$ has no forbidden overlap with any
+ray of $\mathcal U$. We take its ray as $\Omega_v$. By the symmetry noted
+after \cref{def:overlaps}, in the end every escaping ray has no forbidden
+overlap with any other ray.
+
+\emph{The ray system.} By \cref{lem:compatible}\eqref{it:compat-cycle}, no
+cycle of the ray system contains an escaping coordinate. For two terminal
+coordinates $i\ne j$, consider a constraint from cuts $a$ and $b\le J_j$.
+The rays contain the words $w_i$ and $w_j$ as prefixes. If
+$\len{w_j}-b\le\len{w_i}-a$, then $\wsuf{w_j}b\pre\wsuf{w_i}a$, and the
+admitted pair lies on a channel of $W$, with the original states; this is
+impossible. So the lengths of the original words satisfy all constraints
+between terminal rays, and there is no cycle of positive weight. No ray has
+a self event: for a terminal ray, a self event at $a\le b\le J_i$ restricts
+to the comparison $\wsuf{w_i}b\pre\wsuf{w_i}a$ of $W$ with an admitted pair;
+for an escaping ray with $a<b$, the equality
+$\wsuf{\Omega_v}a=\wsuf{\Omega_v}b$ makes the ray periodic from $a\le J_v$
+on, contradicting $J_v<\onset(\Omega_v)$, and for $a=b$ the pair lies on the
+channel of $W$ from $v$ to $v$.
+
+\emph{The new hole.} By \cref{lem:ray-prefixes}\eqref{it:rp-solve} there are
+lengths $L_i$, for the terminal and escaping coordinates, that satisfy the
+ray system, exceed the bound of \cref{lem:ray-prefixes}\eqref{it:rp-hole},
+and satisfy $L_i\ge c'_i$ and $L_i>J_i+\len{w_j}$ for every fixed $j$. Let
+$W^*$ consist of the prefixes $\wpre{\Omega_i}{L_i}$ and of the unchanged
+words of the fixed coordinates. Every coordinate is eligible with the same
+first rejected cut, by \cref{lem:pump}, and the new endpoints are immortal.
+No channel of $W^*$ contains an admitted pair: between two fixed coordinates
+nothing has changed; between two ray coordinates this is
+\cref{lem:ray-prefixes}\eqref{it:rp-hole}; if the host is a ray and the
+target is fixed, the pair is a pair of $W$ by \cref{lem:pump}; and if the
+host is fixed and the target a ray, the target cut is at most $J_j$ by
+\ref{it:S2}, and the rest of the target is longer than the host word. So $W^*$ is
+a hole.
+
+\emph{The periodic factors.} In $W^*$ a coordinate with an immortal endpoint is a
+ray coordinate, or it is fixed with $K_{l-2}$. In the second case its tail is
+covered by at most $\Qc+1$ factors with periods at most $e_{l-2}$ up to
+$T_{l-2}$ positions. For a terminal coordinate the same holds at scale
+$l-1$ for the positions of $w_i$, and the rest of the new word lies in one
+further factor of period $p$. For an escaping coordinate,
+\cref{lem:candidates}\eqref{it:cand-cover} covers the tail before $c_v$, and
+the rest lies in one further factor. So every immortal tail is covered by
+at most $\Qc+3$ factors with periods at most $D=e_{3(2k+1)}$ up to
+$T_{3(2k+1)}+(\Qc+3)(3T'_{3(2k+1)}+3)$ positions. A factor of period $p\le D$
+and length at least $2D$ lies in a maximal periodic factor whose period is the
+least period of the factor, a divisor of $p$ by Fine and Wilf; the positions
+of shorter factors, at most $2D$ for each, are added to the uncovered ones.
+This gives the proposition with
+\[
+  E_0=k\bigl(T_{3(2k+1)}+(\Qc+3)(3T'_{3(2k+1)}+3)+2(\Qc+3)D\bigr).\qedhere
+\]
+\end{proof}

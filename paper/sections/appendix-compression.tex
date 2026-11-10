@@ -1,0 +1,369 @@
+\section{Proofs for Section~\ref{sec:tails-compression}: Compressing the Pieces}
+\label{app:compression}
+
+We keep the conventions of \cref{app:tails}; in particular $k\ge1$ and
+$N\ge2$. As in \cref{def:hole}, a \emph{comparison} of a tuple is a pair of
+cuts of a host word and a target word such that the rest of the target is a
+prefix of the rest of the host. A word
+is \emph{primitive} if it is not a power of a shorter word, and two words
+are \emph{conjugate} if one is a rotation of the other.
+
+\subsection{Pieces}\label{app:compression-pieces}
+
+Let $W$ be a tuple. A \emph{piece} of period $d$ is an interval $[s,e)$ of
+positions of a word $w_l$ with $e-s\ge2d$ on which $w_l$ has period $d$,
+whose first $d$ letters form a primitive word, its \emph{root}, and which is
+maximal: $s=0$ or $w_l[s-1]\ne w_l[s-1+d]$, and $e=\len{w_l}$ or
+$w_l[e]\ne w_l[e-d]$. Every factor of length at least $2p$ with period $p$
+lies in a piece whose period is the least period of the factor, a divisor of
+$p$.
+\begin{enumerate}[label=\textup{(P\arabic*)}]
+\item\label{it:P1} Two different pieces of period $d$ in one word overlap in
+  fewer than $d$ positions, and their ends are more than $d$ apart: an
+  overlap of $d$ positions would make the union an interval of period $d$.
+\item\label{it:P2} Two pieces of one word with periods $d'\le d$ and roots
+  that are not conjugate overlap in fewer than $d+d'$ positions: otherwise,
+  by Fine and Wilf, the overlap has the period $\gcd(d,d')$, which is $d$
+  and $d'$ because the roots are primitive, and the roots are conjugate.
+\item\label{it:P3} Let $\alpha_d=Nd$ and $m_d=d\cdot N!$. Inside a piece
+  $[s,e)$ of period $d$, $q_l(s+o+m_d)=q_l(s+o)$ whenever $\alpha_d\le o$ and
+  $o+m_d\le e-s$. Indeed, reading the $d$ letters at the offsets
+  $o',\dots,o'+d-1$ is the same map on states for all offsets $o'\equiv o$
+  modulo $d$; its $N$th iterate lands on a cycle, whose length divides $N!$.
+\end{enumerate}
+Fix a primitive word $\zeta$, $d=\len\zeta$, and write
+$\alpha,m,\beta,\kappa,\phi$ for $\alpha_d,m_d,\beta_d,\kappa_d,\phi_d$; so
+$\beta=\alpha+m\ge4d$, $\kappa=2\beta+m$ and $\phi=6\beta+2m$. Let
+$\mathcal C$ be the class of $\zeta$. For $P\in\mathcal C$ we write
+$s_P,e_P$ for its ends and $L_P=e_P-s_P$.
+
+\subsection{Admissible Deletions}\label{app:compression-admissible}
+
+Let $(x_P)_{P\in\mathcal C}$ be an admissible deletion
+(\cref{def:admissible}). The \emph{site} of $P$ is the interval
+$[s_P+\beta,\,s_P+\beta+m\,x_P)$, and $U=(u_1,\dots,u_k)$ is the tuple
+obtained by deleting all sites. We use the notation $\cmap_l$, $\gamma$ and
+the facts on the deletion of positions from \cref{app:fresh-deletion},
+writing $\cmap_l$ for the cut map of the word $w_l$; a \emph{junction} is
+the image of a nonempty site. Put $L'_P=L_P-m\,x_P$.
+\begin{enumerate}[label=\textup{(A\arabic*)}]
+\item\label{it:A1} A nonempty site lies inside its piece, at least
+  $\beta$ positions after its start and at least $5\beta+2m$ before its end.
+  By \ref{it:P1}, sites of different pieces of one word are disjoint and not
+  adjacent, and a position of a site lies in no other piece of the class.
+\item\label{it:A2} By \ref{it:P3}, the two ends of a site carry the same
+  state. So the state of $u_l$ at $\cmap_l(p)$ is the state of $w_l$ at $p$
+  for every retained cut $p$; endpoints are preserved and no new state is
+  visited.
+\item\label{it:A3} For $P\in\mathcal C$ in the word $w_l$, the interval
+  $P'=[\cmap_l(s_P),\cmap_l(e_P))$ is a piece of $U$ of the class
+  $\mathcal C$, with the root of $P$ and the length $L'_P$; at an offset
+  $o\le L'_P$ it carries the state that $P$ carries at the offset $o$, and
+  at $o<L'_P$ the same letter. The map $P\mapsto P'$ is a bijection from
+  $\mathcal C$ onto the pieces of $U$ of the class of $\zeta$.
+\item\label{it:A4} If $o\le L_P$ and $o'\le L'_P$ are offsets with $o=o'$,
+  or with $o,o'\ge\alpha$ and $o\equiv o'$ modulo $m$, then $P$ at $o$ and
+  $P'$ at $o'$ carry the same state, by \ref{it:A3} and \ref{it:P3}.
+\end{enumerate}
+For \ref{it:A3}: the deleted block has a length divisible by $d$, so $P'$
+has period $d$ and the stated letters; the states follow from \ref{it:A2}
+and \ref{it:P3}; and the breaks at both ends of $P$ survive, because the
+site is at least $\beta\ge2d$ away from them. Conversely, let $R'$ be a
+piece of $U$ of this class. If a junction, of a piece $P$, lies in $R'$ or
+at one of its ends, then $R'$ and $P'$ overlap in at least $d$ positions,
+because $R'$ has at least $2d$ positions and $P'$ extends by $2d$ positions
+on both sides of its junction; so $R'=P'$ by \ref{it:P1}. Otherwise $R'$ and
+its two breaks consist of original text, so $R'$ is the image of a piece of
+$W$ of the class, which is not shortened.
+
+A cut $c'$ of $u_l$ is \emph{clean for $\theta$} if no shortened piece $P$ of
+$w_l$ with $\cmap_l(s_P)\le c'$ has its junction strictly between $c'$ and
+$c'+\theta$. For every $P\in\mathcal C$ and every $\theta$, the cut $\cmap_l(e_P)-d$
+is clean for $\theta$, and its greatest preimage is $e_P-d$: a piece $Q'$ that
+begins at or before this cut and has its junction after it contains the
+last $d$ positions of $P'$, by \ref{it:A1}, so $Q'=P'$ by \ref{it:P1}, but
+the junction of $P'$ lies before the cut.
+
+Two words $y,y'$ \emph{agree on $\theta$ positions from the cuts $c,c'$} if
+$y[c+x]=y'[c'+x]$ for all $x<\theta$, these positions being defined.
+
+\begin{lemma}[Copying pieces]\label{lem:copy}
+Let $u_h$ and $u_g$ agree on $\theta$ positions from the cuts $a'$ and $b'$, and
+let $R'$ be a piece of $U$ of the class $\mathcal C$ in $u_h$, between the
+cuts $s'$ and $e'$.
+\begin{enumerate}
+\item\label{it:copy-start} If $a'<s'$ and $s'+2d\le a'+\theta$, then $u_g$ has a
+  piece $P'$ of the class that begins at $b'+(s'-a')$, with the same root.
+\item\label{it:copy-stretch} If $s'\le a'$ and $a'+\ell\le e'$ for some
+  $\ell$ with $2d<\ell\le \theta$, then $u_g$ has a piece $P'$ of the class that
+  contains the positions from $b'$ to $b'+\ell$.
+\item\label{it:copy-end} In both cases, if $e'<a'+\theta$ then $P'$ ends at
+  $b'+(e'-a')$, and otherwise $P'$ contains all positions from its
+  beginning to $b'+\theta$.
+\end{enumerate}
+The same holds with the roles of $u_h$ and $u_g$ exchanged.
+\end{lemma}
+
+\begin{proof}
+The copy in $u_g$ of the part of $R'$ inside the agreement is a factor of
+length at least $2d$ with period $d$ and a primitive conjugate root, so it
+lies in a piece of the class. A break of $R'$ whose two letters lie in the
+agreement is copied, which determines the corresponding end of $P'$.
+\end{proof}
+
+\begin{lemma}[Clean cuts]\label{lem:clean}
+Let $T=\wsuf{u_g}{b'}\pre\wsuf{u_h}{a'}$ and $\theta=\len T$. If $b'$ is clean
+for $\theta$ in $u_g$ and $a'$ is clean for $\theta$ in $u_h$, then
+$\wsuf{w_g}{\gamma(b')}\pre\wsuf{w_h}{\gamma(a')}$.
+\end{lemma}
+
+\begin{proof}
+By induction on $\theta$. If no junction lies strictly between $a'$ and $a'+\theta$ in
+$u_h$ or strictly between $b'$ and $b'+\theta$ in $u_g$, both texts are original,
+by \eqref{eq:between-junctions}. Otherwise consider the shortened pieces
+whose junctions lie strictly inside one of the two windows. By cleanness
+their images begin after $a'$, respectively $b'$; let $r>0$ be the least
+distance of such a beginning from the beginning of its window. By
+\cref{lem:copy}\eqref{it:copy-start}, applied in one of the two directions,
+there are pieces $R'$ in $u_h$ beginning at $a'+r$ and $P'$ in $u_g$
+beginning at $b'+r$, with the same root; they are images of pieces $R$ and
+$P$ of $\mathcal C$. By the choice of $r$ and by cleanness, no junction lies
+strictly between $a'$ and $a'+r$ or at $a'+r$, and likewise in $u_g$; so
+\begin{equation}\label{eq:clean-prefix}
+  \wsub{w_h}{\gamma(a')}{s_R}=\wsub{u_h}{a'}{a'+r}=\wsub{u_g}{b'}{b'+r}=
+  \wsub{w_g}{\gamma(b')}{s_P}.
+\end{equation}
+By \cref{lem:copy}\eqref{it:copy-end} there are two cases.
+
+\emph{Both pieces end inside the comparison}, at the same distance, so
+$L'_P=L'_R$ and $\wsuf{u_g}{\cmap_g(e_P)-d}\pre\wsuf{u_h}{\cmap_h(e_R)-d}$,
+a comparison of length less than $\theta$ between clean cuts. By the induction
+hypothesis, $\wsuf{w_g}{e_P-d}\pre\wsuf{w_h}{e_R-d}$. In particular the
+followers of $P$ and $R$ are comparable. If $P$ and $R$ differed in length
+by at least $\kappa$, so would $P'$ and $R'$; so their lengths differ by
+less than $\kappa$, $x_P=x_R$ and $L_P=L_R$. Two pieces with the same root
+and the same length carry the same text, so
+$\wsuf{w_g}{s_P}\pre\wsuf{w_h}{s_R}$.
+
+\emph{$P'$ ends at the end of $u_g$, and $L'_P\le L'_R$.} Then $P$ ends at
+the end of $w_g$ and has the empty follower, which is comparable with that
+of $R$. If the lengths differ by less than $\kappa$, then $x_P=x_R$;
+otherwise the longer piece remains the longer one. In both cases $L_P\le
+L_R$, and $\wsuf{w_g}{s_P}$, a word of period $d$ with the root of $R$, is a
+prefix of $\wsuf{w_h}{s_R}$.
+
+In both cases the claim follows with \eqref{eq:clean-prefix}.
+\end{proof}
+
+\begin{lemma}[Comparisons inside pieces]\label{lem:inside}
+Let $P,R\in\mathcal C$ lie in the words $w_g$ and $w_h$, and let
+$b'=\cmap_g(s_P)+p_T$ and $a'=\cmap_h(s_R)+p_S$ with $p_T+d\le L'_P$ and
+$p_S+d\le L'_R$. Suppose $\wsuf{u_g}{b'}\pre\wsuf{u_h}{a'}$ and
+$L'_P-p_T\le L'_R-p_S$, and that $P'$ ends at the end of $u_g$ or
+$L'_P-p_T=L'_R-p_S$. Then there are offsets $o_T\le L_P$ and $o_S\le L_R$
+such that $\wsuf{w_g}{s_P+o_T}\pre\wsuf{w_h}{s_R+o_S}$ and the states of $W$
+at these two cuts are the states of $U$ at $b'$ and $a'$.
+\end{lemma}
+
+\begin{proof}
+We first show that the followers of $P$ and $R$ are comparable, and that
+$\wsuf{w_g}{e_P}\pre\wsuf{w_h}{e_R}$ if $P'$ does not end its word. In that
+case $L'_P-p_T=L'_R-p_S$, and shifting the given comparison yields
+$\wsuf{u_g}{\cmap_g(e_P)-d}\pre\wsuf{u_h}{\cmap_h(e_R)-d}$ between clean
+cuts; \cref{lem:clean} gives $\wsuf{w_g}{e_P-d}\pre\wsuf{w_h}{e_R-d}$. If
+$P'$ ends its word, so does $P$, and its follower is empty.
+
+It suffices to find offsets $o_T,o_S$ that are related to $p_T,p_S$ as in
+\ref{it:A4} and satisfy $L_P-o_T\le L_R-o_S$, with equality if $P$ does not
+end its word. Indeed, the states are then as required; the letters of
+$w_g$ from $s_P+o_T$ and of $w_h$ from $s_R+o_S$ agree on $d$ positions,
+because they are the letters of $u_g$ from $b'$ and of $u_h$ from $a'$, by
+\ref{it:A3} and since $m$ is a multiple of $d$; so by periodicity they
+agree up to the end of $P$, and beyond it the followers are compared.
+
+If the lengths of $P$ and $R$ differ by less than $\kappa$, then
+$x_P=x_R$, and $o_T=p_T$, $o_S=p_S$ work, since both lengths change by the
+same amount. Otherwise the lengths differ by at least $\kappa$, before and
+after the deletion and in the same direction, and $\kappa\ge\beta+m\ge
+\alpha$.
+
+Suppose $L'_P-p_T=L'_R-p_S$. If $R$ is the longer piece, then
+$p_S=p_T+L'_R-L'_P\ge\kappa$; let $o_T=p_T$ and $o_S=p_T+L_R-L_P\ge\kappa$,
+which differs from $p_S$ by $m(x_R-x_P)$. If $P$ is the longer piece, let
+$o_S=p_S$ and $o_T=p_S+L_P-L_R$, symmetrically.
+
+Suppose $P'$ ends its word and $L'_P-p_T\le L'_R-p_S$. If $P$ is the longer
+piece, then $p_T\ge p_S+\kappa\ge\beta$; let $o_T=p_T+m\,x_P$ and
+$o_S=p_S$, so that $L_P-o_T=L'_P-p_T\le L'_R-p_S\le L_R-o_S$. If $R$ is the
+longer piece, let $o_T=p_T$, and let $o_S=p_S$ if $p_S<\alpha+m$ and
+otherwise the number in $[\alpha,\alpha+m)$ that is congruent to $p_S$
+modulo $m$. Then $L_R-o_S>L_R-\alpha-m\ge L_P\ge L_P-o_T$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{lem:admissible}]
+\emph{Domination.} Endpoints and visited states are treated in
+\ref{it:A2}. Let $T=\wsuf{u_g}{b'}\pre\wsuf{u_h}{a'}$ be a comparison of
+$U$, $\theta=\len T$. We show that the pair of states at $a'$ and $b'$ lies in
+$\Chan_{hg}(W)$.
+
+\emph{Case 1: $b'$ is not clean for $\theta$.} Then $b'$ lies in the image $P'$
+of a shortened piece, at an offset $p_T<\beta$, and $P'$ continues for more
+than $5\beta$ positions after $b'$, inside $T$. By
+\cref{lem:copy}\eqref{it:copy-stretch} and \eqref{it:copy-end}, from $u_g$
+to $u_h$, $a'$ lies in a piece $R'$ of the class at an offset $p_S$, and
+either both pieces end inside the comparison, at the same distance, or $P'$
+ends at the end of $u_g$ and $L'_P-p_T\le L'_R-p_S$.
+\Cref{lem:inside} applies.
+
+\emph{Case 2: $b'$ and $a'$ are clean for $\theta$.} \Cref{lem:clean} applies,
+with the states of \ref{it:A2}.
+
+\emph{Case 3: $b'$ is clean for $\theta$ and $a'$ is not.} Then $a'$ lies in the
+image $R'$ of a shortened piece, at an offset $p_S<\beta$, with the junction
+of $R'$ strictly inside the comparison. If the comparison continues beyond
+the end of $R'$, then by \cref{lem:copy} $b'$ lies in a piece $P'$ of the
+class that ends at the same distance, and \cref{lem:inside} applies. So let
+$\theta\le L'_R-p_S$. If $\theta>2d$, then by \cref{lem:copy} $T$ lies in a piece $P'$
+of the class that ends at the end of $u_g$, and \cref{lem:inside} applies
+again. If $\theta\le2d<\beta$, no junction lies strictly inside the window of the
+target, since by cleanness it would belong to a piece that begins inside the
+window; so $T=\wsuf{w_g}{\gamma(b')}$, and $T$ is read in $w_h$ at the offset
+$p_S$ of $R$, with the same state, by \ref{it:A3}.
+
+\emph{First rejected cuts.} Let $W$ be a hole. By \ref{it:A2} and
+\cref{lem:hole-dominates}, $U$ is a hole with the same endpoints. The
+states of $u_l$ are those of $w_l$ at retained cuts, in the same order, and
+the states of $w_l$ are rejected exactly from $J_l$ on; so the first
+rejected cut of $u_l$ is $\cmap_l(J_l)$, the image of $J_l$ or of the right
+end of the site that contains $J_l$.
+
+\emph{Other classes.} Let $R$ be a piece with a period $d'\le d$, a root
+that is not conjugate to $\zeta$, and a length of at least $2d\ge d+d'$. If
+a position of a site of $P\in\mathcal C$ lay in $R$ or next to it, then by
+\ref{it:A1} and $\beta\ge4d$ the pieces $P$ and $R$ would overlap in at
+least $2d$ positions, contradicting \ref{it:P2}. So $R$ and the letters
+next to it are not affected, and its image is a piece of $U$ with the same
+period, root and length.
+\end{proof}
+
+\subsection{The Cap}\label{app:compression-cap}
+
+\begin{lemma}[Simple paths]\label{lem:simple-path}
+Let $P_1,\dots,P_v$ be pairwise different pieces of $\mathcal C$ such that
+consecutive ones have comparable followers. Suppose that all but at most
+$r$ of them belong to a set $\mathcal H$, and that every subset of
+$\mathcal H$ with pairwise comparable followers has at most $h$ elements.
+Then $v\le(r+1)\,2^h-1$.
+\end{lemma}
+
+\begin{proof}
+Removing the pieces outside $\mathcal H$ leaves at most $r+1$ paths of
+pieces of $\mathcal H$. We show that such a path has at most $2^h-1$
+vertices, by induction on $h$. Order its pieces by the prefix order of
+their followers, with ties broken by an arbitrary linear order; this is a
+partial order in which the elements below any element form a chain, and
+consecutive pieces of the path are comparable. So the path has a least
+element, which is comparable with all its pieces. Removing it leaves at
+most two paths, in each of which pairwise comparable sets have at most
+$h-1$ elements, since the least element can be added to them. Hence the
+path has at most $1+2(2^{h-1}-1)$ vertices.
+\end{proof}
+
+\begin{proof}[Proof of \cref{lem:cap}]
+We determine integers $z_P\le0$ and put $x_P=-z_P$. Consider the following
+difference constraints, for all pieces $P,Q\in\mathcal C$ with comparable
+followers:
+\begin{itemize}
+\item $z_P\ge z_Q$ and $z_Q\ge z_P$, if the lengths differ by less than
+  $\kappa$;
+\item $z_Q\ge z_P-\lfloor(L_Q-L_P-\kappa)/m\rfloor$, if $L_P+\kappa\le
+  L_Q$;
+\end{itemize}
+together with the lower bounds $z_P\ge\underline z_P$, where
+$\underline z_P=-\lfloor(L_P-\phi)/m\rfloor$ if $L_P\ge\phi$ and
+$\underline z_P=0$ otherwise. The zero vector satisfies all of them. A
+vector $z\le0$ that satisfies them gives an admissible deletion: a
+shortened piece keeps at least $\phi$ letters by the lower bound, and the
+second kind of constraint says $L_Q+mz_Q\ge L_P+mz_P+\kappa$.
+
+Let $z$ be the vector whose component $z_P$ is the largest value of
+$\underline z_{Q}+c$ over all pieces $Q$ and all paths from $Q$ to $P$ in
+the graph of the constraints, $c$ being the weight of the path. Since the
+zero vector is a solution, the graph has no cycle of positive weight, so
+the maximum exists and is attained by a path without repeated vertices; and
+$z$ is a solution with $\underline z\le z\le0$, the least one. Fix $P$ and
+such a path $Q=P_1,\dots,P_v=P$. By maximality, $z_{P_1}=\underline
+z_{P_1}$ and every constraint along the path is an equality for $z$.
+
+Consider the retained lengths $L'_{P_u}=L_{P_u}+mz_{P_u}$. First,
+$L'_{P_1}<\phi+m$. Along a constraint of the first kind the retained length
+changes by less than $\kappa$. Along a constraint of the second kind, from
+$P_u$ to $P_{u+1}$, equality gives $L'_{P_{u+1}}<L'_{P_u}+\kappa+m$. So
+$L'_P<\phi+m+(v-1)(\kappa+m)$. The pieces of the path are pairwise different
+and consecutive ones have comparable followers, so $v\le(r+1)2^h-1$ by
+\cref{lem:simple-path}, with $\mathcal H$ the set of the pieces that are
+not exceptional.
+\end{proof}
+
+\subsection{The Passes}\label{app:compression-passes}
+
+A \emph{tail decomposition} of a hole $U$ with the parameters $(\eta,D,E)$
+is a set of at most $\eta$ pieces of $U$, the \emph{designated pieces}, with
+periods at most $D$ and lengths at least $2D$, such that at most $E$
+positions of the rejected tails of the coordinates with immortal endpoints
+lie in no designated piece; these are the \emph{uncovered} positions.
+
+\begin{lemma}[One pass]\label{lem:pass}
+A hole with a tail decomposition with the parameters $(\eta,D,E)$,
+$\eta\ge1$, has a dominating hole with a tail decomposition with the
+parameters $(\eta-1,D,E')$, where
+\[
+  E'=E+\eta\,\Bigl(\phi_D+m_D+\bigl((2\eta+E+1)\,2^{k(N-1)}-1\bigr)
+  (\kappa_D+m_D)\Bigr).
+\]
+\end{lemma}
+
+\begin{proof}
+Let $d$ be the largest period of a designated piece, $\zeta$ its root and
+$\mathcal C$ the class of $\zeta$. Let $\mathcal H$ consist of the pieces of
+$\mathcal C$ that lie in a word with a mortal endpoint or end at or before
+the first rejected cut of their word. If two pieces of $\mathcal H$ in one
+word, ending at $e<e'$, have comparable followers, then the rest after $e'$
+is a prefix of the rest after $e$, so the states at $e$ and $e'$ differ by
+\cref{lem:distinct}. Hence a subset of $\mathcal H$ with pairwise
+comparable followers has at most $k(N-1)$ elements.
+
+The other pieces of $\mathcal C$ lie in words $u_l$ with immortal endpoints
+and end after $J_l$; we claim that there are at most $2\eta+E$ of them. The
+last position of such a piece $P$ lies in the tail. Either it is one of the
+$E$ uncovered positions, or it lies in a designated piece $R$. In the second
+case $P=R$, or $P$ ends in the first $d$ positions of $R$ by \ref{it:P1},
+if $R\in\mathcal C$, or $P$ begins before $R$ and ends in the first $2d$
+positions of $R$ by \ref{it:P2}, if $R\notin\mathcal C$. Since the ends of
+different pieces of $\mathcal C$ in one word are more than $d$ apart, each
+designated piece accounts for at most two pieces.
+
+By \cref{lem:cap} there is an admissible deletion after which every piece
+of $\mathcal C$ has at most $\phi_d+m_d+((2\eta+E+1)2^{k(N-1)}-1)(\kappa_d+
+m_d)$ letters, and this is at most the corresponding value for $D$. By
+\cref{lem:admissible} the result $U'$ is a hole that dominates $U$, its
+tails consist of the images of the retained positions of the tails of $U$,
+and the designated pieces outside $\mathcal C$ are pieces of $U'$ with the
+same periods and lengths. We keep these as designated pieces; there are at
+most $\eta-1$ of them. A position of a tail of $U'$ that lies in none of them
+is the image of an uncovered position of $U$ or lies in the image of one of
+the at most $\eta$ designated pieces of $\mathcal C$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:tails-bound,thm:tails}]
+By \cref{prop:run-cover} a reader with a hole has a hole with a tail
+decomposition with the parameters $(g,D,E_0)$, $g=k(\Qc+3)$: a maximal
+periodic factor with a period of at most $D$ and a length of at least $2D$
+is a piece. Applying \cref{lem:pass} as long as there are designated pieces,
+at most $g$ times, gives a hole in which
+all positions of the rejected tails of the coordinates with immortal
+endpoints are uncovered, and their number is at most $E_g$, because the
+sequence $E_r$ is nondecreasing and its recurrence is that of
+\cref{lem:pass} with $\eta=g-r$. The closed form is proved in
+\cref{app:complexity-closed}, and $\TailB(0,N)=0$ by \cref{sec:tails}.
+\end{proof}

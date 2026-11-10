@@ -1,0 +1,44 @@
+\section{Future Work}
+\label{sec:future}
+
+\subparagraph*{The signature $\BF$ with contravariance.}
+\Cref{thm:main} covers $\BF$ only for a covariant constructor. The guard
+of \cref{lem:guard} relies on covariance, and with a contravariant argument
+the readers need an additional parity condition on the witness paths, under
+which the rejected states are not closed under transitions. Over arbitrary
+and regular trees, plain entailment in this setting, and disjunctive
+entailment when all arguments are contravariant, can be decided by guarded
+variants of the present method, which we do not include here; these
+variants do not settle finite trees. Mixed variance with at least two
+queries, including function types without $\Top$, is open.
+
+\subparagraph*{More constructors.}
+Type languages have several constructors, and base types. With several
+constructors a witness path records constructors together with argument
+positions, and labels can clash in more ways. It is open which comparisons
+between rests of paths replace our channels, and whether a small-hole
+theorem holds for the resulting automata.
+
+\subparagraph*{The $\Sigma_2$ level.}
+The $\exists\forall\exists$ fragment is undecidable for a binary covariant
+constructor \cite{Zhao26U}, and the $\Sigma_1$ level is decidable. Sentences with one quantifier alternation are open in
+general. Existential entailment \cite{Zhao26E} is the special case
+$\forall\bar x.\,\neg\bigwedge\Gamma\vee\exists\bar z.\,\bigwedge\Gamma'$;
+allowing negated constraints in $\Gamma'$, or a disjunction of existential
+conclusions, combines the difficulties of that paper with those of this one.
+
+\subparagraph*{Complexity.}
+The gap between PSPACE and five exponentials should be narrowed from both
+sides. On the upper side, the cover construction composes two bounds that
+are doubly exponential for a fixed number of queries, and a direct argument for holes, or a search over finite
+summaries of tuples in place of the enumeration of tuples, could remove
+several exponentials. On the lower side, the question is whether the
+channels between different words can force witnesses that are longer than
+exponential, or encode computations beyond polynomial space.
+
+\subparagraph*{Algorithms.}
+The procedures of this paper are bounded searches. A practical procedure
+for small numbers of queries, for instance for the simplification of
+constraints under case distinctions, would need a characterization of
+entailed disjunctions that avoids the enumeration, in the way the closure
+rules for satisfiability avoid the enumeration of solutions.

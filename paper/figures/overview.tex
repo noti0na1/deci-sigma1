@@ -1,0 +1,40 @@
+%% overview -- the proof chain.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=3.5pt, minimum height=8mm},
+  thm/.style={box, fill=black!8},
+  arr/.style={-{Stealth[length=2mm]}, semithick},
+  lbl/.style={font=\scriptsize, align=center}]
+%% first row: the reductions
+\node[box] (sent) at (0,0) {Boolean combination of\\ $\Sigma_1$ and $\Pi_1$ sentences};
+\node[box] (disj) at (5.0,0) {disjunctive entailment\\ $\Gamma\entails x_1\le y_1\vee\dots\vee x_k\le y_k$};
+\node[box] (hole) at (10.1,0) {hole of one of $2^k$\\ structural readers};
+\draw[arr] (sent) -- node[lbl, above] {\S\ref{sec:sentences}} (disj);
+\draw[arr] (disj) -- node[lbl, above] {\S\ref{sec:readers}} (hole);
+%% second row: the small-hole theorem and its two halves
+\node[thm] (small) at (10.1,-2.0) {small-hole theorem\\ (\cref{thm:small-hole})};
+\draw[arr, densely dashed] (small) -- node[lbl, left] {decides by bounded\\ search (\S\ref{sec:decision-arbitrary})} (hole);
+\node[thm] (cover) at (6.5,-2.0) {cover of a hole\\ (\cref{lem:cover})};
+\draw[arr] (cover) -- (small);
+\node[thm] (tail) at (1.6,-1.45) {rejected tails (\S\ref{sec:tails}): rays,\\ difference constraints, compression};
+\node[thm] (fresh) at (1.6,-2.75) {fresh tuples (\S\ref{sec:fresh}):\\ marker hierarchy, block deletion};
+\draw[arr] (tail.east) -- ++(0.5,0) |- ([yshift=1.5mm]cover.west);
+\draw[arr] (fresh.east) -- ++(0.75,0) |- ([yshift=-1.5mm]cover.west);
+%% third row: classes of trees
+\node[box] (cls) at (5.0,1.55) {disjunctive entailment over regular trees, over finite trees,\\
+  and for the signature $\BF$};
+\draw[arr] (cls) -- node[lbl, right] {\S\ref{sec:decision-regular}--\ref{sec:decision-bf}} (disj);
+\end{tikzpicture}
+\caption{The proof chain. Solid arrows between white boxes are reductions:
+a sentence is reduced to disjunctive entailments (naming of subterms), and a
+failed entailment over arbitrary trees with the signature $\BFT$ to a hole
+of a finite reader (witnesses and modes); the other classes of trees and the
+signature $\BF$ are reduced to this case. The gray boxes are the small-hole
+theorem and the results it follows from. It bounds the length of a shortest
+hole, so a bounded search decides the entailment (dashed arrow). Its proof
+bounds the rejected tails of a hole and then the hole itself, read as a
+tuple of fresh words in a larger automaton, its cover.}
+\label{fig:overview}
+\end{figure}

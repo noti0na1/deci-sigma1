@@ -1,0 +1,183 @@
+\section{Preliminaries}
+\label{sec:prelim}
+
+\subsection{Words}\label{sec:prelim-words}
+
+Words are finite sequences of letters over a finite alphabet; $\eps$ is the
+empty word and $\len{w}$ the length of $w$. A \emph{cut} of $w$ is a number
+$a$ with $0\le a\le\len w$; it separates the prefix $\wpre wa$ of length $a$
+from the suffix $\wsuf wa$, the \emph{rest} of $w$ after $a$. For cuts
+$a\le b$, $\wsub wab$ is the factor between them, and the \emph{positions} of
+$w$ are $0,\dots,\len w-1$, with the letter $w[p]$ at position $p$. We write
+$u\pre v$ if $u$ is a prefix of $v$. Two words are \emph{comparable} if one is
+a prefix of the other. A word $u$ \emph{ends at the cut} $e$ of $w$ if $u$ is
+a suffix of $\wpre we$, and \emph{occurs at} $a$ if $u\pre\wsuf wa$. For
+example, the cut $2$ of $w=0110$ separates $\wpre w2=01$ from the rest
+$\wsuf w2=10$; the word $1$ occurs at the cuts $1$ and $2$ and ends at the
+cuts $2$ and $3$; and the rest $10$ is comparable with $1$ and with $100$,
+but not with $11$.
+
+\subsection{Trees and the Subtype Order}\label{sec:prelim-trees}
+
+We fix a constructor $f$ of arity $n\ge0$ and write $\Dir=\{1,\dots,n\}$ for
+its argument positions. A \emph{path} is a word over $\Dir$.
+
+\begin{definition}[Trees]\label{def:trees}
+A \emph{tree} over $\BFT$ is a partial function $t$ from paths to
+$\{\Bot,f,\Top\}$ whose domain $\dom t$ contains $\eps$ and is closed under
+prefixes, such that for every $\pi\in\dom t$: if $t(\pi)=f$ then $\pi
+i\in\dom t$ for every $i\in\Dir$, and otherwise $\pi i\notin\dom t$ for every
+$i$. The elements of $\dom t$ are the \emph{positions} of $t$, and the
+positions labeled $\Bot$ or $\Top$ are its \emph{leaves}. The \emph{subtree}
+of $t$ at a position $\pi$ is the tree $\sigma\mapsto t(\pi\sigma)$.
+\end{definition}
+
+We write $\Bot$ and $\Top$ for the trees with the single position $\eps$,
+and $f(t_1,\dots,t_n)$ for the tree with label $f$ at $\eps$ and subtree
+$t_i$ at the position $i$. Trees may be infinite; for $n\ge1$ the tree
+$\fall$ with $f$ at every path is an example. A tree is \emph{finite} if it
+has finitely many positions and \emph{regular} if it has finitely many
+distinct subtrees. We write $\Trees$, $\TreesReg$ and $\TreesFin$ for the
+classes of all, regular and finite trees; $\TreesFin\subseteq\TreesReg
+\subseteq\Trees$.
+
+Each argument position is \emph{covariant} or \emph{contravariant}; the
+\emph{variance} is a map $c\colon\Dir\to\{0,1\}$ with $c(i)=1$ for the
+contravariant positions. The \emph{polarity} of a path
+$\pi=i_1\cdots i_m$ is $\pol(\pi)=c(i_1)+\dots+c(i_m)\bmod 2$, the parity of
+the number of contravariant steps. The labels are ordered $\Bot<f<\Top$.
+
+\begin{definition}[Subtype order]\label{def:order}
+For trees $s$ and $t$, $s\le t$ holds if for every path
+$\pi\in\dom s\cap\dom t$,
+\[
+  s(\pi)\le t(\pi)\ \text{ if }\pol(\pi)=0,\qquad
+  t(\pi)\le s(\pi)\ \text{ if }\pol(\pi)=1.
+\]
+\end{definition}
+
+The order depends on the variance, which we keep fixed and do not write. It
+is a partial order on trees (antisymmetry follows from \cref{thm:cones}),
+and it is characterized on constructor trees by
+the usual rules:
+\begin{equation}\label{eq:order-rules}
+\begin{aligned}
+ &\Bot\le t\le\Top\quad\text{for every tree }t,\\
+ &f(s_1,\dots,s_n)\le f(t_1,\dots,t_n)\iff
+  \begin{cases}
+    s_i\le t_i&\text{for every covariant }i,\\
+    t_i\le s_i&\text{for every contravariant }i.
+  \end{cases}
+\end{aligned}
+\end{equation}
+Indeed $\Bot$ and $\Top$ have the single position $\eps$, of polarity $0$,
+and the common paths of two constructor trees are $\eps$ and the paths
+$i\pi$ with $\pi$ a common path of $s_i$ and $t_i$, where
+$\pol(i\pi)=c(i)+\pol(\pi)$. The order is called \emph{non-structural}
+because trees with different domains can be comparable; in the
+\emph{structural} order, comparable trees have the same domain.
+
+\begin{example}[Function types]\label{ex:arrows}
+For function types, $n=2$, $f(a,b)$ is written $a\to b$, and $c(1)=1$,
+$c(2)=0$. By \eqref{eq:order-rules}, $\Top\to\Bot\le a\to b\le\Bot\to\Top$
+for all trees $a$ and $b$: the least function type accepts every argument
+and returns the least type. So every tree other than $\Bot$ lies above
+$\Top\to\Bot$. The types $\Bot\to\Bot$ and $\Top\to\Top$ are incomparable:
+at the path $1$, of polarity $1$, the labels $\Bot$ and $\Top$ would have to
+be in decreasing order for $\Bot\to\Bot\le\Top\to\Top$, and at the path $2$,
+of polarity $0$, the labels $\Top$ and $\Bot$ would have to be in increasing
+order for $\Top\to\Top\le\Bot\to\Bot$.
+\end{example}
+
+\subsection{Sentences}\label{sec:prelim-sentences}
+
+Terms and quantifier-free formulas are built from variables $x,y,\dots$:
+\[
+  s,t ::= x\mid\Bot\mid\Top\mid f(t_1,\dots,t_n)
+  \qquad\qquad
+  \varphi,\psi ::= s\le t\mid\neg\varphi\mid\varphi\wedge\psi\mid\varphi\vee\psi,
+\]
+and $s=t$ abbreviates $s\le t\wedge t\le s$. Given an assignment $\rho$ of
+trees to the variables, a term denotes a tree and a formula is true or false,
+with $\le$ interpreted by the subtype order. A \emph{$\Sigma_1$ sentence} is
+$\exists x_1\dots x_m.\,\varphi$ and a \emph{$\Pi_1$ sentence} is $\forall
+x_1\dots x_m.\,\varphi$, where $\varphi$ is a quantifier-free formula with
+variables among $x_1,\dots,x_m$.
+
+A sentence is evaluated over a class $\Cls$ of trees: the quantifiers range
+over the trees of $\Cls$. We consider the three classes $\Trees$, $\TreesReg$
+and $\TreesFin$. Each of them contains $\Bot$ and $\Top$ and is closed under
+the constructor, so every term denotes a tree of the class when its variables
+do. A \emph{Boolean combination} of $\Sigma_1$ and $\Pi_1$ sentences is built
+from such sentences with $\neg$, $\wedge$ and $\vee$; its truth over $\Cls$ is
+defined from the truth of its component sentences.
+
+\subsection{Constraints and Disjunctive Entailment}\label{sec:prelim-constraints}
+
+The proof works with constraints in a flat form.
+
+\begin{definition}[Flat constraints]\label{def:flat}
+Let $V$ be a finite set of variables. A \emph{flat literal} over $V$ is one of
+\[
+  x\le y,\qquad f(x_1,\dots,x_n)\le y,\qquad y\le f(x_1,\dots,x_n),\qquad
+  x=\Bot,\qquad x=\Top,
+\]
+with $x,y,x_1,\dots,x_n\in V$. A \emph{constraint} $\Gamma$ is a finite set
+of flat literals, read as their conjunction. A \emph{solution} of $\Gamma$ in
+a class $\Cls$ is an assignment $\rho\colon V\to\Cls$ that satisfies every
+literal of $\Gamma$, and $\Gamma$ is \emph{satisfiable in $\Cls$} if it has a
+solution in $\Cls$.
+\end{definition}
+
+\begin{definition}[Disjunctive entailment]\label{def:disj}
+Let $\Gamma$ be a constraint over $V$, and let $(x_1,y_1)$, \dots, $(x_k,y_k)$ be
+pairs of variables of $V$, the \emph{queries}; $k=0$ is allowed and queries
+may repeat. Then $\Gamma$ \emph{entails} $x_1\le y_1\vee\dots\vee x_k\le
+y_k$ over $\Cls$, written
+\[
+  \Gamma\entails_{\Cls}x_1\le y_1\vee\dots\vee x_k\le y_k,
+\]
+if every solution $\rho$ of $\Gamma$ in $\Cls$ satisfies $\rho(x_i)\le
+\rho(y_i)$ for some $i$. A \emph{countermodel} in $\Cls$ is a solution of
+$\Gamma$ in $\Cls$ with $\rho(x_i)\not\le\rho(y_i)$ for every $i$.
+\end{definition}
+
+The entailment holds exactly when there is no countermodel. For $k=0$ the
+disjunction is empty, and the entailment holds exactly when $\Gamma$ is
+unsatisfiable in $\Cls$. For $k=1$ this is \emph{plain} entailment
+$\Gamma\entails_{\Cls}x\le y$, non-structural subtype entailment. With
+$\bar x$ the variables of $\Gamma$, the classical problems are sentences of
+our fragment:
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Problem & Sentence \\
+\midrule
+$\Gamma$ is satisfiable & $\exists\bar x.\ \bigwedge\Gamma$ \\
+$\Gamma$ entails $x\le y$ & $\forall\bar x.\ \neg\bigwedge\Gamma\vee x\le y$ \\
+$\Gamma$ entails $x_1\le y_1\vee\dots\vee x_k\le y_k$ &
+  $\forall\bar x.\ \neg\bigwedge\Gamma\vee x_1\le y_1\vee\dots\vee x_k\le y_k$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Here a literal $x=\Bot$ is the inequality $x\le\Bot$, and $x=\Top$ is
+$\Top\le x$. \emph{Existential entailment} $\Gamma\entails\exists\bar z.\,
+\Gamma'$, with further variables in the consequence, is a $\Pi_2$ sentence
+and lies outside the $\Sigma_1$ theory; it is decided in \cite{Zhao26E}.
+
+\begin{example}[A disjunction that no disjunct explains]\label{ex:unary}
+Let $n=1$. Every tree is $f^m(\Bot)$, $f^m(\Top)$ or $\fall$, and any two
+trees are comparable, whatever the variance. So the empty constraint entails
+$x\le y\vee y\le x$ over each class, but it entails neither $x\le y$ nor
+$y\le x$. For a binary covariant constructor the disjunction is not entailed:
+$x=f(f(\Bot,\Bot),\Bot)$ and $y=f(\Bot,f(\Bot,\Bot))$ are incomparable. We
+return to this example in \cref{ex:reader-unary}.
+\end{example}
+
+\subparagraph*{The signature $\BF$.}
+A tree over $\BF$ is a tree in which $\Top$ does not occur. For this
+signature we assume $f$ covariant, so the order is the inclusion of the sets
+of positions labeled $f$. Terms have no $\Top$, flat constraints have no
+literal $x=\Top$, and the variables range over the trees without $\Top$ of
+the class. \Cref{sec:decision-bf} reduces this signature to $\BFT$.

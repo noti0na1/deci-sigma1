@@ -1,0 +1,417 @@
+\section{Proofs for Section~\ref{sec:fresh}: Fresh Tuples}
+\label{app:fresh}
+
+Throughout, $W=(w_1,\dots,w_k)$ is a fresh tuple of a table with $k$ starts
+and $N$ states, and $q_l(c)$ is the state of coordinate $l$ at the cut $c$.
+
+\subsection{Width}\label{app:fresh-width}
+
+\begin{lemma}[Width]\label{lem:width}
+\begin{enumerate}
+\item\label{it:width-word} For every text $z$ and every coordinate $l$, at
+  most $N-1$ cuts $b<\len{w_l}$ satisfy $\wsuf{w_l}b\pre z$.
+\item\label{it:width-all} For every text $z$, the set $\operatorname{Pre}(z)$
+  of the numbers $p$ with $1\le p\le\len z$ such that $\wpre zp$ is a suffix
+  of some word $w_l$ has at most $k(N-1)$ elements.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\eqref{it:width-word} The rests $\wsuf{w_l}b$ in question are prefixes of
+one text, hence pairwise comparable. By \cref{lem:distinct}, the states at
+their cuts are pairwise different, and they differ from the endpoint because
+$w_l$ is fresh and $b<\len{w_l}$. \eqref{it:width-all} If $\wpre zp$ is a
+suffix of $w_l$, then $b=\len{w_l}-p$ is a cut as in \eqref{it:width-word},
+and different $p$ give different $b$ for the same $l$.
+\end{proof}
+
+\subsection{Markers}\label{app:fresh-markers}
+
+An anchor of a text $u$ is a cut at which a marker ends that fits into $u$;
+an occurrence of a marker is always a complete occurrence.
+
+\begin{proof}[Proof of \cref{lem:markers}]
+By induction on $t$ we prove \eqref{it:mk-anti} for level $t$, and
+\eqref{it:mk-two}, \eqref{it:mk-nest} for the passage from $t$ to $t+1$. At
+level $1$ the markers are single letters, and a letter is a factor of another
+letter only if they are equal. If an occurrence of a marker lies inside an
+occurrence of another marker of the same level, the first is a factor of the
+second, so the texts are equal and the occurrences coincide; this is the
+second statement of \eqref{it:mk-anti}. In particular, two markers of one
+level that end at the same cut of a text have the same text, so ``the
+longest marker ending at $e$'' in \cref{def:markers} is the only one, up to
+the choice of the coordinate.
+
+Assume \eqref{it:mk-anti} for level $t$. Let $l\in\Act_{t+1}$, $\ell=\len{w_l}$,
+let $e<\ell$ be the last level-$t$ anchor of $w_l$ before its end and $\mu$ the
+level-$t$ marker ending at $e$, so that $\mk{t+1}l=\wsuf{w_l}{e-\len\mu}$.
+The occurrence of $\mu$ at $[e-\len\mu,e)$ does not lie inside the occurrence
+of $\mk tl$ at $[\ell-\len{\mk tl},\ell)$, because the two occurrences end at
+different cuts. Hence $e-\len\mu<\ell-\len{\mk tl}$, and $\mk tl$ is a proper
+suffix of $\mk{t+1}l$. Now consider a level-$t$ marker $\mu'$ that ends at a
+cut $e'$ of the text $\mk{t+1}l$ and fits into it. If $e'\le\len\mu$, its
+occurrence lies inside that of the prefix $\mu$, so $e'=\len\mu$. If
+$\len\mu<e'<\len{\mk{t+1}l}$, then $w_l$ has a level-$t$ anchor strictly
+between $e$ and $\ell$, contradicting the choice of $e$. So the anchors are
+$\len\mu$ and the end, which proves \eqref{it:mk-two}. For
+\eqref{it:mk-nest}, a level-$(t+1)$ marker that ends at a cut of a text has
+the level-$t$ marker of the same coordinate as a suffix, which ends at the
+same cut.
+
+For \eqref{it:mk-anti} at level $t+1$, let $\mk{t+1}l$ occur in $\mk{t+1}m$
+at the position $o$, and let $\mu_l,\mu_m$ be the level-$t$ markers with
+which they begin. The two level-$t$ anchors of the text $\mk{t+1}l$ give
+level-$t$ anchors $o+\len{\mu_l}$ and $o+\len{\mk{t+1}l}$ of the text
+$\mk{t+1}m$, which by \eqref{it:mk-two} are $\len{\mu_m}$ and
+$\len{\mk{t+1}m}$. So the occurrence ends at the end of $\mk{t+1}m$, and
+$\mu_l$ and $\mu_m$ end at the same cut of $\mk{t+1}m$; they are equal by
+\eqref{it:mk-anti} at level $t$, hence $o=0$ and the two markers are equal.
+\end{proof}
+
+We also note that for $t\ge1$ a coordinate $l\notin\Act_{t+1}$ has no
+level-$t$ anchor other than its end: if $l\in\Act_t$ this is the definition,
+and otherwise $l$ left the hierarchy at a level $r<t$, has no level-$r$
+anchor before its end, and level-$t$ anchors are level-$r$ anchors by
+\cref{lem:markers}\eqref{it:mk-nest}.
+
+\begin{proof}[Proof of \cref{lem:depth-span}]
+\eqref{it:depth} We show by induction that for $l\in\Act_t$ the set
+$\operatorname{Pre}(\mk tl)$ of \cref{lem:width} has at least $t$ elements;
+then $t\le k(N-1)$ whenever $\Act_t\ne\varnothing$. For $t=1$ the marker is
+a suffix of $w_l$. For $t+1$, the marker $\mk{t+1}l$ begins with a level-$t$
+marker $\mu$ of some coordinate, whose $t$ prefixes that are suffixes of
+words are prefixes of $\mk{t+1}l$ of length at most $\len\mu$, and
+$\mk{t+1}l$ itself is a longer one.
+
+\eqref{it:span} For $t=0$ the marker is a letter. Let $t\ge1$, let $\sigma$
+be the level-$(t+1)$ marker with the occurrence $\wsub uab$, and let $e$ be
+a level-$t$ anchor of $u$ with $a<e\le b$, with a level-$t$ marker $\mu$
+ending at $e$. If $\mu$ begins at or after $a$, then $e-a$ is one of the two
+anchors of the text $\sigma$. Otherwise $\wsub uae$ is a proper suffix of
+$\mu$, hence a suffix of a word, and a prefix of $\sigma$; so
+$e-a\in\operatorname{Pre}(\sigma)$, a set of at most $k(N-1)$ elements.
+\end{proof}
+
+\subsection{Parses}\label{app:fresh-parses}
+
+Fix a level $t$ between $0$ and the top level. Let $z$ be a text that
+occurs in a text $uz$ after the left context $u$. For $t\ge1$, a position
+$p$ with $1\le p\le\len z$ is an \emph{inner anchor} of $z$ if a level-$t$
+marker of length at most $p$ ends at the cut $p$ of $z$, and a
+\emph{crossing anchor} in the context $u$ if a level-$t$ marker of length
+greater than $p$ ends at the cut $\len u+p$ of $uz$.
+
+\begin{lemma}[Parsing is local]\label{lem:parse-local}
+Let $t\ge1$.
+\begin{enumerate}
+\item\label{it:pl-union} The level-$t$ anchors of $uz$ after $\len u$ are
+  the cuts $\len u+p$ with $p$ an inner anchor of $z$ or a crossing anchor
+  in the context $u$. The inner anchors do not depend on $u$.
+\item\label{it:pl-order} Every crossing anchor is smaller than every inner
+  anchor.
+\item\label{it:pl-pre} Every crossing anchor lies in $\operatorname{Pre}(z)$.
+\end{enumerate}
+Hence the lower anchors of two occurrences of $z$, in arbitrary contexts,
+agree from the first inner anchor of $z$ on, and each occurrence has at most
+$k(N-1)$ lower anchors before it.
+\end{lemma}
+
+\begin{proof}
+\eqref{it:pl-union} is the definition. \eqref{it:pl-order} Let a marker
+$\mu$ of length greater than $p$ end at $\len u+p$ and a marker $\mu'$ of
+length at most $p'$ end at $\len u+p'$, with $p'\le p$. Then the occurrence
+of $\mu'$ lies inside that of $\mu$, so by
+\cref{lem:markers}\eqref{it:mk-anti} they coincide, which is impossible
+since $\mu'$ begins inside $z$ and $\mu$ before it.
+\eqref{it:pl-pre} The prefix $\wpre zp$ is a proper suffix of the marker,
+which is a suffix of a word.
+\end{proof}
+
+For $t=0$ every cut is a lower anchor, in every context.
+
+\begin{lemma}[Texts determine traversal]\label{lem:traverse}
+Let $(Z,a,b)$ be an edge at level $t$, let $i$ be a depth with
+$a+k(N-1)+2\le i\le b$, and let $z$ be the text of the last $i$ lower blocks
+of $Z$. If $z$ ends at an upper anchor $e$ of a word $w_l$, then the upper
+occurrence of $w_l$ that ends at $e$ traverses the edge.
+\end{lemma}
+
+\begin{proof}
+Let $o_1$ be an upper occurrence with parse $Z$; its last $i$ lower blocks
+form an occurrence of $z$ whose $i$ lower anchors are the cuts at the depths
+$i-1,\dots,0$. Let $o_2$ be the upper occurrence of $w_l$ ending at $e$, and
+consider the occurrence of $z$ that ends at $e$.
+
+We claim that $o_2$ begins at or before the first inner anchor $p_0$ of
+$z$, measured in this occurrence; for $t=0$ we let $p_0=1$. Suppose an upper
+anchor of $w_l$ lies at a position $r$ of $z$ with $0<r<\len z$, and let
+$\sigma$ be a level-$(t+1)$ marker ending there. If $\sigma$ fits into $z$,
+it also ends at the corresponding cut of $o_1$, which is then an upper
+anchor strictly inside the upper block $o_1$, a contradiction; for $t=0$,
+where $\sigma$ is a letter, this is the only case. So $\sigma$ begins before
+$z$. By \cref{lem:markers}\eqref{it:mk-two}, the text $\sigma$ has no
+level-$t$ anchor other than the end of its first level-$t$ marker and its
+own end; an inner anchor of $z$ at a position $r'<r$ would be a third one,
+since its marker begins after the beginning of $\sigma$ and ends before its
+end. So $r\le p_0$, which proves the claim.
+
+For $t=0$ the two parses consist of the letters of $z$. For $t\ge1$, by
+\cref{lem:parse-local}, in the occurrence inside $o_1$ at most $k(N-1)$
+of the $i$ lower anchors are crossing anchors, so $z$ has at least
+$i-k(N-1)$ inner anchors, and in both occurrences the lower anchors from
+$p_0$ on are exactly the inner anchors. By the claim, the lower blocks
+between them belong to $o_2$. So the parses of $o_1$ and $o_2$ end with the
+same $i-k(N-1)-1>a$ lower blocks. Since the parse of $o_1$ is $Z$, the
+number $\lcsuf(Y,Z)$ for the parse $Y$ of $o_2$ is a node on the path of $Z$
+greater than $a$, and no node lies strictly between $a$ and $b$; so it is at
+least $b$.
+\end{proof}
+
+\subsection{Block Deletions}\label{app:fresh-deletion}
+
+Fix a block deletion at level $t$, with the edge $(Z,a,b)$ and the depths
+$i<j$. Let $z_\lambda$ be the text of the last $i$ lower blocks of $Z$,
+$\lambda=\len{z_\lambda}$, and let $F$ be the text of its lower blocks at
+the depths $i,\dots,j-1$, $\delta=\len F\ge1$. For a traversing upper
+occurrence $o$ of a word $w_l$, between the cuts $s_o<e_o$, let $c_o$ and
+$c_o'=c_o+\delta=e_o-\lambda$ be its cuts at the depths $j$ and $i$. The
+\emph{site} of $o$ is the interval of positions $[c_o,c_o')$; it carries the
+text $F$. The edited tuple $U=(u_1,\dots,u_k)$ is obtained by deleting all
+sites.
+
+\subparagraph*{Deleting positions.}
+We use the following notation for the deletion of a set of pairwise disjoint
+intervals of positions from a word $w$, with the result $u$. A cut of $w$ is
+\emph{retained} if it does not lie strictly inside a deleted interval. The
+\emph{cut map} $\cmap$ sends a retained cut $p$ of $w$ to the number of
+retained positions before it, a cut of $u$; it is monotone, and the two ends
+of a deleted interval have the same image, a \emph{junction} of $u$. Every
+cut $a$ of $u$ has a greatest preimage $\gamma(a)$, which is the right end
+of a deleted interval if $a$ is a junction. If no junction lies strictly
+between the cuts $a<a'$ of $u$, then
+\begin{equation}\label{eq:between-junctions}
+  \wsub ua{a'}=\wsub w{\gamma(a)}{\gamma(a)+a'-a},
+\end{equation}
+and $\gamma(a)+a'-a$ is the left end of the deleted interval of $a'$ if $a'$
+is a junction and $\gamma(a')$ otherwise. If the two ends of every deleted
+interval carry the same state, then the state of $u$ at $\cmap(p)$ is the
+state of $w$ at $p$, for every retained cut $p$.
+
+\subparagraph*{Geometry of the sites.}
+\begin{enumerate}[label=\textup{(G\arabic*)}]
+\item\label{it:G1} $s_o<c_o<c_o'<e_o$, since $1\le i<j<b$ and the parse of
+  $o$ has at least $b$ lower blocks. Sites of different traversing
+  occurrences lie in different upper blocks. So in $u_l$ the junction of $o$
+  is followed by the $\lambda$ letters $z_\lambda$ up to $\cmap(e_o)$, the
+  cuts strictly between the junction and $\cmap(e_o)$ are images of cuts
+  strictly inside the upper block $o$, and two junctions of one word are
+  more than $\lambda$ apart.
+\item\label{it:G2} A word with a traversing occurrence has a level-$t$
+  anchor before its end, so it is active at level $t+1$.
+\item\label{it:G3} A level-$(t+1)$ marker ends at $e_o$, and every such
+  marker has length at most $\lambda$: otherwise its occurrence would
+  contain the $i+1$ lower anchors at the depths $i,\dots,0$, and
+  $i+1>k(N-1)+2$, contradicting \cref{lem:depth-span}. For the same reason
+  no site meets the last $\len{\mk{t+1}l}$ letters of a word $w_l$ with
+  $l\in\Act_{t+1}$, so $u_l$ ends with $\mk{t+1}l$.
+\end{enumerate}
+
+\subparagraph*{States.}
+Let $\omega$ be the common value $\omega(l,c_o)=\omega(l,c_o')$ of the equal
+labels. If $\omega>0$, the same marker of length $\omega$ ends at both cuts,
+so the $\omega$ letters before $c_o$ and before $c_o'$ are equal, and the
+equal states at the distance $\omega$ give
+\begin{equation}\label{eq:window}
+  \wsub{w_l}{c_o-x}{c_o}=\wsub{w_l}{c_o'-x}{c_o'},\qquad
+  q_l(c_o-x)=q_l(c_o'-x)\qquad\text{for }0\le x\le\omega.
+\end{equation}
+In particular the two ends of every site carry the same state. Hence the
+states of $U$ at the images of retained cuts are the states of $W$: the
+endpoints agree, no new state is visited, and $U$ is fresh, because a cut
+before the end of $u_l$ is the image of a retained cut before the end of
+$w_l$. The tuple $U$ is strictly shorter than $W$, because the occurrence
+with the parse $Z$ traverses the edge.
+
+\begin{lemma}[Anchors are preserved]\label{lem:anchors-preserved}
+For every level $r$ with $1\le r\le t+1$ and every coordinate $l$, the
+level-$r$ anchors of the text $u_l$, for the markers of $W$, are exactly the
+images $\cmap(e)$ of the retained cuts $e$ of $w_l$ that are level-$r$
+anchors of the text $w_l$.
+\end{lemma}
+
+\begin{proof}
+We delete the sites of $w_l$ one at a time, from right to left, and show
+that each deletion has the stated property. The following three facts about
+a site $[c,c')$ concern only the prefix $\wpre{w_l}{c'}$, which the
+deletions to its right do not change.
+\begin{enumerate}[label=\textup{(V\arabic*)}]
+\item\label{it:V1} If $t\ge1$, a level-$t$ marker ends at $c$, because $c$
+  is a lower anchor other than the end of the word.
+\item\label{it:V2} For $1\le r\le t$, a level-$r$ marker ends at $c$ if and
+  only if it ends at $c'$, by the equal labels.
+\item\label{it:V3} No level-$(t+1)$ marker ends at $c$ or at $c'$, by
+  \ref{it:G1}.
+\end{enumerate}
+Write the current word as $x=yFv$ with $\len y=c$, and $x'=yv$. Consider an
+occurrence of a level-$r$ marker $\mu$ in $x'$. If it lies in $y$ or in $v$
+it is an occurrence in $x$ ending at a retained cut with the same image,
+and conversely. If it ends at the junction, it is a suffix of $y$; by
+\ref{it:V2} and \ref{it:V3} this is the case if and only if $\mu$ ends at
+$c$ and at $c'$ in $x$. Now let $\mu=SR$ with $S$ a nonempty suffix of $y$
+and $R$ a nonempty prefix of $v$. We claim $\len S\le\omega$. Otherwise
+$t\ge1$, since for $t=0$ the markers are letters, and by \ref{it:V1} a
+level-$t$ marker $\mu_t$ of length at most $\omega$ ends at $c$, so its
+occurrence lies inside that of $\mu$ and ends before it. If $r\le t$, the
+level-$r$ marker of the coordinate of $\mu_t$ is a suffix of $\mu_t$, so a
+level-$r$ marker occurs inside the occurrence of $\mu$ and ends before it,
+contradicting \cref{lem:markers}\eqref{it:mk-anti}. If $r=t+1$, then by
+\cref{lem:markers}\eqref{it:mk-two} $\mu_t$ is the level-$t$ marker with
+which $\mu$ begins, so $S=\mu_t$ has length at most $\omega$. This proves
+the claim, and by \eqref{eq:window} $S$ is a suffix of $yF$, so $\mu$ ends
+at the corresponding retained cut of $x$. Conversely, let $\mu$ end at a cut
+after $c'$ in $x$ and begin before $c'$, and write $\mu=SR$ with $S$ a
+suffix of $yF$ and $R$ a prefix of $v$. The same argument, with the
+level-$t$ marker that ends at $c'$, gives $\len S\le\omega$, so $S$ is a
+suffix of $y$ and $\mu$ ends at the image of the cut in $x'$. This covers
+the occurrences that begin inside the site or before it.
+\end{proof}
+
+By \ref{it:G1} and \cref{lem:anchors-preserved}, no cut strictly between a
+junction of $u_l$ and the cut $\lambda$ letters after it is a level-$(t+1)$
+anchor of $u_l$.
+
+\begin{lemma}[Transfer]\label{lem:transfer}
+Let $a_2$ be a cut of $u_l$ such that $\wsub{u_l}{a_2}{a_2+\lambda}=
+z_\lambda$ and no junction of $u_l$ lies strictly between $a_2$ and
+$a_2+\lambda$. Then $a_2$ is a junction of $u_l$.
+\end{lemma}
+
+\begin{proof}
+By \eqref{eq:between-junctions}, $\wsub{w_l}{c}{c+\lambda}=z_\lambda$ for
+$c=\gamma(a_2)$. By \ref{it:G3} a level-$(t+1)$ marker of length at most
+$\lambda$ is a suffix of $z_\lambda$, so $c+\lambda$ is an upper anchor of
+$w_l$. By \cref{lem:traverse}, which applies since $i\ge a+\Marg$, the upper
+occurrence ending at $c+\lambda$ traverses the edge. Its site is
+$[c-\delta,c)$, so $a_2=\cmap(c)$ is a junction.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:block-deletion}]
+It remains to show $\Chan_{hg}(U)\subseteq\Chan_{hg}(W)$ for a host $h$ and
+a target $g$. Let $a',b'$ be cuts of $u_h$ and $u_g$ with
+$T=\wsuf{u_g}{b'}\pre\wsuf{u_h}{a'}$, and let $\theta=\len T$. We must find
+cuts of $w_h$ and $w_g$ with the same states whose rests are compared. A
+\emph{host junction offset} is a number $x$ with $0<x<\theta$ such that
+$a'+x$ is a junction of $u_h$, and a \emph{target junction offset} one such
+that $b'+x$ is a junction of $u_g$.
+
+\emph{Step 1: junction offsets correspond.} Let $x$ be a target junction
+offset. By \ref{it:G1}, $x+\lambda\le\theta$, the target reads $z_\lambda$
+from $b'+x$, and so does the host from $a'+x$. By \ref{it:G3} a
+level-$(t+1)$ marker is a suffix of $z_\lambda$, so $a'+x+\lambda$ is a
+level-$(t+1)$ anchor of $u_h$. If a host junction offset $y$ satisfied
+$x<y<x+\lambda$, this anchor would lie strictly between a junction and the
+cut $\lambda$ letters after it, which is impossible. So \cref{lem:transfer}
+applies, and $x$ is a host junction offset. Symmetrically, a host junction
+offset $y$ with $y+\lambda\le\theta$ is a target junction offset: the target
+reads $z_\lambda$ from $b'+y$, the cut $b'+y+\lambda$ is a level-$(t+1)$
+anchor of $u_g$, and no target junction offset lies strictly between $y$ and
+$y+\lambda$.
+
+\emph{Step 2: the matched case.} Suppose every host junction offset is a
+target junction offset, and let $x_1<\dots<x_m$ be the junction offsets. By
+\eqref{eq:between-junctions}, applied between consecutive junctions,
+$\wsuf{w_g}{\gamma(b')}$ is the word obtained from $T$ by inserting $F$ at
+the offsets $x_1,\dots,x_m$, and the same word is a prefix of
+$\wsuf{w_h}{\gamma(a')}$. The states at $\gamma(a')$ and $\gamma(b')$ are
+those of $U$ at $a'$ and $b'$. This includes the case of an empty $T$.
+
+\emph{Step 3: the unmatched case.} Otherwise, by Step 1, there is a host
+junction offset $y$ with $y+\lambda>\theta$, and it is the only host
+junction offset that is not a target junction offset, by \ref{it:G1}. We
+first show that the target has no junction at or after $b'$. If
+$g\notin\Act_{t+1}$, the word $w_g$ has no site, by \ref{it:G2}. Let
+$g\in\Act_{t+1}$ and $\sigma=\mk{t+1}g$, a suffix of $u_g$ by \ref{it:G3}.
+If $\len\sigma\le\theta$, then $\sigma$ ends at the cut $a'+\theta$ of
+$u_h$, a level-$(t+1)$ anchor strictly between the junction $a'+y$ and the
+cut $\lambda$ letters after it, which is impossible. So $\len\sigma>\theta$,
+and by \ref{it:G3} no junction of $u_g$ lies at or after $b'$. Consequently
+$T=\wsuf{w_g}{\tilde b}$ for $\tilde b=\len{w_g}-\theta$, with the state of
+$b'$, there is no target junction offset, and by Step 1 $y$ is the only host
+junction offset.
+
+Let $o$ be the traversing occurrence of the junction $a'+y$, with the site
+$[c,c')$, and write $T=SR$ with $\len S=y$; $R$ is not empty. By
+\eqref{eq:between-junctions}, $S=\wsub{w_h}{c-y}{c}$, with the state of $a'$
+at the cut $c-y$, and $R\pre\wsuf{w_h}{c'}$. If $y\le\omega$, then by
+\eqref{eq:window} $S=\wsub{w_h}{c'-y}{c'}$ and the state at $c'-y$ is that
+at $c-y$; so $\wsuf{w_g}{\tilde b}=SR\pre\wsuf{w_h}{c'-y}$ is a comparison
+of $W$ with the required states.
+
+It remains to exclude $y>\omega$. For $t=0$, the word $w_g$ is not empty, so
+$g\in\Act_1$ and $\len{\mk1g}=1\le\theta$, which was excluded above. Let
+$t\ge1$. By \ref{it:V1} a level-$t$ marker $\mu$ of length at most
+$\omega<y$ ends at $c$; it is a suffix of $S$, so it occurs in $w_g$, begins
+at or after $\tilde b$, and ends at the cut $\tilde b+y<\len{w_g}$. So $w_g$
+has a level-$t$ anchor before its end, $g\in\Act_{t+1}$, and since
+$\theta<\len\sigma$ this occurrence of $\mu$ lies inside the final
+occurrence of $\sigma=\mk{t+1}g$, begins after its beginning and ends before
+its end. This contradicts \cref{lem:markers}\eqref{it:mk-two}.
+\end{proof}
+
+\subsection{The Bound}\label{app:fresh-bound}
+
+\begin{lemma}[Labels are local]\label{lem:labels-local}
+Let $(Z,a,b)$ be an edge at level $t$ and $d$ a depth with $1\le d\le
+b-\Marg$. There are marker texts $\tau_1,\dots,\tau_t$, some possibly
+undefined, and a map $g_d\colon S\to S$ such that for every traversing upper
+occurrence $o$ of a word $w_l$, the label of its cut at depth $d$ is
+$(\tau_1,\dots,\tau_t,g_d(q_l(c)))$, where $c$ is the cut of $o$ at depth
+$b$.
+\end{lemma}
+
+\begin{proof}
+Let $y_d$ be the text of the lower blocks of $Z$ at the depths
+$b-1,\dots,d$; it is the text between the cuts of $o$ at the depths $b$ and
+$d$. A level-$r$ marker with $1\le r\le t$ that ends at the cut at depth $d$
+contains at most $k(N-1)+2$ lower anchors, by \cref{lem:depth-span} for the
+levels $r-1$ and $r$, because lower anchors are level-$(r-1)$ anchors. The
+cuts at the depths $d,\dots,b$ are $b-d+1>k(N-1)+2$ lower anchors, so the
+marker begins at or after $c$: it is a suffix of $y_d$. So $\tau_r$ is the
+level-$r$ marker that is a suffix of $y_d$, and the state before the longest
+of them is obtained from $q_l(c)$ by reading a prefix of $y_d$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:fresh-bound}]
+Let $W$ be a minimal fresh tuple. By \cref{lem:depth-span} its top level
+$s$ is at most $k(N-1)$. Fix $t\le s$. There are at most $(k+1)^t$
+possibilities for the texts $\tau_r$ of \cref{lem:labels-local}, since at
+each level at most one of at most $k$ marker texts ends at a cut, and
+$N^N$ maps $g_d$. If an edge $(Z,a,b)$ had $b-a>E$, two of the
+$b-a-2\Marg+1$ depths between $a+\Marg$ and $b-\Marg$ would have the same
+texts and the same map, and by \cref{lem:labels-local} they would form a
+block deletion, contradicting \cref{thm:block-deletion}. So every edge has
+at most $E$ lower blocks.
+
+Let $h_t$ be the number of distinct texts of upper blocks at level $t$ and
+$P_t$ the number of distinct parses. By \cref{lem:parse-local}, the parse of
+an upper block with the text $z$ is determined by $z$ and its set of
+crossing anchors, a subset of the set $\operatorname{Pre}(z)$ of at most
+$k(N-1)$ positions; so $P_t\le F\,h_t$. The path of a parse $Z$ has at most
+$P_t+2$ nodes, the first is $0$, the last is the length of $Z$, and
+consecutive nodes are at most $E$ apart; so $Z$ has at most $(P_t+2)E$ lower
+blocks. For $t\ge1$, every upper block of level $t-1$ is a lower block in
+the parse of an upper block of level $t$, hence
+\[
+  h_{t-1}\le P_t\,(P_t+2)\,E\le F h_t\,(F h_t+2)\,E .
+\]
+At the top level the upper blocks are the nonempty words, so $h_s\le k$. By
+induction $h_{s-d}\le\nu_d$, and since the $\nu_d$ are nondecreasing and
+$s\le kN$, every upper block of every level has at most $X=(\nu_{kN}F+2)E$
+lower blocks. Blocks of level $0$ are letters, so a block of level $t+1$ has
+at most $X^{t+1}$ letters, and each word, a block of level $s+1$ if it is not
+empty, has at most $X^{kN+1}$ letters. The closed form is proved in
+\cref{app:complexity-closed}.
+
+The second statement of \cref{thm:fresh} follows because a fresh dominator
+of least total length of a fresh tuple is a minimal fresh tuple.
+\end{proof}

@@ -1,0 +1,187 @@
+\section{The Lean Development}
+\label{app:lean}
+
+The development is a Lean~4 library over Mathlib, with the root namespace
+\lean{DeciSigma1}; all names below are relative to it. \Cref{tab:lean-layout}
+lists its parts, \cref{tab:lean-defs,tab:lean-thms} relate the definitions
+and results of the paper to declarations, and \cref{app:lean-differences}
+lists the differences between the two presentations.
+
+{\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.74\linewidth}@{}}
+\caption{The parts of the development.}\label{tab:lean-layout}\\
+\toprule
+Part & Contents \\
+\midrule
+\endfirsthead
+\toprule
+Part & Contents \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\lean{Main.lean} & the public statements, with a map of the proof \\*
+\lean{Encodings.lean} & satisfiability and entailment as sentences \\*
+\lean{Semantics} & trees over both signatures, the order with variance, finite and regular trees \\*
+\lean{Constraints} & flat literals, closure, the signed translation, compiled bounds by finite trees \\*
+\lean{Satisfiability} & satisfiability and finite satisfiability \\*
+\lean{Automata} & runs of transition functions, the run automata of constraints \\*
+\lean{Words} & periods, primitive words, rays, deletion of positions, suffix chains \\*
+\lean{Arithmetic} & difference constraints, simple paths, maximal repetitions, iterated exponentials \\*
+\lean{Readers} & tables, structural readers, holes, domination \\*
+\lean{Holes} & the small-hole theorem: \lean{Fresh}, \lean{Periodic}, \lean{Tail}, and the bounds \\*
+\lean{Full} & the reduction to holes over $\BFT$, regular and finite countermodels, deciders \\*
+\lean{Entailment} & the signature $\BF$ and its reduction by a guard \\*
+\lean{Logic} & sentences, normal forms, the decision procedure for sentences \\*
+\lean{Examples}, \lean{Audit.lean} & examples; the check of axioms and of computability \\
+\end{longtable}}
+
+{\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash\footnotesize}p{0.66\linewidth}@{}}
+\caption{Definitions.}\label{tab:lean-defs}\\
+\toprule
+Paper & \small Lean \\
+\midrule
+\endfirsthead
+\toprule
+Paper & \small Lean \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+trees, the order (\cref{def:trees,def:order}) & \lean{Semantics.Tree}, \lean{Semantics.Tree.Le}, \lean{Semantics.polarity} \\
+trees over $\BF$ & \lean{Semantics.PrefixSet}, \lean{Semantics.IsRegularTree}, \lean{Semantics.IsFiniteTree} \\
+classes of trees & \lean{Full.Logic.TreeClass}, \lean{Full.Models.RegularTop}, \lean{Full.Models.FiniteTop} \\
+sentences (\cref{sec:prelim-sentences}) & \lean{Logic.QuantifierFreeFormula}, \lean{Logic.Sigma1}, \lean{Full.Logic.BooleanSentence}, \lean{HoldsIn} \\
+flat constraints, entailment (\cref{def:flat,def:disj}) & \lean{Constraints.LitT}, \lean{Constraints.SatT}, \lean{Full.DisjEntailsIn}, \lean{Full.HasCountermodelIn} \\
+cones, atoms, rules (\cref{def:cones,tab:clauses}) & \lean{Full.Closure.leaf}, \lean{Config}, \lean{Move}, \lean{Clause}, \lean{Fact}, \lean{Neg}, \lean{IsSolution}, \lean{leastClosure} \\
+seeds, exclusions (\cref{sec:readers-modes}) & \lean{Full.seed}, \lean{Full.exclusion} \\
+runs (\cref{def:runs}) & \lean{Automata.upperRun}, \lean{Automata.lowerRun}, \lean{upperStep}, \lean{lowerStep} \\
+readers, channels, holes (\cref{def:reader,def:hole}) & \lean{Readers.StructuralReader}, \lean{Readers.Table.channel}, \lean{StructuralReader.Eligible}, \lean{IsHole}, \lean{firstRejection} \\
+the reader of a mode (\cref{def:compile}) & \lean{Full.Reduction.compile} \\
+domination, fresh, immortal (\cref{def:domination,def:fresh,def:immortal}) & \lean{Readers.Dominates}, \lean{FreshDominates}, \lean{IsMinimalFresh}, \lean{StructuralReader.Immortal} \\
+the cover (\cref{def:cover-hole}) & \lean{Holes.cover}, \lean{Holes.coverProjection} \\
+markers, anchors (\cref{def:markers}) & \lean{Holes.Fresh.level}, \lean{marker}, \lean{active}, \lean{contextAnchors}, \lean{anchors}, \lean{topLevel} \\
+parses, trie, block deletion (\cref{def:trie,def:block-deletion}) & \lean{upperOccurrences}, \lean{upperParse}, \lean{trieNodes}, \lean{Edge}, \lean{Edge.TraversedBy}, \lean{label}, \lean{deletionMargin}, \lean{BlockDeletion} \\
+rays, ray system (\cref{def:ray,def:ray-system}) & \lean{Words.Ray}, \lean{Ray.onset}, \lean{Ray.period}, \lean{Holes.Tail.raySystem} \\
+suffix nodes, closed factors (\cref{def:node}) & \lean{suffixDictionary}, \lean{suffixNode}, \lean{NodeClosedAt}, \lean{NoSuffixOccurrenceEndsBetween}, \lean{pumpFactor} \\
+suffix chains & \lean{Words.suffixReturnGap}, \lean{Words.SuffixChain}, \lean{ChainBoundFrom} \\
+scales (\cref{def:cover,app:tails-levels}) & \lean{LevelBounds}, \lean{levelStep}, \lean{levelBounds}, \lean{CoordinateCover}, \lean{LevelCoverProperty} \\
+forbidden overlaps (\cref{def:overlaps}) & \lean{PrefixOverlap}, \lean{PeriodicTailOverlap}, \lean{ReversePrefixOverlap} \\
+pieces, admissible deletions (\cref{def:admissible}) & \lean{Holes.Periodic.Piece}, \lean{FollowerEdge}, \lean{AdmissibleDeletion}, \lean{editedTuple} \\
+deletion of positions & \lean{Words.deletePositions}, \lean{retainedCount}, \lean{greatestPreimage} \\
+\end{longtable}}
+
+{\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.30\linewidth}>{\raggedright\arraybackslash\footnotesize}p{0.66\linewidth}@{}}
+\caption{Results.}\label{tab:lean-thms}\\
+\toprule
+Paper & \small Lean \\
+\midrule
+\endfirsthead
+\toprule
+Paper & \small Lean \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\cref{thm:main} & \lean{decideBooleanSentence}, \lean{decideBooleanSentence_correct}, \lean{booleanSentence_regular_iff}, \lean{decideBooleanSentenceTopFree}, \lean{booleanSentenceTopFree_regular_iff} \\
+\cref{lem:clause,prop:sentences} & \lean{Logic.QuantifierFreeFormula.holds_iff_dnf}, \lean{Logic.ConjunctiveClause.realizable_iff_not_disjEntailsIn}, \lean{Logic.decideBooleanSentence}, \lean{Logic.BooleanSentence.holdsIn_iff_of_disjEntailsIn_iff} \\
+the table of \cref{sec:prelim-constraints} & \lean{Full.Logic.holdsIn_satisfiabilitySentence_iff}, \lean{Full.Logic.holdsIn_entailmentSentence_iff} \\
+\cref{ex:unary}, \eqref{eq:arrow-disj} & \lean{Examples}: \lean{unary_comparable}, \lean{not_unary_comparable_single}, \lean{binary_not_comparable}, \lean{arrow_least}, \lean{not_arrow_least_single} \\
+\cref{thm:cones,lem:clause-form} & \lean{Full.Closure.treeLe_iff_leaf}, \lean{leaf_decode}, \lean{sat_iff_isSolution}, \lean{sat_iff_leastClosure} \\
+\cref{lem:duality,lem:witness} & \lean{Full.Closure.moves_dual}, \lean{Full.failures_iff_exists_leaf_witnesses} \\
+\cref{thm:realization} & \lean{Full.Reduction.SeedConsistency}, \lean{hasCountermodelIn_iff_exists_seedConsistency}, \lean{seedConsistency_iff_terminalRootConditions} \\
+\cref{lem:runs-det,lem:cuts}, \cref{lem:lc} & \lean{Automata.lowest_point}, \lean{Full.Reduction.reach_iff_event}, \lean{Full.Closure.leastClosure_membership} \\
+\cref{thm:reduction} & \lean{Full.Reduction.hole_iff_terminalRootConditions}, \lean{not_disjEntails_iff_hole} \\
+\cref{lem:hole-dominates,lem:distinct} & \lean{StructuralReader.IsHole.of_dominates}, \lean{runPrefix_ne_of_mortal}, \lean{runPrefix_ne_of_le_firstRejection} \\
+\cref{lem:cover,thm:small-hole} & \lean{Holes.cover_fresh}, \lean{cover_project_of_dom}, \lean{Holes.exists_small_hole}, \lean{smallHoleBound}, \lean{Holes.decideHole} \\
+\cref{thm:fresh,thm:fresh-bound} & \lean{Holes.Fresh.totalLength_le_freshTupleBound}, \lean{exists_freshDominates_totalLength_le}, \lean{freshTupleBound_le_double_exp2} \\
+\cref{lem:markers,lem:depth-span}, \cref{lem:width} & \lean{marker_eq_of_infix}, \lean{marker_occurrences_eq_of_nested}, \lean{contextAnchors_marker_succ}, \lean{topLevel_le}, \lean{card_anchors_Ioc_marker_le}, \lean{card_prefixOccurrenceCuts_le} \\
+\cref{lem:parse-local,lem:traverse} & \lean{relativeAnchors_eq}, \lean{BlockDeletion.traversedBy_of_text_eq} \\
+\cref{thm:block-deletion} & \lean{contextAnchors_apply}, \lean{BlockDeletion.transfer}, \lean{BlockDeletion.channel}, \lean{BlockDeletion.freshDominates} \\
+\cref{lem:labels-local} & \lean{label_local}, \lean{exists_blockDeletion} \\
+\cref{thm:tails,thm:tails-bound} & \lean{Holes.Tail.exists_hole_rejectedTailLength_le}, \lean{tailLengthBound}, \lean{tailLengthBound_le_double_exp2} \\
+\cref{lem:ray-prefixes} & \lean{ray_prefix_hole}, \lean{Arithmetic.DifferenceSystem.exists_long_solution} \\
+\cref{lem:pump,lem:closed-free} & \lean{comparison_of_pumpFactor}, \lean{pumpFactor_eligible}, \lean{exists_closed_factor_free_of_suffix_occurrences}, \lean{Words.chain_stop_from} \\
+\cref{lem:levels-mono,lem:chains} & \lean{levelCoverProperty_succ}, \lean{exists_stable_level}, \lean{levelCoverProperty_chainBound}, \lean{levelCoverProperty_chainBoundFrom}, \lean{Words.chainBound_mortal} \\
+\cref{lem:terminal,lem:candidates} & \lean{exists_terminal_ray}, \lean{exists_many_rayCandidates}, \lean{exists_compatible_rayCandidate} \\
+\cref{lem:compatible} & \lean{card_prefixOverlap_le}, \lean{card_periodicTailOverlap_le}, \lean{card_reversePrefixOverlap_le}, \lean{not_mem_closed_walk_of_noForbiddenRayOverlap} \\
+\cref{prop:run-cover} & \lean{exists_rayFamily}, \lean{exists_hole_with_run_cover} \\
+\cref{lem:admissible} & \lean{Holes.Periodic.editedTuple_dominates}, \lean{editedTuple_firstRejection}, \lean{exists_preserved_piece_of_nonconjugate_root} \\
+\cref{lem:cap}, \cref{lem:simple-path,lem:pass} & \lean{cap_exists}, \lean{simplePath_le_pow_split}, \lean{Arithmetic.simplePath_le_pow_prefix}, \lean{exists_hole_compressed_step} \\
+\cref{thm:elementary} & \lean{smallHoleBound_le} \\
+\cref{thm:decide-arbitrary,lem:sat-decidable} & \lean{decideDisjEntails}, \lean{Full.Closure.decideSat} \\
+\cref{thm:decide-regular} & \lean{Full.Reduction.disjEntails_regular_iff}, \lean{SeedConsistency.regular_realizes}, \lean{Full.Closure.regular_of_leaf} \\
+\cref{thm:decide-finite,lem:pinning} & \lean{Full.Reduction.disjEntails_finite_iff}, \lean{Full.Models.finiteBoundPinning}, \lean{observation_bound}, \lean{Constraints.Ranked.Extension.satFin_iff} \\
+\cref{lem:guard,thm:decide-bf} & \lean{Semantics.Tree.isTopFree_of_le_of_le_node}, \lean{Entailment.disjEntailsIn_iff_guarded} and its variants for regular and finite trees \\
+\end{longtable}}
+
+\subsection{Differences between the Paper and the Development}
+\label{app:lean-differences}
+
+The paper and the development follow the same route. They differ in the
+following points of representation and arrangement.
+
+\begin{enumerate}
+\item \emph{Representation.} Argument positions are numbered from $0$, the
+  variance is a Boolean function with \emph{true} for contravariant
+  positions, and the signs $\sgp,\sgm$ are the Booleans \emph{false} and
+  \emph{true}. Constraints are lists of literals over an arbitrary finite
+  type of variables with decidable equality. The alphabet and the state set
+  of a reader are arbitrary finite types, and the rejected states and
+  admitted pairs are Boolean functions.
+\item \emph{Runs.} The development defines the upper and lower runs for
+  covariant constraints and applies them to the \emph{signed translation} of
+  a constraint with variance, a covariant constraint on two copies of each
+  variable; the paper defines them directly on atoms. The reader of a mode
+  tests rejection against the set of signed variables from which a variable
+  of $\NegV$ is reachable by moves that keep the path empty, which is
+  equivalent on upper runs because they are closed under such moves.
+\item \emph{Realization.} The development states \cref{thm:realization}
+  with a condition for each seed (no forbidden atom, the opposite not in the
+  least closure, no derivation of its own opposite) and conditions for pairs
+  of different seeds, and proves the equivalence with the form used by the
+  readers; the paper states the second form directly.
+\item \emph{Labels.} A block deletion requires equal labels in every
+  traversing occurrence, as in \cref{def:block-deletion}; the pigeonhole
+  uses the pair of the marker texts and the map $g_d$ of
+  \cref{lem:labels-local} as a joint label.
+\item \emph{Closed factors.} Closed factors for escaping coordinates are
+  found among cuts that are $B+1$ apart, which makes the factor longer than
+  its window and yields the hypothesis of the count for the overlap
+  \ref{it:O2}. An alternative is to add to the suffix node, for each
+  terminal ray, the longest suffix of the text that is a factor of the
+  periodic part of the ray, with a capped length; the development and the
+  paper use the spaced cuts.
+\item \emph{Chains.} The chain budget of a fixed word is a bound on the
+  number of members of a suffix chain that starts at a long window
+  (\cref{lem:chains}). An alternative bounds the number of maximal stretches
+  of a chain with a constant gap and the length of each stretch; counting
+  members is simpler and gives the same form of the recursion.
+\item \emph{State periods.} The development uses the period $d\cdot N!$ of
+  the states inside a piece of period $d$, as the paper does; the least
+  common multiple of $1,\dots,N$ in place of $N!$ would also do.
+\item \emph{Scale functions.} The development packages the inequalities
+  \ref{it:L1}--\ref{it:L5}, and a few monotonicity statements, in a
+  structure, proves the tail bound from the structure, and then
+  instantiates it with the recursion of \cref{app:tails-levels}.
+\item \emph{Finite trees.} \Cref{lem:pinning} is proved in the development
+  as in \cref{app:classes-finite}: bounds by finite trees are compiled into
+  one-sided constructor literals on fresh variables, such an extension
+  creates no cycle clash, and a finite solution of the signed translation is
+  made symmetric under the exchange of the two copies by a median. The
+  development proves the characterization of finite satisfiability by cycle
+  clashes itself, for constraints with variable inequalities, whose closure
+  contains these inequalities; the paper cites it from \cite{Zhao26}, where
+  it is stated without variable inequalities, and removes them first.
+\item \emph{Degenerate cases.} The development covers arity $0$, the case
+  of no queries, empty words and readers with a single state without
+  separate treatment, with truncated subtraction in the numerical
+  definitions; the paper treats $k=0$ separately (\cref{sec:tails}) and
+  assumes $k\ge1$ and $N\ge2$ in \cref{app:tails,app:compression}, which
+  holds for every reader with at least one start and a hole.
+\item \emph{Complexity.} The development proves the numerical bound of
+  \cref{thm:elementary}. It does not contain \cref{cor:complexity},
+  \cref{prop:hardness} or the construction of \cref{app:complexity-long}.
+\end{enumerate}
