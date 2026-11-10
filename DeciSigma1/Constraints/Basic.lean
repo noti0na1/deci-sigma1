@@ -51,7 +51,7 @@ def HoldsT {V : Type*} (c : Fin n → Bool) (ρ : V → Semantics.Tree n) : LitT
 
 /-- Satisfaction of a finite conjunction of literals, with variance `c`. -/
 def SatT {V : Type*} (c : Fin n → Bool) (ρ : V → Semantics.Tree n)
-    (χ : List (LitT n V)) : Prop := ∀ l ∈ χ, HoldsT c ρ l
+    (Γ : List (LitT n V)) : Prop := ∀ l ∈ Γ, HoldsT c ρ l
 
 /-- Covariant satisfaction of a literal. -/
 def Covariant.Holds {V : Type*} (ρ : V → Semantics.Tree n) : LitT n V → Prop
@@ -62,14 +62,14 @@ def Covariant.Holds {V : Type*} (ρ : V → Semantics.Tree n) : LitT n V → Pro
   | .eqTop x => ρ x = Tree.top
 
 /-- Covariant satisfaction of a finite conjunction. -/
-def Covariant.Sat {V : Type*} (ρ : V → Semantics.Tree n) (χ : List (LitT n V)) : Prop :=
-  ∀ l ∈ χ, Holds ρ l
+def Covariant.Sat {V : Type*} (ρ : V → Semantics.Tree n) (Γ : List (LitT n V)) : Prop :=
+  ∀ l ∈ Γ, Holds ρ l
 
 @[simp] theorem holds_false {V : Type*} (ρ : V → Semantics.Tree n) (l : LitT n V) :
     HoldsT (fun _ => false) ρ l ↔ Covariant.Holds ρ l := by
   cases l <;> simp [HoldsT, Covariant.Holds]
 
-@[simp] theorem sat_false {V : Type*} (ρ : V → Semantics.Tree n) (χ : List (LitT n V)) :
-    SatT (fun _ => false) ρ χ ↔ Covariant.Sat ρ χ := by simp [SatT, Covariant.Sat]
+@[simp] theorem sat_false {V : Type*} (ρ : V → Semantics.Tree n) (Γ : List (LitT n V)) :
+    SatT (fun _ => false) ρ Γ ↔ Covariant.Sat ρ Γ := by simp [SatT, Covariant.Sat]
 
 end DeciSigma1.Constraints

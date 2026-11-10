@@ -27,26 +27,26 @@ open DeciSigma1.Constraints
 variable {n : ℕ} {V : Type*}
 
 theorem sat_normalize_iff (c : Fin n → Bool) (ρ : V → Semantics.Tree n)
-    (χ : List (LitT n V)) :
-    SatT (fun _ => false) (normalized c ρ) (signed c χ) ↔ SatT c ρ χ :=
-  (sat_false ..).trans (sat_iff_signed c ρ χ).symm
+    (Γ : List (LitT n V)) :
+    SatT (fun _ => false) (normalized c ρ) (signed c Γ) ↔ SatT c ρ Γ :=
+  (sat_false ..).trans (sat_iff_signed c ρ Γ).symm
 
 theorem sat_signDual {c : Fin n → Bool} {A : V × Bool → Semantics.Tree n}
-    {χ : List (LitT n V)} (h : SatT (fun _ => false) A (signed c χ)) :
-    SatT (fun _ => false) (Constraints.Signed.dual A) (signed c χ) :=
+    {Γ : List (LitT n V)} (h : SatT (fun _ => false) A (signed c Γ)) :
+    SatT (fun _ => false) (Constraints.Signed.dual A) (signed c Γ) :=
   (sat_false ..).mpr (sat_signedDual c ((sat_false ..).mp h))
 
 theorem sat_decode (c : Fin n → Bool) {A : V × Bool → Semantics.Tree n}
-    {χ : List (LitT n V)} (h : SatT (fun _ => false) A (signed c χ))
-    (hf : Constraints.Signed.dual A = A) : SatT c (decoded c A) χ := by
-  apply (sat_normalize_iff c _ χ).mp
+    {Γ : List (LitT n V)} (h : SatT (fun _ => false) A (signed c Γ))
+    (hf : Constraints.Signed.dual A = A) : SatT c (decoded c A) Γ := by
+  apply (sat_normalize_iff c _ Γ).mp
   rwa [normalized_decoded c hf]
 
 /-- The median of three covariant solutions of a flat constraint is a covariant solution. -/
-theorem sat_median {A B D : V → Semantics.Tree n} {χ : List (LitT n V)}
-    (ha : SatT (fun _ => false) A χ) (hb : SatT (fun _ => false) B χ)
-    (hd : SatT (fun _ => false) D χ) :
-    SatT (fun _ => false) (fun v => treeMedian (A v) (B v) (D v)) χ := by
+theorem sat_median {A B D : V → Semantics.Tree n} {Γ : List (LitT n V)}
+    (ha : SatT (fun _ => false) A Γ) (hb : SatT (fun _ => false) B Γ)
+    (hd : SatT (fun _ => false) D Γ) :
+    SatT (fun _ => false) (fun v => treeMedian (A v) (B v) (D v)) Γ := by
   intro l hl
   have h₁ := ha l hl
   have h₂ := hb l hl
@@ -98,11 +98,11 @@ theorem symmetrize_fixed (c : Fin n → Bool) (A : V × Bool → FTree n)
   rw [treeMedian_swap]
 
 theorem symmetrize_sat {c : Fin n → Bool} {A : V × Bool → FTree n}
-    {D : V → FTree n} {χ : List (LitT n V)}
-    (ha : SatT (fun _ => false) (FTree.toTree ∘ A) (signed c χ))
-    (hd : SatT c (FTree.toTree ∘ D) χ) :
-    SatT (fun _ => false) (FTree.toTree ∘ symmetrize c A D) (signed c χ) := by
-  have hh := sat_median ha (sat_signDual ha) ((sat_normalize_iff c _ χ).mpr hd)
+    {D : V → FTree n} {Γ : List (LitT n V)}
+    (ha : SatT (fun _ => false) (FTree.toTree ∘ A) (signed c Γ))
+    (hd : SatT c (FTree.toTree ∘ D) Γ) :
+    SatT (fun _ => false) (FTree.toTree ∘ symmetrize c A D) (signed c Γ) := by
+  have hh := sat_median ha (sat_signDual ha) ((sat_normalize_iff c _ Γ).mpr hd)
   simpa only [Function.comp_def, symmetrize_toTree] using hh
 
 end DeciSigma1.Full.Models.Signed.FinitePinning
@@ -221,29 +221,29 @@ end FinitePinning
 /-- Finitely many ground bounds that hold together in some solution with variance hold together in a
 finite solution, provided the constraint has a finite solution. -/
 theorem realize_finite_bounds {V : Type*} (c : Fin n → Bool)
-    (χ : List (LitT n V))
-    (hf : ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT c τ χ)
+    (Γ : List (LitT n V))
+    (hf : ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT c τ Γ)
     (B : List (GroundBound n V))
-    (hs : ∃ ρ, SatT c ρ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c ρ) :
-    ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT c τ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c τ := by
+    (hs : ∃ ρ, SatT c ρ Γ ∧ ∀ b ∈ B, b.HoldsWithVariance c ρ) :
+    ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT c τ Γ ∧ ∀ b ∈ B, b.HoldsWithVariance c τ := by
   classical
   obtain ⟨δ, hδfin, hδ⟩ := hf
   choose D hD using hδfin
   have hDeq : FTree.toTree ∘ D = δ := funext hD
-  have hf' : SatisfiableIn FiniteTop (fun _ => false) (Constraints.signed c χ) := by
+  have hf' : SatisfiableIn FiniteTop (fun _ => false) (Constraints.signed c Γ) := by
     refine ⟨Constraints.normalized c δ, ?_,
-      (FinitePinning.sat_normalize_iff c δ χ).mpr hδ⟩
+      (FinitePinning.sat_normalize_iff c δ Γ).mpr hδ⟩
     intro z
     exact ⟨(D z.1).normalize c z.2, by simp [Constraints.normalized, hD]⟩
   obtain ⟨ρ, hρ, hB⟩ := hs
   obtain ⟨β, hβfin, hβ, hβB⟩ := Models.finiteBoundPinning
-    (Constraints.signed c χ) hf' (FinitePinning.pins c B)
-    ⟨Constraints.normalized c ρ, (FinitePinning.sat_normalize_iff c ρ χ).mpr hρ,
+    (Constraints.signed c Γ) hf' (FinitePinning.pins c B)
+    ⟨Constraints.normalized c ρ, (FinitePinning.sat_normalize_iff c ρ Γ).mpr hρ,
       (FinitePinning.pins_normalize_iff c B ρ).mpr hB⟩
   choose A hA using hβfin
   have hAeq : FTree.toTree ∘ A = β := funext hA
   have hAsat : SatT (fun _ => false) (FTree.toTree ∘ A)
-      (Constraints.signed c χ) := hAeq.symm ▸ hβ
+      (Constraints.signed c Γ) := hAeq.symm ▸ hβ
   have hApins : ∀ p ∈ FinitePinning.pins c B, p.Holds (FTree.toTree ∘ A) :=
     hAeq.symm ▸ hβB
   let M := FinitePinning.symmetrize c A D
@@ -305,13 +305,13 @@ theorem observation_bound {V : Type*} (c : Fin n → Bool)
   simp only [Observation.bound, GroundBound.HoldsWithVariance, GroundBound.Holds,
     FTree.toTree_normalize, treeLe_iff_normalize, normalize_involutive]
 
-/-- Any finitely many ground bounds that hold together in some solution of `χ` also hold together
+/-- Any finitely many ground bounds that hold together in some solution of `Γ` also hold together
 in a solution with values in `C`. -/
 def BoundRealization {V : Type*} (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
-    (χ : List (LitT n V)) : Prop :=
+    (Γ : List (LitT n V)) : Prop :=
   ∀ B : List (GroundBound n V),
-    (∃ ρ, SatT c ρ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c ρ) →
-    ∃ τ, (∀ v, C (τ v)) ∧ SatT c τ χ ∧ ∀ b ∈ B, b.HoldsWithVariance c τ
+    (∃ ρ, SatT c ρ Γ ∧ ∀ b ∈ B, b.HoldsWithVariance c ρ) →
+    ∃ τ, (∀ v, C (τ v)) ∧ SatT c τ Γ ∧ ∀ b ∈ B, b.HoldsWithVariance c τ
 
 end DeciSigma1.Full.Models.Signed
 
@@ -324,21 +324,21 @@ variable {n : ℕ}
 /-- A constraint with variance has a finite solution exactly when its signed translation has
 neither a label clash nor a cycle clash. -/
 theorem satFin_iff_not_clash {V : Type*} [Fintype V]
-    (c : Fin n → Bool) (χ : List (LitT n V)) :
-    SatFin c χ ↔ ¬ LabelClash (signed c χ) ∧ ¬ CycleClash (signed c χ) :=
-  (satFin_iff_finite_assignment c χ).trans ((satFinite_iff_signed c χ).trans satFin_iff)
+    (c : Fin n → Bool) (Γ : List (LitT n V)) :
+    SatFin c Γ ↔ ¬ LabelClash (signed c Γ) ∧ ¬ CycleClash (signed c Γ) :=
+  (satFin_iff_finite_assignment c Γ).trans ((satFinite_iff_signed c Γ).trans satFin_iff)
 
 /-- Finite satisfiability with variance `c` is decidable: the signed translation is tested for
 label and cycle clashes. -/
 def decideSatFin {V : Type*} [Fintype V] [DecidableEq V]
-    (c : Fin n → Bool) (χ : List (LitT n V)) : Decidable (SatFin c χ) :=
-  decidable_of_iff (satFinB c χ = true)
-    ((satFinB_iff c χ).trans (satFin_iff_finite_assignment c χ).symm)
+    (c : Fin n → Bool) (Γ : List (LitT n V)) : Decidable (SatFin c Γ) :=
+  decidable_of_iff (satFinB c Γ = true)
+    ((satFinB_iff c Γ).trans (satFin_iff_finite_assignment c Γ).symm)
 
 /-- For a constraint with a finite solution, finitely many ground bounds that hold together in
 some solution hold together in a finite solution. -/
 theorem boundRealization_finiteTop {V : Type*} (c : Fin n → Bool)
-    (χ : List (LitT n V)) (hf : SatFin c χ) : BoundRealization FiniteTop c χ :=
-  realize_finite_bounds c χ hf
+    (Γ : List (LitT n V)) (hf : SatFin c Γ) : BoundRealization FiniteTop c Γ :=
+  realize_finite_bounds c Γ hf
 
 end DeciSigma1.Full.Models.Signed

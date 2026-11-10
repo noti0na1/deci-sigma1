@@ -52,10 +52,10 @@ def comparisonGap (N d : ℕ) : ℕ := 2 * boundaryMargin N d + statePeriodModul
 shortened. -/
 def fixedMargin (N d : ℕ) : ℕ := 6 * boundaryMargin N d + 2 * statePeriodModulus N d
 
-/-- The bound on the retained length of a periodic piece of occurrence height `H`. -/
-def pieceLengthBound (N d H : ℕ) :
-    ℕ := fixedMargin N d + statePeriodModulus N d + 2 ^ H *
-        (comparisonGap N d + statePeriodModulus N d)
+/-- The retained-length cap for head height `h` and at most `t` tail pieces. -/
+def pieceLengthBound (N d h t : ℕ) : ℕ :=
+  fixedMargin N d + statePeriodModulus N d + ((t + 1) * 2 ^ h - 1) *
+    (comparisonGap N d + statePeriodModulus N d)
 
 theorem d_le_statePeriodModulus (N d : ℕ) :
     d ≤ statePeriodModulus N d := Nat.le_mul_of_pos_right d (Nat.factorial_pos N)

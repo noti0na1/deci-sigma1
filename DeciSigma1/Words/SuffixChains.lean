@@ -11,16 +11,18 @@ suffixes `v_{b_i}` form a prefix chain, and the cuts `|t| - b_i` start comparabl
 On an eligible coordinate of a structural reader with a mortal endpoint, comparable suffix
 starts carry distinct live states, so every chain has fewer than `|S|` members
 (`chain_length_le_mortal`). The rejected-tail bound uses chains of bounded length through
-`chain_stop`: following a chain while the distance stays below a threshold `g` stops within the
+`chain_stop_from`: if the chains that start at a length at least `b₀` have at most `S` steps,
+following a chain from `bs ≥ b₀` while the distance stays below a threshold `g` stops within the
 `S`-fold iterate of `b ↦ b + g b`.
 
 ## Main declarations
 
 - `suffixOfLength`, `occurrences`: suffixes of a given length and their occurrences in a word.
 - `suffixReturnGap`: the distance from the suffix of length `b` to its previous occurrence.
-- `SuffixChain`, `ChainBound`: suffix chains and bounds on their length.
+- `SuffixChain`, `ChainBound`, `ChainBoundFrom`: suffix chains and bounds on their length, for
+  all chains or for the chains that start at a given length or later.
 - `chainBound_mortal`: on a mortal eligible coordinate, chains have at most `|S| - 1` members.
-- `chain_stop`: a chain of bounded length stops at a controlled scale.
+- `chain_stop_from`, `chain_stop`: a chain of bounded length stops at a controlled scale.
 -/
 
 namespace DeciSigma1.Words
@@ -213,6 +215,20 @@ theorem ChainBound.mono {t : List α} {Sb Sb' : ℕ}
     (hS : Sb ≤ Sb') : ChainBound t Sb' :=
   fun bs hbs => (h bs hbs).trans (by omega)
 
+/-- Every suffix chain of `t` whose first member is at least `b₀` has at most `Sb` steps. -/
+def ChainBoundFrom (t : List α) (b₀ Sb : ℕ) : Prop :=
+  ∀ b bs, b₀ ≤ b → SuffixChain t (b :: bs) → bs.length ≤ Sb
+
+theorem ChainBound.chainBoundFrom {t : List α} {Sb : ℕ} (h : ChainBound t Sb) (b₀ : ℕ) :
+    ChainBoundFrom t b₀ Sb := fun _ _ _ hbs => by
+  have := h _ hbs
+  simp only [List.length_cons] at this
+  omega
+
+theorem ChainBoundFrom.mono {t : List α} {b₀ b₁ Sb Sb' : ℕ} (h : ChainBoundFrom t b₀ Sb)
+    (hb : b₀ ≤ b₁) (hS : Sb ≤ Sb') : ChainBoundFrom t b₁ Sb' :=
+  fun b bs hb₁ hbs => (h b bs (hb.trans hb₁) hbs).trans hS
+
 /-- Two members `b < b'` of a suffix chain have `v_b` a prefix of `v_{b'}`. -/
 theorem SuffixChain.prefix_of_lt {t : List α} {bs : List ℕ}
     (h : SuffixChain t bs)
@@ -301,13 +317,14 @@ end Mortal
 
 /-! ## The stopping scale -/
 
-/-- If every chain of `t` has at most `S` steps, the chain from `bs` that continues while
-`suffixReturnGap t b ≤ g b` stops at some `b ≥ bs` where `suffixReturnGap t b` is undefined or
-exceeds `g b`, and `b` is at most the `S`-fold iterate of `b ↦ b + g b` at `bs`. -/
-theorem chain_stop {t : List α} {S : ℕ} (hS : ChainBound t S) (g : ℕ → ℕ) (hg : Monotone g)
-    (bs : ℕ) : ∃ b, bs ≤ b ∧ b ≤ (fun b => b + g b)^[S] bs ∧ ∀ h, suffixReturnGap t b = some h →
-        g b <
-        h := by
+/-- If every chain of `t` that starts at a length at least `b₀` has at most `S` steps, the chain
+from `bs ≥ b₀` that continues while `suffixReturnGap t b ≤ g b` stops at some `b ≥ bs` where
+`suffixReturnGap t b` is undefined or exceeds `g b`, and `b` is at most the `S`-fold iterate of
+`b ↦ b + g b` at `bs`. -/
+theorem chain_stop_from {t : List α} {b₀ S : ℕ} (hS : ChainBoundFrom t b₀ S) (g : ℕ → ℕ)
+    (hg : Monotone g) {bs : ℕ} (hbs : b₀ ≤ bs) :
+    ∃ b, bs ≤ b ∧ b ≤ (fun b => b + g b)^[S] bs ∧
+      ∀ h, suffixReturnGap t b = some h → g b < h := by
   set G : ℕ → ℕ := fun b => b + g b with hG
   have hGm : Monotone G := fun a b hab => Nat.add_le_add hab (hg hab)
   have hGi : ∀ n b, b ≤ G^[n] b := by
@@ -345,8 +362,15 @@ theorem chain_stop {t : List α} {S : ℕ} (hS : ChainBound t S) (g : ℕ → �
             ⟨⟨by rw [Nat.add_sub_cancel_left]; exact hD, by omega⟩, hl⟩
   rcases claim S bs with hl | ⟨l, hl, hlen⟩
   · exact hl
-  · have := hS _ hl
-    simp only [List.length_cons] at this
+  · have := hS bs l hbs hl
     omega
+
+/-- If every chain of `t` has at most `S` steps, the chain from `bs` that continues while
+`suffixReturnGap t b ≤ g b` stops at some `b ≥ bs` where `suffixReturnGap t b` is undefined or
+exceeds `g b`, and `b` is at most the `S`-fold iterate of `b ↦ b + g b` at `bs`. -/
+theorem chain_stop {t : List α} {S : ℕ} (hS : ChainBound t S) (g : ℕ → ℕ) (hg : Monotone g)
+    (bs : ℕ) : ∃ b, bs ≤ b ∧ b ≤ (fun b => b + g b)^[S] bs ∧
+      ∀ h, suffixReturnGap t b = some h → g b < h :=
+  chain_stop_from (hS.chainBoundFrom bs) g hg le_rfl
 
 end DeciSigma1.Words

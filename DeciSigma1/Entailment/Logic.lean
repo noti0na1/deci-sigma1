@@ -7,9 +7,10 @@ Terms over `{⊥, f}` are built from variables, the constant `⊥` and the covar
 `f` of arity `n`; they denote trees over `{⊥, f}`, ordered by inclusion of constructor
 positions. This module instantiates the Boolean sentences of `DeciSigma1.Logic` with these
 terms, flattens clauses into the flat literals `Constraints.TopFree.Lit`, and decides the
-sentences over arbitrary and over regular trees with the procedures for disjunctive entailment
-of `DeciSigma1.Entailment.Decide`. Since disjunctive entailment has the same truth value over
-both classes, so has every sentence (`booleanSentence_regular_iff`).
+sentences over arbitrary, regular and finite trees with the procedures for disjunctive
+entailment of `DeciSigma1.Entailment.Decide`. Since disjunctive entailment has the same truth
+value over regular and over arbitrary trees, so has every sentence
+(`booleanSentence_regular_iff`); over finite trees it may differ.
 
 ## Main declarations
 
@@ -17,7 +18,7 @@ both classes, so has every sentence (`booleanSentence_regular_iff`).
 - `BooleanSentence`, `BooleanSentence.HoldsIn`: Boolean combinations of existential and
   universal sentences over `{⊥, f}`, and their truth in a class of trees.
 - `BFTermClosed`: classes of trees that contain `⊥` and are closed under `f`.
-- `TreeClass`, `TreeClass.Contains`: arbitrary or regular trees.
+- `TreeClass`, `TreeClass.Contains`: arbitrary, regular or finite trees.
 - `flattening`: flat literals that name subterms.
 - `decideBooleanSentence`: the decision procedure.
 - `booleanSentence_regular_iff`: truth over regular trees equals truth over arbitrary trees.
@@ -171,32 +172,40 @@ theorem bfTermClosed_all : BFTermClosed fun _ : PrefixSet n => True :=
 theorem bfTermClosed_reg : BFTermClosed (@IsRegularTree n) :=
   ⟨isRegularTree_bot, isRegularTree_node⟩
 
+theorem bfTermClosed_fin : BFTermClosed (@IsFiniteTree n) :=
+  ⟨isFiniteTree_bot, isFiniteTree_node⟩
+
 /-- The classes of trees over which the sentences are decided. -/
 inductive TreeClass where
   /-- All trees. -/
   | arbitrary
   /-- The regular trees. -/
   | regular
+  /-- The finite trees. -/
+  | finite
   deriving DecidableEq
 
 /-- The trees in a class. -/
 def TreeClass.Contains : TreeClass → PrefixSet n → Prop
   | .arbitrary => fun _ => True
   | .regular => IsRegularTree
+  | .finite => IsFiniteTree
 
 theorem TreeClass.bfTermClosed : (C : TreeClass) → BFTermClosed (C.Contains (n := n))
   | .arbitrary => bfTermClosed_all
   | .regular => bfTermClosed_reg
+  | .finite => bfTermClosed_fin
 
 variable [Fintype V] [DecidableEq V]
 
-/-- The procedures for disjunctive entailment over arbitrary and over regular trees. -/
+/-- The procedures for disjunctive entailment over arbitrary, regular and finite trees. -/
 @[instance_reducible] def disjEntailmentDecider :
     (C : TreeClass) → DeciSigma1.Logic.DisjEntailmentDecider (flattening n) C.Contains
-  | .arbitrary => fun χ q => decideDisjEntails χ q
-  | .regular => fun χ q => decideDisjEntailsReg χ q
+  | .arbitrary => fun Γ q => decideDisjEntails Γ q
+  | .regular => fun Γ q => decideDisjEntailsReg Γ q
+  | .finite => fun Γ q => decideDisjEntailsFin Γ q
 
-/-- Boolean sentences over `{⊥, f}` are decidable over arbitrary and over regular trees. -/
+/-- Boolean sentences over `{⊥, f}` are decidable over arbitrary, regular and finite trees. -/
 def decideBooleanSentence (C : TreeClass) (φ : BooleanSentence n) :
     Decidable (φ.HoldsIn C.Contains) :=
   DeciSigma1.Logic.decideBooleanSentence (flattening n) (C.bfTermClosed.eval)
@@ -208,7 +217,7 @@ theorem booleanSentence_regular_iff (φ : BooleanSentence n) :
     φ.HoldsIn IsRegularTree ↔ φ.HoldsIn (fun _ => True) :=
   DeciSigma1.Logic.BooleanSentence.holdsIn_iff_of_disjEntailsIn_iff (flattening n)
     bfTermClosed_reg.eval bfTermClosed_all.eval
-    (fun χ q => show (flattening n).DisjEntailsIn IsRegularTree χ q ↔
-      (flattening n).DisjEntailsIn (fun _ => True) χ q from disjEntailsIn_regular_iff χ q) φ
+    (fun Γ q => show (flattening n).DisjEntailsIn IsRegularTree Γ q ↔
+      (flattening n).DisjEntailsIn (fun _ => True) Γ q from disjEntailsIn_regular_iff Γ q) φ
 
 end DeciSigma1.Entailment.Logic

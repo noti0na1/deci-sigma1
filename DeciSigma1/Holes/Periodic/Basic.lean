@@ -14,9 +14,7 @@ overlap in fewer letters than the sum of their periods (`fw_overlap`).
 The shortening of periodic factors deletes blocks from the pieces of one class. The text after
 a piece is its *follower*. Two pieces whose followers are comparable in the prefix order are
 joined by a `FollowerEdge`: their suffixes can be compared by a channel, so the deletion must
-shorten them consistently. The occurrence height of a class (`occurrenceHeight`) is the largest
-number of its pieces with pairwise comparable followers; it bounds the length of paths in the
-follower graph (`Arithmetic.simplePath_le_pow_prefix`).
+shorten them consistently. Paths in this graph control the retained lengths of pieces.
 
 ## Main declarations
 
@@ -27,7 +25,7 @@ follower graph (`Arithmetic.simplePath_le_pow_prefix`).
 - `exists_piece_of_stretch`, `long_factor_in_piece`: long periodic factors lie in pieces.
 - `fw_overlap`: pieces of different classes overlap in fewer letters than the sum of their
   periods.
-- `FollowerEdge`, `occurrenceHeight`: the follower graph and the occurrence height of a class.
+- `FollowerEdge`: the follower graph of pieces.
 -/
 
 namespace DeciSigma1.Holes.Periodic
@@ -218,11 +216,6 @@ instance [DecidableEq α] {W : Fin k → List α} {d : ℕ} (P Q : Piece W d) :
 theorem FollowerEdge.symm {W : Fin k → List α} {d : ℕ} {P Q : Piece W d} (h : FollowerEdge P Q) :
     FollowerEdge Q P :=
   Or.symm h
-
-/-- The occurrence height of the class of `ρ`: the largest number of its pieces with pairwise
-comparable followers. -/
-def occurrenceHeight [DecidableEq α] (W : Fin k → List α) (ρ : List α) : ℕ :=
-  (((piecesOf W ρ).powerset).filter (fun c => ∀ P ∈ c, ∀ Q ∈ c, FollowerEdge P Q)).sup Finset.card
 
 /-! ## Overlap and separation -/
 

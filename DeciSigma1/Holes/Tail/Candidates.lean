@@ -3,13 +3,15 @@ import DeciSigma1.Holes.Tail.RayCompatibility
 /-! # Candidate rays
 
 A coordinate whose rejected tail has no periodic cover at a level is continued by the ray of a
-closed factor found in its tail. A `RayCandidate` of a word is a closed factor; its ray repeats
-the factor forever. If the tail has no periodic cover at level `l`, every segment of
-`escapeLengthBound l` cuts after the first rejected cut contains a closed factor free of the
-suffixes of the targets (`Holes.Tail.ClosedFactors`), and many of these candidates have
-distinct onsets after the first rejected cut (`exists_many_rayCandidates`). Each ray chosen
-earlier excludes few candidates (`Holes.Tail.RayCompatibility`), so a candidate without
-forbidden overlaps with all of them exists (`exists_compatible_rayCandidate`).
+closed factor found in its tail. A `RayCandidate` of a word is a factor closed for the suffix
+dictionary of the targets at a window, and longer than that window; its ray repeats the factor
+forever. Since the window is larger than `N + 1` periods of the earlier levels, the ray agrees with
+the word on a long run after its onset. If the tail has no periodic cover at level `l`, every
+segment of `escapeLengthBound l` cuts after the first rejected cut contains a closed factor free of
+the suffixes of the targets (`Holes.Tail.ClosedFactors`), and many of these candidates have distinct
+onsets after the first rejected cut (`exists_many_rayCandidates`). Each ray chosen earlier excludes
+few candidates (`Holes.Tail.RayCompatibility`), so a candidate without forbidden overlaps with all
+of them exists (`exists_compatible_rayCandidate`).
 
 The rays of candidates make no new comparisons with themselves
 (`rayCandidate_no_selfAdmission`), and the ray system of compatible rays has no positive cycle
@@ -32,30 +34,34 @@ variable {α S : Type} {k : ℕ}
 
 /-! ## Candidates -/
 
-/-- A candidate of word `v`: a closed factor `[startCut, endCut)` at window `windowLength`. -/
-structure RayCandidate (M : StructuralReader α S k) (W : Fin k → List α) (v : Fin k) where
+/-- A candidate of word `v` for the targets `ts`: a factor `[startCut, endCut)` longer than
+`windowLength` and closed for the suffix dictionary of `ts` at window `windowLength`. -/
+structure RayCandidate [DecidableEq α] (M : StructuralReader α S k) (W : Fin k → List α)
+    (ts : List (List α)) (v : Fin k) where
   windowLength : ℕ
   startCut : ℕ
   endCut : ℕ
-  closed : ClosedAt M.toTable (M.start v) (W v) windowLength startCut endCut
+  closed : NodeClosedAt M.toTable (M.start v) (suffixDictionary ts windowLength) (W v) startCut
+    endCut
+  windowLength_lt : windowLength < endCut - startCut
 
 namespace RayCandidate
 
-variable {M : StructuralReader α S k} {W : Fin k → List α} {v : Fin k}
+variable [DecidableEq α] {M : StructuralReader α S k} {W : Fin k → List α} {ts : List (List α)}
+  {v : Fin k}
 
 /-- The ray of a candidate: the word up to the factor, followed by the factor repeated
 forever. -/
-def ray (x : RayCandidate M W v) :
-    Ray α := repeatFactorRay (W v) x.startCut x.endCut x.closed.2.1 x.closed.2.2.1
+def ray (x : RayCandidate M W ts v) :
+    Ray α := repeatFactorRay (W v) x.startCut x.endCut x.closed.1 x.closed.2.1
 
-theorem agrees (x : RayCandidate M W v) :
+theorem agrees (x : RayCandidate M W ts v) :
     RayAgrees x.ray (W v) x.endCut := repeatFactorRay_agrees _ _
 
-theorem onset_le [DecidableEq α] (x : RayCandidate M W v) :
-    x.ray.onset ≤ x.startCut - x.windowLength :=
-  onset_repeatFactorRay_le_sub x.closed
+theorem onset_le (x : RayCandidate M W ts v) : x.ray.onset ≤ x.startCut :=
+  onset_repeatFactorRay_le _ _
 
-theorem period_le [DecidableEq α] (x : RayCandidate M W v) : x.ray.period ≤ x.endCut - x.startCut :=
+theorem period_le (x : RayCandidate M W ts v) : x.ray.period ≤ x.endCut - x.startCut :=
   period_repeatFactorRay_le _ _
 
 end RayCandidate
@@ -134,20 +140,21 @@ section Selection
 
 variable [DecidableEq α] [Fintype α] [Fintype S] [DecidableEq S]
 
+omit [DecidableEq S] in
 /-- A word whose rejected tail has no periodic cover at level `l` has candidates, one closed
 factor in each segment of `escapeLengthBound l` cuts after the first rejected cut, free of the
-suffixes of every target with chain budget `fixedChainBudget l`, among which at least `Q - 1`,
-where `Q = pieceCountBase`, have pairwise distinct onsets after the first rejected cut. All of
-them are among the first `Q + 2` distinct onsets, so for each the tail before its factor is
-covered by at most `Q + 2` factors of period at most `periodBound l` and at most
-`(Q + 3) (3 · escapeLengthBound l + 3)` other letters. -/
+suffixes of every target whose chains from `startWindow l` on have at most `Q + N` steps, where
+`Q = pieceCountBase`. At least `Q - 1` of the candidates have pairwise distinct onsets after the
+first rejected cut. All of them are among the first `Q + 2` distinct onsets, so for each the
+tail before its factor is covered by at most `Q + 2` factors of period at most `periodBound l`
+and at most `(Q + 3) (3 · escapeLengthBound l + 3)` other letters. -/
 theorem exists_many_rayCandidates (C : LevelBounds (Fintype.card α) k (Fintype.card S))
     {M : StructuralReader α S k}
     {W : Fin k → List α} {v : Fin k} (hv : M.Eligible W v) {l : ℕ}
         (hM : ¬ CoordinateCover C l M W v)
     (ts : List (List α)) (hts : ts.length ≤ k)
-        (hS : ∀ t ∈ ts, ChainBound t (C.fixedChainBudget l)) :
-    ∃ (n : ℕ) (cand : Fin n → RayCandidate M W v) (R : Finset (Fin n)),
+        (hS : ∀ t ∈ ts, ChainBoundFrom t (C.startWindow l) (C.pieceCountBase + Fintype.card S)) :
+    ∃ (n : ℕ) (cand : Fin n → RayCandidate M W ts v) (R : Finset (Fin n)),
       (∀ r, C.startWindow l ≤ (cand r).windowLength ∧ M.firstRejection W v ≤ (cand r).startCut ∧
         (cand r).endCut - (cand r).startCut ≤ C.periodBound l ∧ ∀ t ∈ ts,
             NoSuffixOccurrenceEndsBetween (W v) t (cand r).windowLength (cand r).startCut
@@ -171,22 +178,22 @@ theorem exists_many_rayCandidates (C : LevelBounds (Fintype.card α) k (Fintype.
     rw [← hn_def] at this; omega
   have hnT : n * T ≤ (W v).length - J := Nat.div_mul_le_self _ _
   -- one candidate in each segment `[J + m T, J + m T + T)`, `m < n`
-  have hseg : ∀ m : Fin n, ∃ x : RayCandidate M W v, J + m * T ≤ x.startCut ∧
+  have hseg : ∀ m : Fin n, ∃ x : RayCandidate M W ts v, J + m * T ≤ x.startCut ∧
       x.endCut ≤ J + m * T + T ∧ C.startWindow l ≤ x.windowLength ∧
       x.endCut - x.startCut ≤ C.periodBound l ∧
       ∀ t ∈ ts, NoSuffixOccurrenceEndsBetween (W v) t x.windowLength x.startCut x.endCut := by
     intro m
     have : m * T + T ≤ n * T := by rw [← add_one_mul]; exact Nat.mul_le_mul_right _ m.isLt
-    obtain ⟨B, c, c', h1, h2, h3, h4, h5, h6, h7⟩ :=
+    obtain ⟨B, c, c', h1, h2, h3, h4, h5, h6, h7, h8⟩ :=
       exists_closed_factor_replicate M.toTable (M.start v) (W v) ts hts hS (u := J + m * T)
         (bs := C.startWindow l) (by rw [← C.escapeLengthBound_eq]; omega)
     rw [← C.escapeLengthBound_eq] at h4
     rw [← C.comparisonWindow_eq] at h2
-    exact ⟨⟨B, c, c', h5⟩, h3, h4, h1,
-      h7.trans ((windowStateBound_mono _ _ h2).trans (C.windowStateBound_le_periodBound l)), h6⟩
+    exact ⟨⟨B, c, c', h5, h7⟩, h3, h4, h1,
+      h8.trans ((factorLengthBound_mono _ _ h2).trans (C.factorLengthBound_le_periodBound l)), h6⟩
   choose cand hcand using hseg
-  have hlt : ∀ m, (cand m).startCut < (cand m).endCut := fun m => (cand m).closed.2.1
-  have hle : ∀ m, (cand m).endCut ≤ (W v).length := fun m => (cand m).closed.2.2.1
+  have hlt : ∀ m, (cand m).startCut < (cand m).endCut := fun m => (cand m).closed.1
+  have hle : ∀ m, (cand m).endCut ≤ (W v).length := fun m => (cand m).closed.2.1
   have hper : ∀ m, (cand m).ray.period ≤ C.periodBound l := fun m =>
     (cand m).period_le.trans (hcand m).2.2.2.1
   -- the factors of the candidates of index `< m0` cover a position of each segment `m < r`
@@ -208,7 +215,7 @@ theorem exists_many_rayCandidates (C : LevelBounds (Fintype.card α) k (Fintype.
     refine ⟨_, h1, ?_, hstart _ hm, hcov _ ?_ _ ?_ (hlt _) (hstart _ hm)⟩
     · have := hlt ⟨m, hmn⟩; omega
     · simp only [Finset.mem_filter, Finset.mem_univ, true_and]; omega
-    · exact (cand _).onset_le.trans (Nat.sub_le _ _)
+    · exact (cand _).onset_le
   -- with at most `Q + 1` distinct onsets the tail would have a periodic cover at level `l`
   have hmany : C.pieceCountBase + 2 ≤ (Finset.univ.image fun m => (cand m).ray.onset).card := by
     by_contra hfew
@@ -280,12 +287,14 @@ theorem exists_compatible_rayCandidate (C : LevelBounds (Fintype.card α) k (Fin
     {M : StructuralReader α S k}
     {W : Fin k → List α} (hW : M.IsHole W) {v : Fin k} {l : ℕ} (hl : 1 ≤ l)
     (hM : ¬ CoordinateCover C l M W v) (ts : List (List α)) (hts : ts.length ≤ k)
-    (hS : ∀ t ∈ ts, ChainBound t (C.fixedChainBudget l)) (U : Finset (Fin k)) (hvU : v ∉ U)
+    (hS : ∀ t ∈ ts, ChainBoundFrom t (C.startWindow l) (C.pieceCountBase + Fintype.card S))
+    (U : Finset (Fin k)) (hvU : v ∉ U)
     (Ωu : Fin k → Ray α) (Eu : Fin k → ℕ)
     (hU : ∀ u ∈ U, RayAgrees (Ωu u) (W u) (Eu u) ∧ (Ωu u).onset ≤ Eu u ∧
       M.firstRejection W u ≤ Eu u ∧ ((Ωu u).onset ≤ M.firstRejection W u →
           (Ωu u).period ≤ C.periodBound (l - 1))) :
-    ∃ x : RayCandidate M W v, C.startWindow l ≤ x.windowLength ∧ M.firstRejection W v ≤ x.startCut ∧
+    ∃ x : RayCandidate M W ts v, C.startWindow l ≤ x.windowLength ∧
+        M.firstRejection W v ≤ x.startCut ∧
         x.endCut - x.startCut ≤ C.periodBound l ∧
       (∀ t ∈ ts, NoSuffixOccurrenceEndsBetween (W v) t x.windowLength x.startCut x.endCut) ∧
           M.firstRejection W v <
@@ -299,7 +308,7 @@ theorem exists_compatible_rayCandidate (C : LevelBounds (Fintype.card α) k (Fin
   obtain ⟨n, cand, R, hc, hinj, hJc, hR, hcov⟩ := exists_many_rayCandidates C (hW.1 v) hM ts hts hS
   have hagc : ∀ r ∈ R, RayAgrees (cand r).ray (W v) (cand r).endCut := fun r _ => (cand r).agrees
   have hAc : ∀ r ∈ R, (cand r).ray.onset ≤ (cand r).endCut := fun r _ => by
-    have := (cand r).onset_le; have := (cand r).closed.2.1; omega
+    have := (cand r).onset_le; have := (cand r).closed.1; omega
   have hbad : ∀ u ∈
       U, (R.filter (fun r => ¬ NoForbiddenRayOverlap (cand r).ray (Ωu u) (M.firstRejection W v)
       (M.firstRejection W u))).card ≤ 2 * (Fintype.card S - 1) := by
@@ -348,8 +357,8 @@ theorem exists_compatible_rayCandidate (C : LevelBounds (Fintype.card α) k (Fin
         have h4 : (Fintype.card S + 1) * (Ωu u).period ≤ (Fintype.card S + 1) *
             C.periodBound (l - 1) :=
           Nat.mul_le_mul_left _ (hpu hAJ)
-        have h5 := (cand r).closed.1
-        have h6 := (cand r).closed.2.1
+        have h5 := (cand r).windowLength_lt
+        have h6 := (cand r).closed.1
         omega
       have h3 :=
           card_periodicTailOverlap_le R (fun r => (cand r).ray) (fun r => (cand r).endCut)

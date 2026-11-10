@@ -56,13 +56,14 @@ theorem shift_mul {f : ℕ → α} {A h : ℕ} (hper : ∀ p, A ≤ p → f (p +
     intro p hp
     rw [show p + (j + 1) * h = (p + j * h) + h by ring, hper _ (by nlinarith), ih p hp]
 
-/-! ## The ray of a closed factor -/
+/-! ## The ray of a factor closed at a window -/
 
 section RepeatFactorRay
 
 variable {T : Table α S k} {q0 : S} {x : List α} {B c c' : ℕ}
 
-/-- The ray of a closed factor is periodic with the factor length from `c - B` on. -/
+/-- The ray of a factor closed at window `B` is periodic with the factor length from `c - B`
+on. -/
 theorem repeatFactorRay_period (hcl : ClosedAt T q0 x B c c') :
     ∀ p, c - B ≤ p → (repeatFactorRay x c c' hcl.2.1 hcl.2.2.1).stream (p + (c' - c)) =
       (repeatFactorRay x c c' hcl.2.1 hcl.2.2.1).stream p := by
@@ -74,16 +75,6 @@ theorem repeatFactorRay_period (hcl : ClosedAt T q0 x B c c') :
     List.getElem?_eq_getElem (by simp; omega), getElem_streamPrefix _ _ _ (by omega),
     getElem_streamPrefix _ _ _ (by omega)] at h1
   exact (Option.some.inj h1).symm
-
-/-- The onset of the ray of a closed factor is at most `c - B`. -/
-theorem onset_repeatFactorRay_le_sub [DecidableEq α] (hcl : ClosedAt T q0 x B c c') :
-    (repeatFactorRay x c c' hcl.2.1 hcl.2.2.1).onset ≤ c - B := by
-  apply Ray.onset_le_of_periodicFrom (p := c' - c) (by have := hcl.2.1; omega)
-  intro t
-  show (repeatFactorRay x c c' hcl.2.1 hcl.2.2.1).stream (c - B + (t + (c' - c))) =
-    (repeatFactorRay x c c' hcl.2.1 hcl.2.2.1).stream (c - B + t)
-  rw [← Nat.add_assoc]
-  exact repeatFactorRay_period hcl _ (by omega)
 
 /-- A period `p ∣ c' - c` of the closure region `[c - B, c')` is a period of the ray from
 `c - B` on. -/

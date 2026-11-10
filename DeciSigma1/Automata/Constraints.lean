@@ -3,12 +3,12 @@ import DeciSigma1.Constraints.Closure
 
 /-! # Run automata for flat constraints
 
-For a flat constraint `χ`, read with a covariant constructor, a configuration `(x, w)` is a
+For a flat constraint `Γ`, read with a covariant constructor, a configuration `(x, w)` is a
 variable with a path, and the literals move configurations: `x ≤ y` copies `(x, w)` to `(y, w)`,
 `f(a) ≤ x` pushes `(a i, w)` to `(x, i :: w)`, and `x ≤ f(a)` pops `(x, i :: w)` to `(a i, w)`
 (`Move`). Two powerset automata over the child indices summarize the move derivations along a
-path: the upper run `upperRun χ x w` is the set of variables `b` such that `(x, w ++ σ)` reaches
-`(b, σ)` by moves that do not touch `σ`, and the lower run `lowerRun χ y w` the set of variables
+path: the upper run `upperRun Γ x w` is the set of variables `b` such that `(x, w ++ σ)` reaches
+`(b, σ)` by moves that do not touch `σ`, and the lower run `lowerRun Γ y w` the set of variables
 `a` such that `(a, σ)` reaches `(y, w ++ σ)` in the same way (`upperRun_moves`, `lowerRun_moves`).
 Every move derivation decomposes at a lowest point into an upper run and a lower run
 (`lowest_point`). The runs are also the path judgments of the constraint (`lowerAt_iff_run`,
@@ -121,90 +121,90 @@ abbrev Config (n : ℕ) (V : Type*) := V × List (Fin n)
 
 /-- One move along a literal: `x ≤ y` copies `(x, w)` to `(y, w)`, `f(a) ≤ x` pushes `(a i, w)` to
 `(x, i :: w)`, and `x ≤ f(a)` pops `(x, i :: w)` to `(a i, w)`. -/
-inductive Move {n : ℕ} {V : Type*} (χ : List (LitT n V)) : Config n V → Config n V → Prop
-  | copy {u v w} : LitT.le u v ∈ χ → Move χ (u, w) (v, w)
-  | push {a u w} (i : Fin n) : LitT.fLe a u ∈ χ → Move χ (a i, w) (u, i :: w)
-  | pop {u a w} (i : Fin n) : LitT.leF u a ∈ χ → Move χ (u, i :: w) (a i, w)
+inductive Move {n : ℕ} {V : Type*} (Γ : List (LitT n V)) : Config n V → Config n V → Prop
+  | copy {u v w} : LitT.le u v ∈ Γ → Move Γ (u, w) (v, w)
+  | push {a u w} (i : Fin n) : LitT.fLe a u ∈ Γ → Move Γ (a i, w) (u, i :: w)
+  | pop {u a w} (i : Fin n) : LitT.leF u a ∈ Γ → Move Γ (u, i :: w) (a i, w)
 
 /-- Derivations by moves. -/
-abbrev Moves {n : ℕ} {V : Type*} (χ : List (LitT n V)) : Config n V → Config n V → Prop :=
-  Relation.ReflTransGen (Move χ)
+abbrev Moves {n : ℕ} {V : Type*} (Γ : List (LitT n V)) : Config n V → Config n V → Prop :=
+  Relation.ReflTransGen (Move Γ)
 
 /-! ## The run automata -/
 
 variable {n : ℕ} {V : Type*} [Fintype V] [DecidableEq V]
 
-theorem derivedPairs_refl (χ : List (LitT n V)) (x : V) : (x, x) ∈ derivedPairs χ :=
-  (mem_derivedPairs χ x x).mpr (.refl x)
+theorem derivedPairs_refl (Γ : List (LitT n V)) (x : V) : (x, x) ∈ derivedPairs Γ :=
+  (mem_derivedPairs Γ x x).mpr (.refl x)
 
-theorem derivedPairs_trans {χ : List (LitT n V)} {x y z : V}
-    (h : (x, y) ∈ derivedPairs χ) (h' : (y, z) ∈ derivedPairs χ) : (x, z) ∈ derivedPairs χ :=
-  (mem_derivedPairs χ x z).mpr
-    (.trans ((mem_derivedPairs χ x y).mp h) ((mem_derivedPairs χ y z).mp h'))
+theorem derivedPairs_trans {Γ : List (LitT n V)} {x y z : V}
+    (h : (x, y) ∈ derivedPairs Γ) (h' : (y, z) ∈ derivedPairs Γ) : (x, z) ∈ derivedPairs Γ :=
+  (mem_derivedPairs Γ x z).mpr
+    (.trans ((mem_derivedPairs Γ x y).mp h) ((mem_derivedPairs Γ y z).mp h'))
 
 /-- The variables derivably above `x`: the start state of the upper automaton. -/
-def up (χ : List (LitT n V)) (x : V) :
-    Finset V := Finset.univ.filter fun y => (x, y) ∈ derivedPairs χ
+def up (Γ : List (LitT n V)) (x : V) :
+    Finset V := Finset.univ.filter fun y => (x, y) ∈ derivedPairs Γ
 /-- The variables derivably below `y`: the start state of the lower automaton. -/
-def down (χ : List (LitT n V)) (y : V) :
-    Finset V := Finset.univ.filter fun x => (x, y) ∈ derivedPairs χ
+def down (Γ : List (LitT n V)) (y : V) :
+    Finset V := Finset.univ.filter fun x => (x, y) ∈ derivedPairs Γ
 
 /-- One step of the upper automaton: from the variables `P`, follow an upper constructor bound
 `r ≤ f(b)` with `r ∈ P` to the child `b c`, and close upward. -/
-def upperStep (χ : List (LitT n V)) (P : Finset V) (c : Fin n) : Finset V :=
-  Finset.univ.filter fun b => ∃ r ∈ P, ∃ p ∈ upperLits χ, p.1 = r ∧ (p.2 c, b) ∈ derivedPairs χ
+def upperStep (Γ : List (LitT n V)) (P : Finset V) (c : Fin n) : Finset V :=
+  Finset.univ.filter fun b => ∃ r ∈ P, ∃ p ∈ upperLits Γ, p.1 = r ∧ (p.2 c, b) ∈ derivedPairs Γ
 
 /-- One step of the lower automaton: from the variables `Q`, follow a lower constructor bound
 `f(a) ≤ r` with `r ∈ Q` to the child `a c`, and close downward. -/
-def lowerStep (χ : List (LitT n V)) (Q : Finset V) (c : Fin n) : Finset V :=
-  Finset.univ.filter fun a => ∃ r ∈ Q, ∃ p ∈ lowerLits χ, p.2 = r ∧ (a, p.1 c) ∈ derivedPairs χ
+def lowerStep (Γ : List (LitT n V)) (Q : Finset V) (c : Fin n) : Finset V :=
+  Finset.univ.filter fun a => ∃ r ∈ Q, ∃ p ∈ lowerLits Γ, p.2 = r ∧ (a, p.1 c) ∈ derivedPairs Γ
 
 /-- The upper automaton started at `x`. -/
-def upper (χ : List (LitT n V)) (x : V) : Semiautomaton (Fin n) (Finset V) :=
-  ⟨up χ x, upperStep χ⟩
+def upper (Γ : List (LitT n V)) (x : V) : Semiautomaton (Fin n) (Finset V) :=
+  ⟨up Γ x, upperStep Γ⟩
 /-- The lower automaton started at `y`. -/
-def lower (χ : List (LitT n V)) (y : V) : Semiautomaton (Fin n) (Finset V) :=
-  ⟨down χ y, lowerStep χ⟩
+def lower (Γ : List (LitT n V)) (y : V) : Semiautomaton (Fin n) (Finset V) :=
+  ⟨down Γ y, lowerStep Γ⟩
 /-- The state of the upper automaton from `x` after reading `w`. -/
-def upperRun (χ : List (LitT n V)) (x : V) (w : List (Fin n)) : Finset V := (upper χ x).run w
+def upperRun (Γ : List (LitT n V)) (x : V) (w : List (Fin n)) : Finset V := (upper Γ x).run w
 /-- The state of the lower automaton from `y` after reading `w`. -/
-def lowerRun (χ : List (LitT n V)) (y : V) (w : List (Fin n)) : Finset V := (lower χ y).run w
+def lowerRun (Γ : List (LitT n V)) (y : V) (w : List (Fin n)) : Finset V := (lower Γ y).run w
 
-@[simp] theorem mem_up {χ : List (LitT n V)} {x y : V} :
-    y ∈ up χ x ↔ (x, y) ∈ derivedPairs χ := by simp [up]
-@[simp] theorem mem_down {χ : List (LitT n V)} {x y : V} :
-    x ∈ down χ y ↔ (x, y) ∈ derivedPairs χ := by simp [down]
-@[simp] theorem mem_upperStep {χ : List (LitT n V)} {S : Finset V} {c : Fin n} {b : V} :
-    b ∈ upperStep χ S c ↔ ∃ r ∈ S, ∃ bs, LitT.leF r bs ∈ χ ∧
-      ((bs c), b) ∈ derivedPairs χ := by
+@[simp] theorem mem_up {Γ : List (LitT n V)} {x y : V} :
+    y ∈ up Γ x ↔ (x, y) ∈ derivedPairs Γ := by simp [up]
+@[simp] theorem mem_down {Γ : List (LitT n V)} {x y : V} :
+    x ∈ down Γ y ↔ (x, y) ∈ derivedPairs Γ := by simp [down]
+@[simp] theorem mem_upperStep {Γ : List (LitT n V)} {S : Finset V} {c : Fin n} {b : V} :
+    b ∈ upperStep Γ S c ↔ ∃ r ∈ S, ∃ bs, LitT.leF r bs ∈ Γ ∧
+      ((bs c), b) ∈ derivedPairs Γ := by
   simp only [upperStep, Finset.mem_filter, Finset.mem_univ, true_and]
   constructor
   · rintro ⟨r, hr, ⟨u, bs⟩, hl, rfl, hd⟩
-    exact ⟨u, hr, bs, (mem_upperLits χ u bs).mp hl, hd⟩
+    exact ⟨u, hr, bs, (mem_upperLits Γ u bs).mp hl, hd⟩
   · rintro ⟨r, hr, bs, hl, hd⟩
-    exact ⟨r, hr, (r, bs), (mem_upperLits χ r bs).mpr hl, rfl, hd⟩
-@[simp] theorem mem_lowerStep {χ : List (LitT n V)} {S : Finset V} {c : Fin n} {a : V} :
-    a ∈ lowerStep χ S c ↔ ∃ r ∈ S, ∃ as, LitT.fLe as r ∈ χ ∧
-      (a, (as c)) ∈ derivedPairs χ := by
+    exact ⟨r, hr, (r, bs), (mem_upperLits Γ r bs).mpr hl, rfl, hd⟩
+@[simp] theorem mem_lowerStep {Γ : List (LitT n V)} {S : Finset V} {c : Fin n} {a : V} :
+    a ∈ lowerStep Γ S c ↔ ∃ r ∈ S, ∃ as, LitT.fLe as r ∈ Γ ∧
+      (a, (as c)) ∈ derivedPairs Γ := by
   simp only [lowerStep, Finset.mem_filter, Finset.mem_univ, true_and]
   constructor
   · rintro ⟨r, hr, ⟨as, u⟩, hl, rfl, hd⟩
-    exact ⟨u, hr, as, (mem_lowerLits χ as u).mp hl, hd⟩
+    exact ⟨u, hr, as, (mem_lowerLits Γ as u).mp hl, hd⟩
   · rintro ⟨r, hr, as, hl, hd⟩
-    exact ⟨r, hr, (as, r), (mem_lowerLits χ as r).mpr hl, rfl, hd⟩
-@[simp] theorem lowerRun_nil (χ : List (LitT n V)) (x : V) : lowerRun χ x [] = down χ x := rfl
-@[simp] theorem upperRun_snoc (χ : List (LitT n V)) (x : V) (w : List (Fin n)) (c : Fin n) :
-    upperRun χ x (w ++ [c]) = upperStep χ (upperRun χ x w) c := by
+    exact ⟨r, hr, (as, r), (mem_lowerLits Γ as r).mpr hl, rfl, hd⟩
+@[simp] theorem lowerRun_nil (Γ : List (LitT n V)) (x : V) : lowerRun Γ x [] = down Γ x := rfl
+@[simp] theorem upperRun_snoc (Γ : List (LitT n V)) (x : V) (w : List (Fin n)) (c : Fin n) :
+    upperRun Γ x (w ++ [c]) = upperStep Γ (upperRun Γ x w) c := by
   simp [upperRun, Semiautomaton.run, runFrom, List.foldl_append, upper]
-@[simp] theorem lowerRun_snoc (χ : List (LitT n V)) (x : V) (w : List (Fin n)) (c : Fin n) :
-    lowerRun χ x (w ++ [c]) = lowerStep χ (lowerRun χ x w) c := by
+@[simp] theorem lowerRun_snoc (Γ : List (LitT n V)) (x : V) (w : List (Fin n)) (c : Fin n) :
+    lowerRun Γ x (w ++ [c]) = lowerStep Γ (lowerRun Γ x w) c := by
   simp [lowerRun, Semiautomaton.run, runFrom, List.foldl_append, lower]
 
-@[simp] theorem upperStep_empty (χ : List (LitT n V)) (c : Fin n) :
-    upperStep χ ∅ c = ∅ := by ext; simp
+@[simp] theorem upperStep_empty (Γ : List (LitT n V)) (c : Fin n) :
+    upperStep Γ ∅ c = ∅ := by ext; simp
 
-theorem upperRun_closed {χ : List (LitT n V)} {x a b : V} {w : List (Fin n)}
-    (ha : a ∈ upperRun χ x w) (hab : (a, b) ∈ derivedPairs χ) : b ∈ upperRun χ x w := by
+theorem upperRun_closed {Γ : List (LitT n V)} {x a b : V} {w : List (Fin n)}
+    (ha : a ∈ upperRun Γ x w) (hab : (a, b) ∈ derivedPairs Γ) : b ∈ upperRun Γ x w := by
   cases w using List.reverseRecOn with
   | nil => exact mem_up.mpr (derivedPairs_trans (mem_up.mp ha) hab)
   | append_singleton w c =>
@@ -212,8 +212,8 @@ theorem upperRun_closed {χ : List (LitT n V)} {x a b : V} {w : List (Fin n)}
     obtain ⟨r, hr, bs, hl, hd⟩ := ha
     exact ⟨r, hr, bs, hl, derivedPairs_trans hd hab⟩
 
-theorem lowerRun_closed {χ : List (LitT n V)} {y a b : V} {w : List (Fin n)}
-    (ha : a ∈ lowerRun χ y w) (hba : (b, a) ∈ derivedPairs χ) : b ∈ lowerRun χ y w := by
+theorem lowerRun_closed {Γ : List (LitT n V)} {y a b : V} {w : List (Fin n)}
+    (ha : a ∈ lowerRun Γ y w) (hba : (b, a) ∈ derivedPairs Γ) : b ∈ lowerRun Γ y w := by
   cases w using List.reverseRecOn with
   | nil => exact mem_down.mpr (derivedPairs_trans hba (mem_down.mp ha))
   | append_singleton w c =>
@@ -223,9 +223,9 @@ theorem lowerRun_closed {χ : List (LitT n V)} {y a b : V} {w : List (Fin n)}
 
 /-- A derived inequality `a ≤ b` gives a move derivation from `(a, w)` to `(b, w)` for every path
 `w`. -/
-theorem derivedPairs_moves {χ : List (LitT n V)} {a b : V} (h : (a, b) ∈ derivedPairs χ)
-    (w : List (Fin n)) : Moves χ (a, w) (b, w) := by
-  have hh := (mem_derivedPairs χ a b).mp h
+theorem derivedPairs_moves {Γ : List (LitT n V)} {a b : V} (h : (a, b) ∈ derivedPairs Γ)
+    (w : List (Fin n)) : Moves Γ (a, w) (b, w) := by
+  have hh := (mem_derivedPairs Γ a b).mp h
   clear h
   induction hh generalizing w with
   | refl => exact .refl
@@ -234,8 +234,8 @@ theorem derivedPairs_moves {χ : List (LitT n V)} {a b : V} (h : (a, b) ∈ deri
   | decomp c hl _ hu ih => exact ((ih (c :: w)).head (.push c hl)).tail (.pop c hu)
 
 /-- Every variable of an upper run is reached by moves above any suffix. -/
-theorem upperRun_moves {χ : List (LitT n V)} {x b : V} {β : List (Fin n)}
-    (h : b ∈ upperRun χ x β) (σ : List (Fin n)) : Moves χ (x, β ++ σ) (b, σ) := by
+theorem upperRun_moves {Γ : List (LitT n V)} {x b : V} {β : List (Fin n)}
+    (h : b ∈ upperRun Γ x β) (σ : List (Fin n)) : Moves Γ (x, β ++ σ) (b, σ) := by
   induction β using List.reverseRecOn generalizing b σ with
   | nil => exact derivedPairs_moves (mem_up.mp h) σ
   | append_singleton β c ih =>
@@ -245,8 +245,8 @@ theorem upperRun_moves {χ : List (LitT n V)} {x b : V} {β : List (Fin n)}
       ((ih hr (c :: σ)).tail (.pop c hl)).trans (derivedPairs_moves hd σ)
 
 /-- Every variable of a lower run reaches its target by moves above any suffix. -/
-theorem lowerRun_moves {χ : List (LitT n V)} {y a : V} {γ : List (Fin n)}
-    (h : a ∈ lowerRun χ y γ) (σ : List (Fin n)) : Moves χ (a, σ) (y, γ ++ σ) := by
+theorem lowerRun_moves {Γ : List (LitT n V)} {y a : V} {γ : List (Fin n)}
+    (h : a ∈ lowerRun Γ y γ) (σ : List (Fin n)) : Moves Γ (a, σ) (y, γ ++ σ) := by
   induction γ using List.reverseRecOn generalizing a σ with
   | nil => exact derivedPairs_moves (mem_down.mp h) σ
   | append_singleton γ c ih =>
@@ -256,8 +256,8 @@ theorem lowerRun_moves {χ : List (LitT n V)} {y a : V} {γ : List (Fin n)}
       ((derivedPairs_moves hd σ).tail (.push c hl)).trans (ih hr (c :: σ))
 
 /-- If `y ≤ z` is derived, the lower run of `y` is contained in that of `z`. -/
-theorem lowerRun_target {χ : List (LitT n V)} {y z a : V} {w : List (Fin n)}
-    (hyz : (y, z) ∈ derivedPairs χ) (h : a ∈ lowerRun χ y w) : a ∈ lowerRun χ z w := by
+theorem lowerRun_target {Γ : List (LitT n V)} {y z a : V} {w : List (Fin n)}
+    (hyz : (y, z) ∈ derivedPairs Γ) (h : a ∈ lowerRun Γ y w) : a ∈ lowerRun Γ z w := by
   induction w using List.reverseRecOn generalizing a with
   | nil => exact mem_down.mpr (derivedPairs_trans (mem_down.mp h) hyz)
   | append_singleton w c ih =>
@@ -265,43 +265,43 @@ theorem lowerRun_target {χ : List (LitT n V)} {y z a : V} {w : List (Fin n)}
     obtain ⟨r, hr, as, hl, hd⟩ := h
     exact ⟨r, ih hr, as, hl, hd⟩
 
-theorem lowerRun_push {χ : List (LitT n V)} {as : Fin n → V} {y a : V} {w : List (Fin n)}
-    (c : Fin n) (hl : LitT.fLe as y ∈ χ) (h : a ∈ lowerRun χ (as c) w) :
-    a ∈ lowerRun χ y (c :: w) := by
+theorem lowerRun_push {Γ : List (LitT n V)} {as : Fin n → V} {y a : V} {w : List (Fin n)}
+    (c : Fin n) (hl : LitT.fLe as y ∈ Γ) (h : a ∈ lowerRun Γ (as c) w) :
+    a ∈ lowerRun Γ y (c :: w) := by
   induction w using List.reverseRecOn generalizing a with
   | nil =>
-    exact mem_lowerStep.mpr ⟨y, mem_down.mpr (derivedPairs_refl χ y), as, hl, mem_down.mp h⟩
+    exact mem_lowerStep.mpr ⟨y, mem_down.mpr (derivedPairs_refl Γ y), as, hl, mem_down.mp h⟩
   | append_singleton w d ih =>
     rw [lowerRun_snoc, mem_lowerStep] at h
-    change a ∈ lowerRun χ y ((c :: w) ++ [d])
+    change a ∈ lowerRun Γ y ((c :: w) ++ [d])
     rw [lowerRun_snoc, mem_lowerStep]
     obtain ⟨r, hr, bs, hb, hd⟩ := h
     exact ⟨r, ih hr, bs, hb, hd⟩
 
-theorem lowerRun_pop {χ : List (LitT n V)} {bs : Fin n → V} {y a : V} {w : List (Fin n)} (c : Fin n)
-    (hu : LitT.leF y bs ∈ χ) (h : a ∈ lowerRun χ y (c :: w)) :
-    a ∈ lowerRun χ (bs c) w := by
+theorem lowerRun_pop {Γ : List (LitT n V)} {bs : Fin n → V} {y a : V} {w : List (Fin n)} (c : Fin n)
+    (hu : LitT.leF y bs ∈ Γ) (h : a ∈ lowerRun Γ y (c :: w)) :
+    a ∈ lowerRun Γ (bs c) w := by
   induction w using List.reverseRecOn generalizing a with
   | nil =>
     obtain ⟨r, hr, as, hl, hd⟩ := mem_lowerStep.mp h
-    exact mem_down.mpr (derivedPairs_trans hd ((mem_derivedPairs χ _ _).mpr
-      (.decomp c hl ((mem_derivedPairs χ _ _).mp (mem_down.mp hr)) hu)))
+    exact mem_down.mpr (derivedPairs_trans hd ((mem_derivedPairs Γ _ _).mpr
+      (.decomp c hl ((mem_derivedPairs Γ _ _).mp (mem_down.mp hr)) hu)))
   | append_singleton w d ih =>
-    change a ∈ lowerRun χ y ((c :: w) ++ [d]) at h
+    change a ∈ lowerRun Γ y ((c :: w) ++ [d]) at h
     rw [lowerRun_snoc, mem_lowerStep] at h ⊢
     obtain ⟨r, hr, as, hl, hd⟩ := h
     exact ⟨r, ih hr, as, hl, hd⟩
 
 /-- The common-suffix form of a lowest-point decomposition. -/
-def Normal (χ : List (LitT n V)) (x : V) (u : List (Fin n)) (y : V) (t : List (Fin n)) : Prop :=
-  ∃ β γ σ v, u = β ++ σ ∧ t = γ ++ σ ∧ v ∈ upperRun χ x β ∧ v ∈ lowerRun χ y γ
+def Normal (Γ : List (LitT n V)) (x : V) (u : List (Fin n)) (y : V) (t : List (Fin n)) : Prop :=
+  ∃ β γ σ v, u = β ++ σ ∧ t = γ ++ σ ∧ v ∈ upperRun Γ x β ∧ v ∈ lowerRun Γ y γ
 
-theorem normal_step {χ : List (LitT n V)} {x y z : V} {u t w : List (Fin n)}
-    (h : Normal χ x u y t) (hm : Move χ (y, t) (z, w)) : Normal χ x u z w := by
+theorem normal_step {Γ : List (LitT n V)} {x y z : V} {u t w : List (Fin n)}
+    (h : Normal Γ x u y t) (hm : Move Γ (y, t) (z, w)) : Normal Γ x u z w := by
   obtain ⟨β, γ, σ, v, hu, ht, hp, hq⟩ := h
   cases hm with
   | copy hl =>
-    exact ⟨β, γ, σ, v, hu, ht, hp, lowerRun_target ((mem_derivedPairs χ _ _).mpr (.lit hl)) hq⟩
+    exact ⟨β, γ, σ, v, hu, ht, hp, lowerRun_target ((mem_derivedPairs Γ _ _).mpr (.lit hl)) hq⟩
   | push c hl =>
     exact ⟨β, c :: γ, σ, v, hu, congrArg (List.cons c) ht, hp, lowerRun_push c hl hq⟩
   | @pop r as w c hl =>
@@ -311,29 +311,29 @@ theorem normal_step {χ : List (LitT n V)} {x y z : V} {u t w : List (Fin n)}
       refine ⟨β ++ [c], [], w, (as c), ?_, rfl, ?_, ?_⟩
       · simpa [hs, List.append_assoc] using hu
       · rw [upperRun_snoc, mem_upperStep]
-        exact ⟨y, upperRun_closed hp (mem_down.mp hq), as, hl, derivedPairs_refl χ _⟩
-      · exact mem_down.mpr (derivedPairs_refl χ _)
+        exact ⟨y, upperRun_closed hp (mem_down.mp hq), as, hl, derivedPairs_refl Γ _⟩
+      · exact mem_down.mpr (derivedPairs_refl Γ _)
     | cons d γ =>
       have he := List.cons.inj ht
       obtain ⟨rfl, hw⟩ := he
       exact ⟨β, γ, σ, v, hu, hw, hp, lowerRun_pop c hl hq⟩
 
 /-- Every move derivation has a lowest-point decomposition. -/
-theorem moves_normal {χ : List (LitT n V)} {a b : Config n V} (h : Moves χ a b) :
-    Normal χ a.1 a.2 b.1 b.2 := by
+theorem moves_normal {Γ : List (LitT n V)} {a b : Config n V} (h : Moves Γ a b) :
+    Normal Γ a.1 a.2 b.1 b.2 := by
   induction h with
   | refl => exact ⟨[], [], a.2, a.1, rfl, rfl,
-      mem_up.mpr (derivedPairs_refl χ _), mem_down.mpr (derivedPairs_refl χ _)⟩
+      mem_up.mpr (derivedPairs_refl Γ _), mem_down.mpr (derivedPairs_refl Γ _)⟩
   | tail _ hm ih => exact normal_step ih hm
 
-theorem normal_moves {χ : List (LitT n V)} {x y : V} {u t : List (Fin n)}
-    (h : Normal χ x u y t) : Moves χ (x, u) (y, t) := by
+theorem normal_moves {Γ : List (LitT n V)} {x y : V} {u t : List (Fin n)}
+    (h : Normal Γ x u y t) : Moves Γ (x, u) (y, t) := by
   obtain ⟨β, γ, σ, v, rfl, rfl, hp, hq⟩ := h
   exact (upperRun_moves hp σ).trans (lowerRun_moves hq σ)
 
 /-- The upper run on `β` is the set of variables whose root is reached from `(x, β)` by moves. -/
-theorem mem_upperRun_iff_moves {χ : List (LitT n V)} {x b : V} (β : List (Fin n)) :
-    b ∈ upperRun χ x β ↔ Moves χ (x, β) (b, []) := by
+theorem mem_upperRun_iff_moves {Γ : List (LitT n V)} {x b : V} (β : List (Fin n)) :
+    b ∈ upperRun Γ x β ↔ Moves Γ (x, β) (b, []) := by
   constructor
   · intro h; simpa using upperRun_moves h []
   · intro h
@@ -346,17 +346,17 @@ theorem mem_upperRun_iff_moves {χ : List (LitT n V)} {x b : V} (β : List (Fin 
 /-- A move derivation from `(x, u)` to `(y, t)` exists exactly when, for a common suffix
 `u.drop s = t.drop e`, the upper run of `x` on `u.take s` meets the lower run of `y` on
 `t.take e`. -/
-theorem lowest_point {χ : List (LitT n V)} {x y : V} {u t : List (Fin n)} :
-    Moves χ (x, u) (y, t) ↔ ∃ s ≤ u.length, ∃ e ≤ t.length,
+theorem lowest_point {Γ : List (LitT n V)} {x y : V} {u t : List (Fin n)} :
+    Moves Γ (x, u) (y, t) ↔ ∃ s ≤ u.length, ∃ e ≤ t.length,
       u.drop s = t.drop e ∧
-      (upperRun χ x (u.take s) ∩ lowerRun χ y (t.take e)).Nonempty := by
+      (upperRun Γ x (u.take s) ∩ lowerRun Γ y (t.take e)).Nonempty := by
   constructor
   · intro h
     obtain ⟨β, γ, σ, v, rfl, rfl, hp, hq⟩ := moves_normal h
     refine ⟨β.length, by simp, γ.length, by simp, ?_, ?_⟩
     · simp
     · simpa using
-        (show (upperRun χ x β ∩ lowerRun χ y γ).Nonempty from ⟨v, Finset.mem_inter.mpr ⟨hp, hq⟩⟩)
+        (show (upperRun Γ x β ∩ lowerRun Γ y γ).Nonempty from ⟨v, Finset.mem_inter.mpr ⟨hp, hq⟩⟩)
   · rintro ⟨s, _, e, _, he, v, hv⟩
     apply normal_moves
     exact ⟨u.take s, t.take e, u.drop s, v, (List.take_append_drop s u).symm,
@@ -369,8 +369,8 @@ namespace DeciSigma1.Constraints
 variable {n : ℕ} {V : Type*} [Fintype V] [DecidableEq V]
 
 /-- Lower path judgments are membership in the lower run. -/
-theorem lowerAt_iff_run (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
-    LowerAt χ π x y ↔ x ∈ Automata.lowerRun χ y π := by
+theorem lowerAt_iff_run (Γ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
+    LowerAt Γ π x y ↔ x ∈ Automata.lowerRun Γ y π := by
   induction π using List.reverseRecOn generalizing x with
   | nil => simp [Automata.lowerRun, Automata.lower, Automata.Semiautomaton.run,
       runFrom, Automata.mem_down, mem_derivedPairs]
@@ -381,16 +381,16 @@ theorem lowerAt_iff_run (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
       obtain ⟨r, hp, ht⟩ := h.factor
       cases ht with
       | cons hl hd ht =>
-        exact ⟨_, Automata.lowerRun_closed ((ih _).mp hp) ((mem_derivedPairs χ _ _).mpr hd),
-          _, hl, (mem_derivedPairs χ _ _).mpr (lowerAt_nil_iff.mp ht)⟩
+        exact ⟨_, Automata.lowerRun_closed ((ih _).mp hp) ((mem_derivedPairs Γ _ _).mpr hd),
+          _, hl, (mem_derivedPairs Γ _ _).mpr (lowerAt_nil_iff.mp ht)⟩
     · rintro ⟨r, hr, a, hl, hd⟩
-      have ht : LowerAt χ [i] x r :=
-        .cons hl (.refl _) (.nil ((mem_derivedPairs χ _ _).mp hd))
+      have ht : LowerAt Γ [i] x r :=
+        .cons hl (.refl _) (.nil ((mem_derivedPairs Γ _ _).mp hd))
       exact ht.comp ((ih _).mpr hr)
 
 /-- Upper path judgments are membership in the upper run. -/
-theorem upperAt_iff_run (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
-    UpperAt χ π x y ↔ y ∈ Automata.upperRun χ x π := by
+theorem upperAt_iff_run (Γ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
+    UpperAt Γ π x y ↔ y ∈ Automata.upperRun Γ x π := by
   induction π using List.reverseRecOn generalizing y with
   | nil => simp [Automata.upperRun, Automata.upper, Automata.Semiautomaton.run,
       runFrom, Automata.mem_up, mem_derivedPairs]
@@ -401,11 +401,11 @@ theorem upperAt_iff_run (χ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
       obtain ⟨r, hp, ht⟩ := h.factor
       cases ht with
       | cons hd hl ht =>
-        exact ⟨_, Automata.upperRun_closed ((ih _).mp hp) ((mem_derivedPairs χ _ _).mpr hd),
-          _, hl, (mem_derivedPairs χ _ _).mpr (upperAt_nil_iff.mp ht)⟩
+        exact ⟨_, Automata.upperRun_closed ((ih _).mp hp) ((mem_derivedPairs Γ _ _).mpr hd),
+          _, hl, (mem_derivedPairs Γ _ _).mpr (upperAt_nil_iff.mp ht)⟩
     · rintro ⟨r, hr, a, hl, hd⟩
-      have ht : UpperAt χ [i] r y :=
-        .cons (.refl _) hl (.nil ((mem_derivedPairs χ _ _).mp hd))
+      have ht : UpperAt Γ [i] r y :=
+        .cons (.refl _) hl (.nil ((mem_derivedPairs Γ _ _).mp hd))
       exact ((ih _).mpr hr).comp ht
 
 end DeciSigma1.Constraints

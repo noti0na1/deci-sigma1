@@ -52,8 +52,8 @@ def signedLit (c : Fin n → Bool) : LitT n V → List (LitT n (V × Bool))
   | .eqTop u => [.eqTop (signedVar u false), .eqBot (signedVar u true)]
 
 /-- The signed translation of a constraint. -/
-def signed (c : Fin n → Bool) (χ : List (LitT n V)) : List (LitT n (V × Bool)) :=
-  χ.flatMap (signedLit c)
+def signed (c : Fin n → Bool) (Γ : List (LitT n V)) : List (LitT n (V × Bool)) :=
+  Γ.flatMap (signedLit c)
 
 /-- The sign dual of a signed assignment: the dual of the value of the opposite copy. -/
 def Signed.dual (A : (V × Bool) → Semantics.Tree n) (z : (V × Bool)) : Semantics.Tree n :=
@@ -73,8 +73,8 @@ def Signed.dual (A : (V × Bool) → Semantics.Tree n) (z : (V × Bool)) : Seman
   · rintro rfl; simp
 
 @[simp] theorem sat_signed_iff (c : Fin n → Bool) (A : (V × Bool) → Semantics.Tree n)
-    (χ : List (LitT n V)) :
-    Covariant.Sat A (signed c χ) ↔ ∀ l ∈ χ, Covariant.Sat A (signedLit c l) := by
+    (Γ : List (LitT n V)) :
+    Covariant.Sat A (signed c Γ) ↔ ∀ l ∈ Γ, Covariant.Sat A (signedLit c l) := by
   constructor
   · intro h l hl m hm
     exact h m (List.mem_flatMap.mpr ⟨l, hl, hm⟩)
@@ -90,8 +90,8 @@ theorem sat_signedLit_signedDual_iff (c : Fin n → Bool) (A : (V × Bool) → S
 
 /-- The sign dual of a solution of the signed translation is again a solution: it exchanges the two
 signed literals produced by each literal. -/
-theorem sat_signedDual (c : Fin n → Bool) {A : (V × Bool) → Semantics.Tree n} {χ : List (LitT n V)}
-    (h : Covariant.Sat A (signed c χ)) : Covariant.Sat (Signed.dual A) (signed c χ) := by
+theorem sat_signedDual (c : Fin n → Bool) {A : (V × Bool) → Semantics.Tree n} {Γ : List (LitT n V)}
+    (h : Covariant.Sat A (signed c Γ)) : Covariant.Sat (Signed.dual A) (signed c Γ) := by
   rw [sat_signed_iff] at h ⊢
   intro l hl
   exact (sat_signedLit_signedDual_iff c A l).mpr (h l hl)
@@ -125,10 +125,10 @@ theorem holds_iff_signedLit (c : Fin n → Bool) (ρ : V → Semantics.Tree n) (
   cases l <;> simp [signedLit, Covariant.Sat, Covariant.Holds, HoldsT,
     treeLe_iff_normalize, Function.comp_def, ← dual_node]
 
-/-- An assignment solves `χ` with variance `c` exactly when its normalizations solve the signed
+/-- An assignment solves `Γ` with variance `c` exactly when its normalizations solve the signed
 translation. -/
-theorem sat_iff_signed (c : Fin n → Bool) (ρ : V → Semantics.Tree n) (χ : List (LitT n V)) :
-    SatT c ρ χ ↔ Covariant.Sat (normalized c ρ) (signed c χ) := by
+theorem sat_iff_signed (c : Fin n → Bool) (ρ : V → Semantics.Tree n) (Γ : List (LitT n V)) :
+    SatT c ρ Γ ↔ Covariant.Sat (normalized c ρ) (signed c Γ) := by
   simp only [sat_signed_iff, SatT, holds_iff_signedLit]
 
 /-- The assignment with variance decoded from the positive copies. -/

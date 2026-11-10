@@ -1,4 +1,5 @@
 import DeciSigma1.Holes.Tail.Candidates
+import DeciSigma1.Holes.Tail.WindowChains
 
 /-! # Families of rays
 
@@ -7,9 +8,10 @@ which have a mortal endpoint or the level cover property at level `l - 2`, and c
 are continued by rays. A coordinate with a long periodic suffix gets a terminal ray
 (`exists_terminal_ray`); the others are processed in turn (`exists_greedy_choice`), each taking
 a candidate without forbidden overlaps with the rays chosen before
-(`exists_compatible_rayCandidate`). Every ray is the ray of a closed factor after the first
-rejected cut, free of the suffixes of the fixed words, and the resulting ray system has no
-positive cycle (`exists_rayFamily`).
+(`exists_compatible_rayCandidate`). Every ray is the ray of a factor after the first rejected
+cut that is closed for the suffix dictionary of the fixed words (a terminal ray is closed at a
+window, which suffices by `ClosedAt.nodeClosedAt`) and free of the suffixes of the fixed words,
+and the resulting ray system has no positive cycle (`exists_rayFamily`).
 
 ## Main declarations
 
@@ -81,8 +83,9 @@ theorem exists_greedy_choice {ι ρ : Type*} [DecidableEq ι] {U₀ P : Finset �
 
 /-- A family of rays for a hole at a stable level `l`. The coordinates split into fixed ones,
 with a mortal endpoint or the level cover property at level `l - 2`, and rays. Each ray is the
-ray of a closed factor after the first rejected cut, free of the suffixes of every fixed word,
-and has period at most `periodBound l`. A ray of a coordinate with a long periodic suffix keeps
+ray of a factor after the first rejected cut that is closed for the suffix dictionary of a list
+of targets containing every fixed word, free of the suffixes of every fixed word, and has period
+at most `periodBound l`. A ray of a coordinate with a long periodic suffix keeps
 the whole original word and its periodic cover at level `l - 1`; any other ray carries a cover
 of the tail before its factor. The rays make no new comparison with themselves, and their
 difference system has no positive cycle. -/
@@ -95,11 +98,13 @@ structure RayFamily [DecidableEq α] [Fintype S] [DecidableEq S] {σ : ℕ}
   startCut : Fin k → ℕ
   endCut : Fin k → ℕ
   ray : {i // i ∈ rays} → Ray α
+  targets : List (List α)
   fixed : ∀ j, j ∉ rays → ¬ M.Immortal (M.endState W j) ∨ LevelCoverProperty C (level - 2) M W j
-  closed : ∀ i ∈ rays, ClosedAt M.toTable (M.start i) (W i) (windowLength i) (startCut i) (endCut i)
+  mem_targets : ∀ j, j ∉ rays → W j ∈ targets
+  closed : ∀ i ∈ rays, NodeClosedAt M.toTable (M.start i)
+    (suffixDictionary targets (windowLength i)) (W i) (startCut i) (endCut i)
   ray_eq : ∀ i (hi : i ∈ rays),
-    ray ⟨i, hi⟩ =
-        repeatFactorRay (W i) (startCut i) (endCut i) (closed i hi).2.1 (closed i hi).2.2.1
+    ray ⟨i, hi⟩ = repeatFactorRay (W i) (startCut i) (endCut i) (closed i hi).1 (closed i hi).2.1
   firstRejection_le_startCut : ∀ i ∈ rays, M.firstRejection W i ≤ startCut i
   free : ∀ i ∈ rays, ∀ j, j ∉ rays →
       NoSuffixOccurrenceEndsBetween (W i) (W j) (windowLength i) (startCut i) (endCut i)
@@ -157,8 +162,8 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
       exact hα.false (u.head (List.ne_nil_of_length_pos (by omega)))
     exact ⟨{
       level := l, le_top := hlt, rays := ∅, windowLength := 0, startCut := 0,
-      endCut := 0, ray := fun i => absurd i.2 (Finset.notMem_empty _),
-      fixed := fun j _ => .inl (hmort j),
+      endCut := 0, ray := fun i => absurd i.2 (Finset.notMem_empty _), targets := List.ofFn W,
+      fixed := fun j _ => .inl (hmort j), mem_targets := fun j _ => List.mem_ofFn.mpr ⟨j, rfl⟩,
       no_positive_cycle := by rintro ⟨i, -⟩; exact absurd i.2 (Finset.notMem_empty _),
       closed := by simp, ray_eq := by simp,
       firstRejection_le_startCut := by simp, free := by simp, period_le_bound := by simp,
@@ -166,30 +171,30 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
   obtain ⟨a0⟩ := not_isEmpty_iff.mp hα
   let mk : Fin k → FactorCuts → Ray α := fun i f =>
     mkRay ⟨[], [a0], List.cons_ne_nil _ _⟩ (W i) f.startCut f.endCut
-  have hmk : ∀ i f (hcl : ClosedAt M.toTable (M.start i) (W i) f.windowLength f.startCut
-      f.endCut), mk i f = repeatFactorRay (W i) f.startCut f.endCut hcl.2.1 hcl.2.2.1 :=
-    fun i f hcl => mkRay_eq ⟨hcl.2.1, hcl.2.2.1⟩
+  have hmk : ∀ i f (h : f.startCut < f.endCut ∧ f.endCut ≤ (W i).length),
+      mk i f = repeatFactorRay (W i) f.startCut f.endCut h.1 h.2 :=
+    fun i f h => mkRay_eq h
   -- the rays chosen earlier must agree with their words (`exists_compatible_rayCandidate`);
   -- this holds for the ray of a closed factor after the first rejected cut
   let Adm : Fin k → FactorCuts → Prop := fun u f =>
     RayAgrees (mk u f) (W u) f.endCut ∧ (mk u f).onset ≤ f.endCut ∧
       M.firstRejection W u ≤ f.endCut ∧
       ((mk u f).onset ≤ M.firstRejection W u → (mk u f).period ≤ C.periodBound (l - 1))
-  have hadm : ∀ u f, ClosedAt M.toTable (M.start u) (W u) f.windowLength f.startCut f.endCut →
+  have hadm : ∀ u f (h : f.startCut < f.endCut ∧ f.endCut ≤ (W u).length),
       M.firstRejection W u ≤ f.startCut →
       ((mk u f).onset ≤ M.firstRejection W u → (mk u f).period ≤ C.periodBound (l - 1)) →
       Adm u f := by
-    intro u f hcl hJ hper
-    refine ⟨?_, ?_, by have := hcl.2.1; omega, hper⟩ <;> rw [hmk u f hcl]
+    intro u f h hJ hper
+    refine ⟨?_, ?_, by have := h.1; omega, hper⟩ <;> rw [hmk u f h]
     · exact repeatFactorRay_agrees _ _
-    · have := onset_repeatFactorRay_le_sub hcl; have := hcl.2.1; omega
+    · have := onset_repeatFactorRay_le h.1 h.2; have := h.1; omega
   -- terminal rays (coordinates with a cover at level `l - 1`) and the other rays
   let Tset := Finset.univ.filter fun i => IsRay i ∧ CoordinateCover C (l - 1) M W i
   let Mset := Finset.univ.filter fun i => IsRay i ∧ ¬ CoordinateCover C (l - 1) M W i
   have hdisj : Disjoint Tset Mset := Finset.disjoint_filter.mpr fun _ _ h h' => h'.2 h.2
   have hmem : ∀ i, i ∈ Tset ∪ Mset ↔ IsRay i := fun i => by
     by_cases h : CoordinateCover C (l - 1) M W i <;> simp [Tset, Mset, h]
-  -- the fixed words, as targets with chain budget `fixedChainBudget l`
+  -- the fixed words, as targets; all their chains have at most `fixedChainBudget l` steps
   let ts : List (List α) := ((Finset.univ.filter fun j => ¬ IsRay j).toList).map W
   have hts : ts.length ≤ k := by
     simpa [ts] using (Finset.card_filter_le Finset.univ _).trans_eq (Finset.card_fin k)
@@ -201,10 +206,15 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
     · have hSl := C.fixedChainBudget_ge_chainLength (l - 2)
       rw [show l - 2 + 2 = l by omega] at hSl
       exact (levelCoverProperty_chainBound C (hW.1 j) hK).mono hSl
-  have hS : ∀ t ∈ ts, ChainBound t (C.fixedChainBudget l) := by
+  -- from the initial window of the level on, their chains have at most `Q + N` steps
+  have hS : ∀ t ∈ ts, ChainBoundFrom t (C.startWindow l) (C.pieceCountBase + Fintype.card S) := by
     intro t ht
     obtain ⟨j, hj, rfl⟩ := List.mem_map.mp ht
-    exact hfixCB j (by simpa using hj)
+    rcases hfixed j (by simpa using hj) with hm | hK
+    · exact ((chainBound_mortal (hW.1 j) hm).chainBoundFrom _).mono le_rfl (by omega)
+    · have hb := C.chainWindow_le_startWindow (l - 2)
+      rw [show l - 2 + 2 = l by omega] at hb
+      exact levelCoverProperty_chainBoundFrom C (hW.1 j) hK hb
   -- the terminal ray of each coordinate of `Tset`, from `exists_terminal_ray` at level `l - 1`
   have hterm : ∀ i, ∃ f : FactorCuts, i ∈ Tset →
       ClosedAt M.toTable (M.start i) (W i) f.windowLength f.startCut f.endCut ∧
@@ -221,14 +231,15 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
         exists_terminal_ray C (hW.1 i) hlong
       rw [show l - 1 + 1 = l by omega] at hfree
       refine ⟨⟨B, c, (W i).length⟩, fun _ => ⟨hcl, rfl, hJc, ?_, hfree⟩⟩
-      rw [hmk i _ hcl]
+      rw [hmk i _ ⟨hcl.2.1, hcl.2.2.1⟩]
       exact (Ray.period_le_of_periodicFrom hp
         (repeatFactorRay_periodicFrom hcl hp (Dvd.intro _ hlen.symm) hper)).trans hpl
     · exact ⟨⟨0, 0, 0⟩, fun h => absurd h hi⟩
   choose Ω₀ hΩ₀ using hterm
   -- the other rays, one coordinate at a time, each a good candidate
   let Good : Fin k → FactorCuts → Prop := fun v f =>
-    ClosedAt M.toTable (M.start v) (W v) f.windowLength f.startCut f.endCut ∧
+    NodeClosedAt M.toTable (M.start v) (suffixDictionary ts f.windowLength) (W v) f.startCut
+      f.endCut ∧
       M.firstRejection W v ≤ f.startCut ∧ f.endCut - f.startCut ≤ C.periodBound l ∧
       (∀ t ∈ ts, NoSuffixOccurrenceEndsBetween (W v) t f.windowLength f.startCut f.endCut) ∧
       M.firstRejection W v < (mk v f).onset ∧
@@ -237,14 +248,16 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
   obtain ⟨Ω, hΩT, hΩM, hΩc⟩ := exists_greedy_choice hdisj Ω₀ Adm Good
     (fun v f u g => NoForbiddenRayOverlap (mk v f) (mk u g) (M.firstRejection W v)
       (M.firstRejection W u))
-    (fun u hu => let h := hΩ₀ u hu; hadm u _ h.1 h.2.2.1 fun _ => h.2.2.2.1)
-    (fun v _ f hf => hadm v f hf.1 hf.2.1 fun h => absurd h (not_le.mpr hf.2.2.2.2.1))
+    (fun u hu => let h := hΩ₀ u hu; hadm u _ ⟨h.1.2.1, h.1.2.2.1⟩ h.2.2.1 fun _ => h.2.2.2.1)
+    (fun v _ f hf => hadm v f ⟨hf.1.1, hf.1.2.1⟩ hf.2.1 fun h =>
+      absurd h (not_le.mpr hf.2.2.2.2.1))
     (fun _ _ _ _ _ _ hf hg h => compatible_symm hf.2.2.2.2.1 hg.2.2.2.2.1 h)
     (fun v hv U Ω' hvU hU => by
       obtain ⟨x, -, hx2, hx3, hx4, hx5, hx6, hx7⟩ := exists_compatible_rayCandidate C hW
         (by omega : 1 ≤ l) (fun h => (Finset.mem_filter.mp hv).2.2 ((hst v).1.mpr h)) ts hts hS
         U hvU (fun u => mk u (Ω' u)) (fun u => (Ω' u).endCut) hU
-      have hx : mk v ⟨x.windowLength, x.startCut, x.endCut⟩ = x.ray := hmk v _ x.closed
+      have hx : mk v ⟨x.windowLength, x.startCut, x.endCut⟩ = x.ray :=
+        hmk v _ ⟨x.closed.1, x.closed.2.1⟩
       refine ⟨⟨x.windowLength, x.startCut, x.endCut⟩, ⟨x.closed, hx2, hx3, hx4, ?_, hx6⟩,
         fun u hu => ?_⟩
       · rw [hx]; exact hx5
@@ -252,20 +265,26 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
         rw [hx]; exact hx7 u hu)
   -- the family
   have hclosed : ∀ i ∈ Tset ∪ Mset,
-      ClosedAt M.toTable (M.start i) (W i) (Ω i).windowLength (Ω i).startCut (Ω i).endCut := by
+      NodeClosedAt M.toTable (M.start i) (suffixDictionary ts (Ω i).windowLength) (W i)
+        (Ω i).startCut (Ω i).endCut := by
     intro i hi
     rcases Finset.mem_union.mp hi with h | h
-    · rw [hΩT i h]; exact (hΩ₀ i h).1
+    · rw [hΩT i h]
+      exact (hΩ₀ i h).1.nodeClosedAt nil_mem_suffixDictionary
+        fun _ hr => length_le_of_mem_suffixDictionary hr
     · exact (hΩM i h).1
   have hagT : ∀ i ∈ Tset, RayAgrees (mk i (Ω i)) (W i) (W i).length := fun i h => by
     rw [hΩT i h, ← (hΩ₀ i h).2.1]
-    exact (hadm i _ (hΩ₀ i h).1 (hΩ₀ i h).2.2.1 fun _ => (hΩ₀ i h).2.2.2.1).1
+    exact (hadm i _ ⟨(hΩ₀ i h).1.2.1, (hΩ₀ i h).1.2.2.1⟩ (hΩ₀ i h).2.2.1
+      fun _ => (hΩ₀ i h).2.2.2.1).1
   refine ⟨{
     level := l, le_top := hlt, rays := Tset ∪ Mset,
     windowLength := fun i => (Ω i).windowLength, startCut := fun i => (Ω i).startCut,
-    endCut := fun i => (Ω i).endCut, ray := fun i => mk i.1 (Ω i.1),
-    fixed := fun j hj => hfixed j fun h => hj ((hmem j).mpr h), closed := hclosed,
-    ray_eq := fun i hi => hmk i _ (hclosed i hi),
+    endCut := fun i => (Ω i).endCut, ray := fun i => mk i.1 (Ω i.1), targets := ts,
+    fixed := fun j hj => hfixed j fun h => hj ((hmem j).mpr h),
+    mem_targets := fun j hj => List.mem_map.mpr ⟨j, by
+      simpa using fun h => hj ((hmem j).mpr h), rfl⟩, closed := hclosed,
+    ray_eq := fun i hi => hmk i _ ⟨(hclosed i hi).1, (hclosed i hi).2.1⟩,
     firstRejection_le_startCut := fun i hi => ?_, free := fun i hi j hj => ?_,
     period_le_bound := fun i hi => ?_, cover := fun i hi => ?_,
     no_self_admission := fun i hi => ?_, no_positive_cycle := ?_ }⟩
@@ -278,7 +297,8 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
     · exact (hΩM i h).2.2.2.1 (W j) (List.mem_map.mpr ⟨j, by simpa using hj', rfl⟩)
   · rcases Finset.mem_union.mp hi with h | h
     · rw [hΩT i h]; exact (hΩ₀ i h).2.2.2.1.trans (C.periodBound_mono (by omega))
-    · rw [hmk i _ (hΩM i h).1]; exact (period_repeatFactorRay_le _ _).trans (hΩM i h).2.2.1
+    · rw [hmk i _ ⟨(hΩM i h).1.1, (hΩM i h).1.2.1⟩]
+      exact (period_repeatFactorRay_le _ _).trans (hΩM i h).2.2.1
   · rcases Finset.mem_union.mp hi with h | h
     · rw [hΩT i h]; exact .inl ⟨(hΩ₀ i h).2.1, (Finset.mem_filter.mp h).2.2⟩
     · exact .inr (hΩM i h).2.2.2.2.2
@@ -286,8 +306,8 @@ theorem exists_rayFamily (C : LevelBounds (Fintype.card α) k (Fintype.card S))
     · exact terminalRay_no_selfAdmission hW (hagT i h)
     · have hg := hΩM i h
       exact rayCandidate_no_selfAdmission hW
-        (hadm i _ hg.1 hg.2.1 fun h => absurd h (not_le.mpr hg.2.2.2.2.1)).1
-        (by have := hg.1.2.1; omega) hg.2.2.2.2.1
+        (hadm i _ ⟨hg.1.1, hg.1.2.1⟩ hg.2.1 fun h => absurd h (not_le.mpr hg.2.2.2.2.1)).1
+        (by have := hg.1.1; omega) hg.2.2.2.2.1
   · apply rays_no_positiveCycle M _ _ _ (fun i => ((W i.1).length : ℤ)) (fun i => i.1 ∈ Mset)
     · exact fun v hv => ⟨(hΩM v.1 hv).2.2.2.2.1,
         fun u huv => hΩc v.1 hv u.1 u.2 fun h => huv (Subtype.ext h)⟩

@@ -1,12 +1,13 @@
-import DeciSigma1.Semantics.Classes
-import DeciSigma1.Semantics.PrefixSet
+import DeciSigma1.Full.Models.Observations
+import DeciSigma1.Satisfiability.Decide
 
 /-! # Trees over `{⊥, f}` as trees over `{⊥, f, ⊤}` without `⊤`
 
 A tree over `{⊥, f}` is a set `P` of constructor positions. Labeling these positions `f` and
 every other path of the domain `⊥` gives a tree `P.toTree` over `{⊥, f, ⊤}` in which `⊤` does
 not occur, and every such tree arises from the set `t.positions` of its constructor positions.
-The correspondence preserves `⊥`, the constructor, the covariant order and regularity.
+The correspondence preserves `⊥`, the constructor, the covariant order, regularity and
+finiteness.
 
 The trees without `⊤` are those below the tree `PrefixSet.univ.toTree`, all of whose paths are
 labeled `f`. They are also described by an inequality: when `u ≤ f(u, …, u)` in the covariant
@@ -23,7 +24,8 @@ order, no tree below `u` contains `⊤` (`Tree.isTopFree_of_le_of_le_node`), and
   preserves and reflects the order and commutes with `⊥` and the constructor.
 - `Tree.isTopFree_of_le_of_le_node`: trees below a tree `u ≤ f(u, …, u)` contain no `⊤`.
 - `PrefixSet.univ`, `PrefixSet.node_univ`: the tree all of whose paths are labeled `f`.
-- `PrefixSet.subtrees_toTree_finite_iff`: the embedding preserves and reflects regularity.
+- `PrefixSet.subtrees_toTree_finite_iff`, `PrefixSet.finiteTop_toTree_iff`: the embedding
+  preserves and reflects regularity and finiteness.
 -/
 
 namespace DeciSigma1.Semantics
@@ -208,5 +210,27 @@ theorem Tree.IsTopFree.subtrees_finite_iff {t : Tree n} (ht : t.IsTopFree) :
 theorem PrefixSet.subtrees_toTree_finite_iff (P : PrefixSet n) :
     (Characterization.subtrees P.toTree).Finite ↔ IsRegularTree P := by
   rw [(PrefixSet.isTopFree_toTree P).subtrees_finite_iff, PrefixSet.positions_toTree]
+
+/-- The embedding preserves and reflects finiteness: `P.toTree` is the tree of a finite term
+exactly when `P` has finitely many constructor positions. -/
+theorem PrefixSet.finiteTop_toTree_iff (P : PrefixSet n) :
+    Full.Models.FiniteTop P.toTree ↔ IsFiniteTree P := by
+  constructor
+  · rintro ⟨g, hg⟩
+    refine (List.finite_length_le (Fin n) g.height).subset fun π hπ => g.length_le_height ?_
+    rw [hg, (PrefixSet.toTree_fn_eq_f P π).mpr hπ]
+    rfl
+  · intro h
+    obtain ⟨d, hd⟩ := (h.image List.length).bddAbove
+    refine ⟨FTree.truncate (d + 1) P.toTree, FTree.toTree_truncate fun π hπ => ?_⟩
+    simp only [PrefixSet.toTree] at hπ
+    split_ifs at hπ with h₁ h₂
+    · exact (hd ⟨π, h₁, rfl⟩).trans (Nat.le_succ d)
+    · rcases h₂ with rfl | h₂
+      · simp
+      · have := hd ⟨_, h₂, rfl⟩
+        simp only [List.length_dropLast] at this
+        omega
+    · simp at hπ
 
 end DeciSigma1.Semantics

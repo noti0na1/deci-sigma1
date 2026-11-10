@@ -18,7 +18,11 @@ property changes for any coordinate (`exists_stable_level`). A word with the lev
 at level `m` has suffix chains of at most `chainLengthBound m + N` members
 (`levelCoverProperty_chainBound`): the members are counted by their suffix starts, at most
 `N - 1` before the first rejected cut, the uncovered positions, the terminal suffix and two
-periods for each factor of the cover.
+periods for each factor of the cover. From a long enough window on, the chains of such a word
+have at most `pieceCountBase + N` steps, independently of the level
+(`Holes.Tail.WindowChains`); the initial window `startWindow (m + 2)` of the level two above is
+that long (`chainWindow_le_startWindow`), so the recursion `levelStep` gives every target the
+same chain budget at every level.
 
 ## Main declarations
 
@@ -40,12 +44,14 @@ variable {α S : Type} {k : ℕ}
 /-! ## The level bounds -/
 
 /-- The functions of the levels and the inequalities between them that the bound on rejected
-tails uses, for an alphabet of size `σ`, `k` coordinates and `N` states. At level `l`,
-`periodBound l` bounds the periods of the cover, `uncoveredBound l` the uncovered positions,
-`terminalLengthBound l` the periodic suffix and `chainLengthBound l` the suffix chains;
-`fixedChainBudget l` is the chain budget of the targets, `startWindow l` the initial window,
-and `escapeLengthBound l` and `comparisonWindow l` are the values of `suffixLengthBound` and
-`suffixLengthEnvelope` for these. -/
+tails uses, for `k` coordinates and `N` states; the size `σ` of the alphabet does not enter them.
+At level `l`, `periodBound l` bounds the periods of the cover, `uncoveredBound l` the uncovered
+positions, `terminalLengthBound l` the periodic suffix and `chainLengthBound l` the suffix
+chains; `fixedChainBudget l` bounds all suffix chains of the targets and `startWindow l` is the
+initial window. From the initial window on, the chains of the targets have at most
+`pieceCountBase + N` steps, whatever the level (`chainWindow_le_startWindow`), and
+`escapeLengthBound l` and `comparisonWindow l` are the values of `suffixLengthBound` and
+`suffixLengthEnvelope` for this budget, with the suffix dictionary of `k` targets. -/
 structure LevelBounds (σ k N : ℕ) where
   pieceCountBase : ℕ
   periodBound : ℕ → ℕ
@@ -66,11 +72,13 @@ structure LevelBounds (σ k N : ℕ) where
   chainLengthBound_ge_cover : ∀ l, (pieceCountBase + 1) * (2 * periodBound l) + uncoveredBound l +
       terminalLengthBound l ≤ chainLengthBound l
   startWindow_gt : ∀ l, (N + 1) * periodBound l < startWindow (l + 1)
+  chainWindow_le_startWindow : ∀ l, (pieceCountBase + 2) * (chainLengthBound l + 1) ≤
+      startWindow (l + 2)
   escapeLengthBound_eq : ∀ l, escapeLengthBound l =
-      suffixLengthBound σ N (List.replicate k (fixedChainBudget l)) (startWindow l)
+      suffixLengthBound k N (List.replicate k (pieceCountBase + N)) (startWindow l)
   comparisonWindow_eq : ∀ l, comparisonWindow l =
-      suffixLengthEnvelope σ N (List.replicate k (fixedChainBudget l)) (startWindow l)
-  windowStateBound_le_periodBound : ∀ l, windowStateBound σ N (comparisonWindow l) ≤ periodBound l
+      suffixLengthEnvelope k N (List.replicate k (pieceCountBase + N)) (startWindow l)
+  factorLengthBound_le_periodBound : ∀ l, factorLengthBound k N (comparisonWindow l) ≤ periodBound l
   periodBound_lt_escapeLengthBound : 1 ≤ N → ∀ l, periodBound l < escapeLengthBound l
   uncoveredBound_ge_candidateBound : ∀ l, (pieceCountBase + 2) * (3 * escapeLengthBound l + 3) ≤
       uncoveredBound l
@@ -93,13 +101,20 @@ structure LevelState where
   terminalLengthBound : ℕ
   uncoveredBound : ℕ
 
-/-- One step of the recursion of the level functions, for `Q + 1` factors in a cover. -/
-def levelStep (σ k N Q : ℕ) (st : LevelState) : LevelState :=
-  let Sl := st.previousChainLengthBound + N
-  let bs := (N + 1) * st.periodBound + 1
-  let Tp := suffixLengthBound σ N (List.replicate k Sl) bs
-  let Bw := suffixLengthEnvelope σ N (List.replicate k Sl) bs
-  let e := max (windowStateBound σ N Bw) st.periodBound
+/-- The initial window of the level after `st`, for `Q + 1` factors in a cover: larger than
+`N + 1` periods of the level of `st`, and at least `(Q + 2) (X + 1)` for the chain length bound
+`X` two levels below. From this window on, the suffix chains of the words with the level cover
+property two levels below have at most `Q + N` steps. -/
+def levelStartWindow (N Q : ℕ) (st : LevelState) : ℕ :=
+  (N + 1) * st.periodBound + (Q + 2) * (st.previousChainLengthBound + 1)
+
+/-- One step of the recursion of the level functions, for `Q + 1` factors in a cover. The
+targets have the chain budget `Q + N` from the initial window `levelStartWindow N Q st`. -/
+def levelStep (k N Q : ℕ) (st : LevelState) : LevelState :=
+  let bs := levelStartWindow N Q st
+  let Tp := suffixLengthBound k N (List.replicate k (Q + N)) bs
+  let Bw := suffixLengthEnvelope k N (List.replicate k (Q + N)) bs
+  let e := max (factorLengthBound k N Bw) st.periodBound
   let Tt := (Q + 2) * (3 * Tp + 3)
   let h := e * N.factorial
   let Y := (1 + (st.chainLengthBound + N) * h) + 2 * h + N * e + (Q + 3) * (3 * e) +
@@ -118,90 +133,80 @@ functions. -/
 def levelMultiplicity (k N : ℕ) : ℕ := 4 + 2 * (k - 1) * (N - 1)
 
 /-- The state before level `l` (the values of level `l - 1`). -/
-def levelState (σ k N l : ℕ) :
-    LevelState := (levelStep σ k N (levelMultiplicity k N))^[l] initialLevelState
+def levelState (k N l : ℕ) :
+    LevelState := (levelStep k N (levelMultiplicity k N))^[l] initialLevelState
 
 section Explicit
 
-variable {σ N : ℕ}
+variable {N : ℕ}
 
 theorem levelState_succ (l : ℕ) :
-    levelState σ k N (l + 1) = levelStep σ k N (levelMultiplicity k N) (levelState σ k N l) :=
+    levelState k N (l + 1) = levelStep k N (levelMultiplicity k N) (levelState k N l) :=
   Function.iterate_succ_apply' _ _ _
 
-theorem levelState_periodBound_pos (l : ℕ) : 1 ≤ (levelState σ k N l).periodBound := by
+theorem levelState_periodBound_pos (l : ℕ) : 1 ≤ (levelState k N l).periodBound := by
   induction l with
   | zero => simp [levelState, initialLevelState]
   | succ l ih => rw [levelState_succ]; simp only [levelStep]; omega
 
 theorem levelStep_chainLengthBound_ge (Q : ℕ) (st : LevelState) (he : 1 ≤ st.periodBound) :
-    st.chainLengthBound ≤ (levelStep σ k N Q st).chainLengthBound := by
+    st.chainLengthBound ≤ (levelStep k N Q st).chainLengthBound := by
   simp only [levelStep]
-  have h1 : 1 ≤
-      max (windowStateBound σ N (suffixLengthEnvelope σ N (List.replicate k
-          (st.previousChainLengthBound + N)) ((N + 1) * st.periodBound + 1))) st.periodBound :=
-    le_trans he (le_max_right _ _)
-  have h2 : 1 ≤
-      max (windowStateBound σ N (suffixLengthEnvelope σ N (List.replicate k
-          (st.previousChainLengthBound + N)) ((N + 1) * st.periodBound + 1))) st.periodBound *
-      N.factorial :=
-          Nat.one_le_iff_ne_zero.mpr (Nat.mul_ne_zero (by omega) (Nat.factorial_ne_zero N))
+  set e := max (factorLengthBound k N (suffixLengthEnvelope k N (List.replicate k (Q + N))
+    (levelStartWindow N Q st))) st.periodBound
+  have h1 : 1 ≤ e := le_trans he (le_max_right _ _)
+  have h2 : 1 ≤ e * N.factorial :=
+    Nat.one_le_iff_ne_zero.mpr (Nat.mul_ne_zero (by omega) (Nat.factorial_ne_zero N))
   have h3 := Nat.le_mul_of_pos_right (st.chainLengthBound + N) h2
   omega
 
 theorem levelState_previousChainLengthBound_le (l : ℕ) :
-    (levelState σ k N l).previousChainLengthBound ≤ (levelState σ k N l).chainLengthBound := by
+    (levelState k N l).previousChainLengthBound ≤ (levelState k N l).chainLengthBound := by
   cases l with
   | zero => simp [levelState, initialLevelState]
   | succ l =>
     rw [levelState_succ]
     exact levelStep_chainLengthBound_ge _ _ (levelState_periodBound_pos l)
 
-theorem forall₂_replicate_le {a b : ℕ} (h : a ≤ b) :
-    ∀ n, List.Forall₂ (· ≤ ·) (List.replicate n a) (List.replicate n b)
-  | 0 => .nil
-  | n + 1 => .cons h (forall₂_replicate_le h n)
-
-theorem lt_windowStateBound (σ N b : ℕ) (hN : 1 ≤ N) : b < windowStateBound σ N b := by
-  unfold windowStateBound
-  have h1 : b < 2 ^ (b + 1) := by
-    have := Nat.lt_two_pow_self (n := b + 1); omega
-  have h2 : 2 ^ (b + 1) ≤ max 2 σ ^ (b + 1) := Nat.pow_le_pow_left (le_max_left _ _) _
-  have h3 : max 2 σ ^ (b + 1) ≤ N * max 2 σ ^ (b + 1) := Nat.le_mul_of_pos_left _ hN
+theorem lt_factorLengthBound (m N b : ℕ) (hN : 1 ≤ N) : b < factorLengthBound m N b := by
+  unfold factorLengthBound suffixNodeBound
+  have h1 : 1 ≤ N * (m * (b * (b + 1) / 2) + 1) := Nat.mul_pos hN (Nat.succ_pos _)
+  have h2 := Nat.mul_le_mul_left (b + 1) h1
   omega
 
-theorem windowStateBound_suffixLengthEnvelope_lt (σ N : ℕ) :
-    ∀ (Ss : List ℕ) (b : ℕ), windowStateBound σ N (suffixLengthEnvelope σ N Ss b) <
-        suffixLengthBound σ N Ss b
+theorem factorLengthBound_suffixLengthEnvelope_lt (m N : ℕ) :
+    ∀ (Ss : List ℕ) (b : ℕ), factorLengthBound m N (suffixLengthEnvelope m N Ss b) <
+        suffixLengthBound m N Ss b
   | [], b => by simp
   | S :: Ss, b => by
     rw [suffixLengthBound_cons, suffixLengthEnvelope_cons]
     have :=
-        windowStateBound_suffixLengthEnvelope_lt σ N Ss
-            ((fun b => b + suffixLengthBound σ N Ss b)^[S] b +
-      suffixLengthBound σ N Ss ((fun b => b + suffixLengthBound σ N Ss b)^[S] b))
+        factorLengthBound_suffixLengthEnvelope_lt m N Ss
+            ((fun b => b + suffixLengthBound m N Ss b)^[S] b +
+      suffixLengthBound m N Ss ((fun b => b + suffixLengthBound m N Ss b)^[S] b))
     omega
 
-/-- The escape length of level `l`: `suffixLengthBound` for `k` targets with the chain budget of
-the level, from the initial window of the level. -/
-def levelEscapeLength (σ k N l : ℕ) : ℕ :=
-  suffixLengthBound σ N (List.replicate k ((levelState σ k N l).previousChainLengthBound + N))
-    ((N + 1) * (levelState σ k N l).periodBound + 1)
+/-- The initial window of level `l`. -/
+def levelWindow (k N l : ℕ) : ℕ := levelStartWindow N (levelMultiplicity k N) (levelState k N l)
 
-theorem levelEscapeLength_le_succ (l : ℕ) :
-    levelEscapeLength σ k N l ≤ levelEscapeLength σ k N (l + 1) := by
-  unfold levelEscapeLength
+/-- The escape length of level `l`: `suffixLengthBound` for `k` targets with the chain budget
+`levelMultiplicity k N + N`, from the initial window of the level. -/
+def levelEscapeLength (k N l : ℕ) : ℕ :=
+  suffixLengthBound k N (List.replicate k (levelMultiplicity k N + N)) (levelWindow k N l)
+
+theorem levelWindow_le_succ (l : ℕ) : levelWindow k N l ≤ levelWindow k N (l + 1) := by
+  unfold levelWindow levelStartWindow
   rw [levelState_succ l]
   simp only [levelStep]
-  calc _ ≤ suffixLengthBound σ N (List.replicate k ((levelState σ k N l).chainLengthBound + N))
-          ((N + 1) * (levelState σ k N l).periodBound + 1) :=
-        suffixLengthBound_mono_budget σ N (forall₂_replicate_le
-          (Nat.add_le_add_right (levelState_previousChainLengthBound_le l) N) k) _
-    _ ≤ _ := suffixLengthBound_mono σ N _
-        (Nat.add_le_add_right (Nat.mul_le_mul_left _ (le_max_right _ _)) 1)
+  exact Nat.add_le_add (Nat.mul_le_mul_left _ (le_max_right _ _))
+    (Nat.mul_le_mul_left _ (Nat.add_le_add_right (levelState_previousChainLengthBound_le l) 1))
 
-theorem levelState_succ_uncoveredBound (l : ℕ) : (levelState σ k N (l + 1)).uncoveredBound =
-    (levelMultiplicity k N + 2) * (3 * levelEscapeLength σ k N l + 3) := by
+theorem levelEscapeLength_le_succ (l : ℕ) :
+    levelEscapeLength k N l ≤ levelEscapeLength k N (l + 1) :=
+  suffixLengthBound_mono k N _ (levelWindow_le_succ l)
+
+theorem levelState_succ_uncoveredBound (l : ℕ) : (levelState k N (l + 1)).uncoveredBound =
+    (levelMultiplicity k N + 2) * (3 * levelEscapeLength k N l + 3) := by
   rw [levelState_succ]; rfl
 
 end Explicit
@@ -210,106 +215,108 @@ end Explicit
 they satisfy and are not meant to be evaluated. -/
 def levelBounds (σ k N : ℕ) : LevelBounds σ k N where
   pieceCountBase := levelMultiplicity k N
-  periodBound l := (levelState σ k N (l + 1)).periodBound
-  chainLengthBound l := (levelState σ k N (l + 1)).chainLengthBound
-  terminalLengthBound l := (levelState σ k N (l + 1)).terminalLengthBound
-  uncoveredBound l := (levelState σ k N (l + 1)).uncoveredBound
-  escapeLengthBound l := levelEscapeLength σ k N l
+  periodBound l := (levelState k N (l + 1)).periodBound
+  chainLengthBound l := (levelState k N (l + 1)).chainLengthBound
+  terminalLengthBound l := (levelState k N (l + 1)).terminalLengthBound
+  uncoveredBound l := (levelState k N (l + 1)).uncoveredBound
+  escapeLengthBound l := levelEscapeLength k N l
   comparisonWindow l :=
-      suffixLengthEnvelope σ N
-          (List.replicate k ((levelState σ k N l).previousChainLengthBound + N))
-              ((N + 1) * (levelState σ k N l).periodBound + 1)
-  startWindow l := (N + 1) * (levelState σ k N l).periodBound + 1
-  fixedChainBudget l := (levelState σ k N l).previousChainLengthBound + N
+      suffixLengthEnvelope k N (List.replicate k (levelMultiplicity k N + N)) (levelWindow k N l)
+  startWindow l := levelWindow k N l
+  fixedChainBudget l := (levelState k N l).previousChainLengthBound + N
   pieceCountBase_eq := rfl
   periodBound_mono := by
     apply monotone_nat_of_le_succ
     intro l
-    show (levelState σ k N (l + 1)).periodBound ≤ (levelState σ k N (l + 1 + 1)).periodBound
+    show (levelState k N (l + 1)).periodBound ≤ (levelState k N (l + 1 + 1)).periodBound
     rw [levelState_succ (l + 1)]; simp only [levelStep]; exact le_max_right _ _
   terminalLengthBound_mono := by
     apply monotone_nat_of_le_succ
     intro l
-    show (levelState σ k N (l + 1)).terminalLengthBound ≤
-        (levelState σ k N (l + 1 + 1)).terminalLengthBound
+    show (levelState k N (l + 1)).terminalLengthBound ≤
+        (levelState k N (l + 1 + 1)).terminalLengthBound
     rw [levelState_succ (l + 1)]; simp only [levelStep]; omega
   uncoveredBound_mono := monotone_nat_of_le_succ fun l => by
-    show (levelState σ k N (l + 1)).uncoveredBound ≤ (levelState σ k N (l + 1 + 1)).uncoveredBound
+    show (levelState k N (l + 1)).uncoveredBound ≤ (levelState k N (l + 1 + 1)).uncoveredBound
     rw [levelState_succ_uncoveredBound, levelState_succ_uncoveredBound]
-    have := levelEscapeLength_le_succ (σ := σ) (k := k) (N := N) l
+    have := levelEscapeLength_le_succ (k := k) (N := N) l
     exact Nat.mul_le_mul_left _ (by omega)
   escapeLengthBound_mono := monotone_nat_of_le_succ levelEscapeLength_le_succ
   stateCount_le_fixedChainBudget l := Nat.le_add_left _ _
   fixedChainBudget_ge_chainLength l := by
-    show (levelState σ k N (l + 1)).chainLengthBound + N ≤
-        (levelState σ k N (l + 2)).previousChainLengthBound + N
+    show (levelState k N (l + 1)).chainLengthBound + N ≤
+        (levelState k N (l + 2)).previousChainLengthBound + N
     rw [show l + 2 = (l + 1) + 1 by rfl, levelState_succ (l + 1)]
     simp [levelStep]
   chainLengthBound_ge_cover l := by
-    show (levelMultiplicity k N + 1) * (2 * (levelState σ k N (l + 1)).periodBound) +
-        (levelState σ k N (l + 1)).uncoveredBound +
-      (levelState σ k N (l + 1)).terminalLengthBound ≤ (levelState σ k N (l + 1)).chainLengthBound
+    show (levelMultiplicity k N + 1) * (2 * (levelState k N (l + 1)).periodBound) +
+        (levelState k N (l + 1)).uncoveredBound +
+      (levelState k N (l + 1)).terminalLengthBound ≤ (levelState k N (l + 1)).chainLengthBound
     rw [levelState_succ l]
     simp only [levelStep]
     set e :=
-        max (windowStateBound σ N (suffixLengthEnvelope σ N (List.replicate k
-            ((levelState σ k N l).previousChainLengthBound + N))
-      ((N + 1) * (levelState σ k N l).periodBound + 1))) (levelState σ k N l).periodBound
+        max (factorLengthBound k N (suffixLengthEnvelope k N
+          (List.replicate k (levelMultiplicity k N + N))
+          (levelStartWindow N (levelMultiplicity k N) (levelState k N l))))
+          (levelState k N l).periodBound
     have : (levelMultiplicity k N + 1) * (2 * e) ≤ (levelMultiplicity k N + 2) * (1 + 2 * e) :=
       Nat.mul_le_mul (by omega) (by omega)
     omega
   startWindow_gt l := by
-    show (N + 1) * (levelState σ k N (l + 1)).periodBound < (N + 1) *
-        (levelState σ k N (l + 1)).periodBound + 1
+    show (N + 1) * (levelState k N (l + 1)).periodBound < levelWindow k N (l + 1)
+    unfold levelWindow levelStartWindow
+    have : 0 < (levelMultiplicity k N + 2) *
+        ((levelState k N (l + 1)).previousChainLengthBound + 1) :=
+      Nat.mul_pos (by omega) (by omega)
     omega
+  chainWindow_le_startWindow l := by
+    show (levelMultiplicity k N + 2) * ((levelState k N (l + 1)).chainLengthBound + 1) ≤
+      levelWindow k N (l + 2)
+    unfold levelWindow levelStartWindow
+    rw [levelState_succ (l + 1)]
+    exact Nat.le_add_left _ _
   escapeLengthBound_eq l := rfl
   comparisonWindow_eq l := rfl
-  windowStateBound_le_periodBound l := by
-    show _ ≤ (levelState σ k N (l + 1)).periodBound
+  factorLengthBound_le_periodBound l := by
+    show _ ≤ (levelState k N (l + 1)).periodBound
     rw [levelState_succ l]; simp only [levelStep]; exact le_max_left _ _
   periodBound_lt_escapeLengthBound hN l := by
-    show (levelState σ k N (l + 1)).periodBound < levelEscapeLength σ k N l
+    show (levelState k N (l + 1)).periodBound < levelEscapeLength k N l
     rw [levelState_succ l]
-    simp only [levelStep, levelEscapeLength]
-    apply max_lt (windowStateBound_suffixLengthEnvelope_lt σ N _ _)
-    have h1 :=
-        windowStateBound_suffixLengthEnvelope_lt σ N
-            (List.replicate k ((levelState σ k N l).previousChainLengthBound + N))
-      ((N + 1) * (levelState σ k N l).periodBound + 1)
-    have h2 :=
-        le_suffixLengthEnvelope σ N
-            (List.replicate k ((levelState σ k N l).previousChainLengthBound + N))
-      ((N + 1) * (levelState σ k N l).periodBound + 1)
-    have h3 :=
-        lt_windowStateBound σ N
-            (suffixLengthEnvelope σ N (List.replicate k
-                ((levelState σ k N l).previousChainLengthBound + N))
-      ((N + 1) * (levelState σ k N l).periodBound + 1)) hN
-    have h4 : (levelState σ k N l).periodBound ≤ (N + 1) * (levelState σ k N l).periodBound :=
+    simp only [levelStep, levelEscapeLength, levelWindow]
+    apply max_lt (factorLengthBound_suffixLengthEnvelope_lt k N _ _)
+    set Ss := List.replicate k (levelMultiplicity k N + N)
+    set bs := levelStartWindow N (levelMultiplicity k N) (levelState k N l)
+    have h1 := factorLengthBound_suffixLengthEnvelope_lt k N Ss bs
+    have h2 := le_suffixLengthEnvelope k N Ss bs
+    have h3 := lt_factorLengthBound k N (suffixLengthEnvelope k N Ss bs) hN
+    have h4 : (levelState k N l).periodBound ≤ bs := by
+      have : (levelState k N l).periodBound ≤ (N + 1) * (levelState k N l).periodBound :=
         Nat.le_mul_of_pos_left _ (by omega)
+      exact this.trans (Nat.le_add_right _ _)
     omega
   uncoveredBound_ge_candidateBound l := (levelState_succ_uncoveredBound l).ge
   terminalLengthBound_gt_cover l := by
-    show N * (levelState σ k N (l + 1 + 1)).periodBound +
-        (levelState σ k N (l + 1)).uncoveredBound +
-      (levelMultiplicity k N + 1) * (2 * (levelState σ k N (l + 1 + 1)).periodBound) <
-          (levelState σ k N (l + 1 + 1)).terminalLengthBound
+    show N * (levelState k N (l + 1 + 1)).periodBound +
+        (levelState k N (l + 1)).uncoveredBound +
+      (levelMultiplicity k N + 1) * (2 * (levelState k N (l + 1 + 1)).periodBound) <
+          (levelState k N (l + 1 + 1)).terminalLengthBound
     rw [levelState_succ (l + 1)]
     simp only [levelStep]
     set e :=
-        max (windowStateBound σ N (suffixLengthEnvelope σ N (List.replicate k ((levelState σ k N
-            (l + 1)).previousChainLengthBound + N))
-      ((N + 1) * (levelState σ k N (l + 1)).periodBound + 1)))
-          (levelState σ k N (l + 1)).periodBound
+        max (factorLengthBound k N (suffixLengthEnvelope k N
+          (List.replicate k (levelMultiplicity k N + N))
+          (levelStartWindow N (levelMultiplicity k N) (levelState k N (l + 1)))))
+          (levelState k N (l + 1)).periodBound
     have : (levelMultiplicity k N + 1) * (2 * e) ≤ (levelMultiplicity k N + 3) * (3 * e) :=
         Nat.mul_le_mul (by omega) (by omega)
     omega
   terminalLengthBound_ge_periodBudget l := by
-    show 1 + ((levelState σ k N (l + 1)).previousChainLengthBound + N) *
-        ((levelState σ k N (l + 1)).periodBound * N.factorial) +
-      2 * ((levelState σ k N (l + 1)).periodBound * N.factorial) + N *
-          (levelState σ k N (l + 1)).periodBound ≤
-      (levelState σ k N (l + 1)).terminalLengthBound
+    show 1 + ((levelState k N (l + 1)).previousChainLengthBound + N) *
+        ((levelState k N (l + 1)).periodBound * N.factorial) +
+      2 * ((levelState k N (l + 1)).periodBound * N.factorial) + N *
+          (levelState k N (l + 1)).periodBound ≤
+      (levelState k N (l + 1)).terminalLengthBound
     rw [levelState_succ l]
     simp only [levelStep]
     omega

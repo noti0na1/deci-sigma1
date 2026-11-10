@@ -2,12 +2,12 @@ import DeciSigma1.Satisfiability.Decide
 
 /-! # Ranked extensions of flat constraints
 
-A ranked extension adds to a constraint `χ` fresh variables of two kinds, sources and sinks, and
+A ranked extension adds to a constraint `Γ` fresh variables of two kinds, sources and sinks, and
 constructor literals whose children are fresh variables of strictly greater rank than the bounded
 variable: the children of a lower constructor literal are sources, those of an upper one are
 sinks. It adds no variable inequality. The derived inequalities between original variables are
-then those of `χ`, and every cycle clash of the extension is a cycle clash of `χ`. Hence a
-satisfiable ranked extension has a finite solution whenever `χ` has one.
+then those of `Γ`, and every cycle clash of the extension is a cycle clash of `Γ`. Hence a
+satisfiable ranked extension has a finite solution whenever `Γ` has one.
 
 ## Main declarations
 
@@ -26,22 +26,22 @@ variable {n k m : ℕ}
 
 /-! ## Lifting constraints -/
 
-/-- The constraint `χ` over the variables `Fin (k + m)`, renamed along `Fin.castAdd m`. -/
-def lift (χ : List (LitT n (Fin k))) (m : ℕ) : List (LitT n (Fin (k + m))) :=
-  χ.map (LitT.map (Fin.castAdd m))
+/-- The constraint `Γ` over the variables `Fin (k + m)`, renamed along `Fin.castAdd m`. -/
+def lift (Γ : List (LitT n (Fin k))) (m : ℕ) : List (LitT n (Fin (k + m))) :=
+  Γ.map (LitT.map (Fin.castAdd m))
 
-@[simp] theorem sat_lift (ρ' : Fin (k + m) → Semantics.Tree n) (χ : List (LitT n (Fin k))) :
-    Covariant.Sat ρ' (lift χ m) ↔ Covariant.Sat (ρ' ∘ Fin.castAdd m) χ :=
+@[simp] theorem sat_lift (ρ' : Fin (k + m) → Semantics.Tree n) (Γ : List (LitT n (Fin k))) :
+    Covariant.Sat ρ' (lift Γ m) ↔ Covariant.Sat (ρ' ∘ Fin.castAdd m) Γ :=
   sat_rename _ _ _
 
 variable {V : Type*}
 
-@[simp] theorem sat_append (ρ : V → Semantics.Tree n) (χ ψ : List (LitT n V)) :
-    Covariant.Sat ρ (χ ++ ψ) ↔ Covariant.Sat ρ χ ∧ Covariant.Sat ρ ψ := by
+@[simp] theorem sat_append (ρ : V → Semantics.Tree n) (Γ ψ : List (LitT n V)) :
+    Covariant.Sat ρ (Γ ++ ψ) ↔ Covariant.Sat ρ Γ ∧ Covariant.Sat ρ ψ := by
   simp only [Covariant.Sat, List.mem_append, or_imp, forall_and]
 
-@[simp] theorem sat_cons (ρ : V → Semantics.Tree n) (l : LitT n V) (χ : List (LitT n V)) :
-    Covariant.Sat ρ (l :: χ) ↔ Covariant.Holds ρ l ∧ Covariant.Sat ρ χ := by
+@[simp] theorem sat_cons (ρ : V → Semantics.Tree n) (l : LitT n V) (Γ : List (LitT n V)) :
+    Covariant.Sat ρ (l :: Γ) ↔ Covariant.Holds ρ l ∧ Covariant.Sat ρ Γ := by
   simp [Covariant.Sat]
 
 end DeciSigma1.Constraints
@@ -52,44 +52,44 @@ namespace Ranked
 
 variable {n k m : ℕ}
 
-/-- A ranked extension `ψ` of `χ`: every variable is an original variable or lies in one of the
-disjoint classes `Source` and `Sink` of fresh variables; `ψ` contains the literals of `χ`; every
-variable inequality of `ψ` is a literal of `χ`; and every other lower (upper) constructor literal
+/-- A ranked extension `ψ` of `Γ`: every variable is an original variable or lies in one of the
+disjoint classes `Source` and `Sink` of fresh variables; `ψ` contains the literals of `Γ`; every
+variable inequality of `ψ` is a literal of `Γ`; and every other lower (upper) constructor literal
 of `ψ` has all children in `Source` (`Sink`), of strictly greater rank than its bound, and a bound
 outside `Sink` (`Source`). -/
-structure Extension (χ : List (LitT n (Fin k))) (ψ : List (LitT n (Fin (k + m))))
+structure Extension (Γ : List (LitT n (Fin k))) (ψ : List (LitT n (Fin (k + m))))
     (Source Sink : Fin (k + m) → Prop) (rank : Fin (k + m) → ℕ) : Prop where
   source_not_original : ∀ {z}, Source z → ¬ z.val < k
   sink_not_original : ∀ {z}, Sink z → ¬ z.val < k
   source_not_sink : ∀ {z}, Source z → ¬ Sink z
   variable_cases : ∀ z, (∃ u : Fin k, z = Fin.castAdd m u) ∨ Source z ∨ Sink z
-  original_mem : ∀ l ∈ χ, l.map (Fin.castAdd m) ∈ ψ
+  original_mem : ∀ l ∈ Γ, l.map (Fin.castAdd m) ∈ ψ
   copy : ∀ a b, LitT.le a b ∈ ψ →
-    ∃ a' b', LitT.le a' b' ∈ χ ∧ a = Fin.castAdd m a' ∧ b = Fin.castAdd m b'
+    ∃ a' b', LitT.le a' b' ∈ Γ ∧ a = Fin.castAdd m a' ∧ b = Fin.castAdd m b'
   lower : ∀ a c, LitT.fLe a c ∈ ψ →
-    (∃ a' c', LitT.fLe a' c' ∈ χ ∧ a = Fin.castAdd m ∘ a' ∧ c = Fin.castAdd m c') ∨
+    (∃ a' c', LitT.fLe a' c' ∈ Γ ∧ a = Fin.castAdd m ∘ a' ∧ c = Fin.castAdd m c') ∨
     ((∀ i, Source (a i) ∧ rank c < rank (a i)) ∧ ¬ Sink c)
   upper : ∀ c b, LitT.leF c b ∈ ψ →
-    (∃ c' b', LitT.leF c' b' ∈ χ ∧ c = Fin.castAdd m c' ∧ b = Fin.castAdd m ∘ b') ∨
+    (∃ c' b', LitT.leF c' b' ∈ Γ ∧ c = Fin.castAdd m c' ∧ b = Fin.castAdd m ∘ b') ∨
     ((∀ i, Sink (b i) ∧ rank c < rank (b i)) ∧ ¬ Source c)
 
-variable {χ : List (LitT n (Fin k))} {ψ : List (LitT n (Fin (k + m)))}
+variable {Γ : List (LitT n (Fin k))} {ψ : List (LitT n (Fin (k + m)))}
   {Source Sink : Fin (k + m) → Prop} {rank : Fin (k + m) → ℕ}
 
-theorem Extension.not_source_original (e : Extension χ ψ Source Sink rank) (u : Fin k) :
+theorem Extension.not_source_original (e : Extension Γ ψ Source Sink rank) (u : Fin k) :
     ¬ Source (Fin.castAdd m u) := fun h => e.source_not_original h u.isLt
 
-theorem Extension.not_sink_original (e : Extension χ ψ Source Sink rank) (u : Fin k) :
+theorem Extension.not_sink_original (e : Extension Γ ψ Source Sink rank) (u : Fin k) :
     ¬ Sink (Fin.castAdd m u) := fun h => e.sink_not_original h u.isLt
 
-theorem Extension.upper_children (e : Extension χ ψ Source Sink rank)
+theorem Extension.upper_children (e : Extension Γ ψ Source Sink rank)
     {c : Fin (k + m)} {b : Fin n → Fin (k + m)} (h : LitT.leF c b ∈ ψ) (i : Fin n) :
     ¬ Source (b i) := by
   rcases e.upper _ _ h with ⟨c', b', _, rfl, rfl⟩ | ⟨hb, _⟩
   · exact e.not_source_original (b' i)
   · exact e.source_not_sink.mt (not_not.mpr (hb i).1)
 
-theorem Extension.lower_children (e : Extension χ ψ Source Sink rank)
+theorem Extension.lower_children (e : Extension Γ ψ Source Sink rank)
     {a : Fin n → Fin (k + m)} {c : Fin (k + m)} (h : LitT.fLe a c ∈ ψ) (i : Fin n) :
     ¬ Sink (a i) := by
   rcases e.lower _ _ h with ⟨a', c', _, rfl, rfl⟩ | ⟨ha, _⟩
@@ -97,7 +97,7 @@ theorem Extension.lower_children (e : Extension χ ψ Source Sink rank)
   · exact e.source_not_sink (ha i).1
 
 /-- A derivation that ends in a source is trivial. -/
-theorem Extension.derives_into_source (e : Extension χ ψ Source Sink rank)
+theorem Extension.derives_into_source (e : Extension Γ ψ Source Sink rank)
     {a b : Fin (k + m)} (h : Derives ψ a b) (hb : Source b) : a = b := by
   induction h with
   | refl => rfl
@@ -110,7 +110,7 @@ theorem Extension.derives_into_source (e : Extension χ ψ Source Sink rank)
   | decomp i _ _ hu => exact False.elim (e.upper_children hu i hb)
 
 /-- A derivation that starts in a sink is trivial. -/
-theorem Extension.derives_out_of_sink (e : Extension χ ψ Source Sink rank)
+theorem Extension.derives_out_of_sink (e : Extension Γ ψ Source Sink rank)
     {a b : Fin (k + m)} (h : Derives ψ a b) (ha : Sink a) : b = a := by
   induction h with
   | refl => rfl
@@ -123,7 +123,7 @@ theorem Extension.derives_out_of_sink (e : Extension χ ψ Source Sink rank)
   | decomp i hl _ _ => exact False.elim (e.lower_children hl i ha)
 
 /-- A variable derivably between two original variables is itself original. -/
-theorem Extension.middle_original (e : Extension χ ψ Source Sink rank)
+theorem Extension.middle_original (e : Extension Γ ψ Source Sink rank)
     {u v : Fin k} {w : Fin (k + m)}
     (hl : Derives ψ (Fin.castAdd m u) w)
     (hr : Derives ψ w (Fin.castAdd m v)) : ∃ t : Fin k, w = Fin.castAdd m t := by
@@ -134,9 +134,9 @@ theorem Extension.middle_original (e : Extension χ ψ Source Sink rank)
   · have he := e.derives_out_of_sink hr ht
     exact False.elim (e.not_sink_original v (he ▸ ht))
 
-theorem Extension.derives_reflect (e : Extension χ ψ Source Sink rank)
+theorem Extension.derives_reflect (e : Extension Γ ψ Source Sink rank)
     {a b : Fin (k + m)} (h : Derives ψ a b) :
-    ∀ u v : Fin k, a = Fin.castAdd m u → b = Fin.castAdd m v → Derives χ u v := by
+    ∀ u v : Fin k, a = Fin.castAdd m u → b = Fin.castAdd m v → Derives Γ u v := by
   induction h with
   | refl a =>
     intro u v hu hv
@@ -165,13 +165,13 @@ theorem Extension.derives_reflect (e : Extension χ ψ Source Sink rank)
     · exact False.elim (e.not_source_original u (ha ▸ (hs i).1))
 
 /-- The derivations between original variables are those of the original constraint. -/
-theorem Extension.derives_original (e : Extension χ ψ Source Sink rank) (u v : Fin k) :
-    Derives ψ (Fin.castAdd m u) (Fin.castAdd m v) ↔ Derives χ u v :=
+theorem Extension.derives_original (e : Extension Γ ψ Source Sink rank) (u v : Fin k) :
+    Derives ψ (Fin.castAdd m u) (Fin.castAdd m v) ↔ Derives Γ u v :=
   ⟨fun h => e.derives_reflect h u v rfl rfl, fun h => h.map _ e.original_mem⟩
 
 /-- A lower path judgment ending at a source starts at a source of at least the same rank, and of
 strictly greater rank when the path is nonempty. -/
-theorem Extension.lowerAt_source (e : Extension χ ψ Source Sink rank)
+theorem Extension.lowerAt_source (e : Extension Γ ψ Source Sink rank)
     {π : List (Fin n)} {a b : Fin (k + m)} (h : LowerAt ψ π a b)
     (hb : Source b) : Source a ∧ rank b ≤ rank a ∧ (π ≠ [] → rank b < rank a) := by
   induction h with
@@ -190,7 +190,7 @@ theorem Extension.lowerAt_source (e : Extension χ ψ Source Sink rank)
 
 /-- An upper path judgment starting at a sink ends at a sink of at least the same rank, and of
 strictly greater rank when the path is nonempty. -/
-theorem Extension.upperAt_sink (e : Extension χ ψ Source Sink rank)
+theorem Extension.upperAt_sink (e : Extension Γ ψ Source Sink rank)
     {π : List (Fin n)} {a b : Fin (k + m)} (h : UpperAt ψ π a b)
     (ha : Sink a) : Sink b ∧ rank a ≤ rank b ∧ (π ≠ [] → rank a < rank b) := by
   induction h with
@@ -209,9 +209,9 @@ theorem Extension.upperAt_sink (e : Extension χ ψ Source Sink rank)
 
 /-- A lower path judgment of the extension between original variables holds in the original
 constraint. -/
-theorem Extension.lowerAt_reflect (e : Extension χ ψ Source Sink rank)
+theorem Extension.lowerAt_reflect (e : Extension Γ ψ Source Sink rank)
     {π : List (Fin n)} {a b : Fin (k + m)} (h : LowerAt ψ π a b) :
-    ∀ u v : Fin k, a = Fin.castAdd m u → b = Fin.castAdd m v → LowerAt χ π u v := by
+    ∀ u v : Fin k, a = Fin.castAdd m u → b = Fin.castAdd m v → LowerAt Γ π u v := by
   induction h with
   | nil hd =>
     rintro u v rfl rfl
@@ -224,9 +224,9 @@ theorem Extension.lowerAt_reflect (e : Extension χ ψ Source Sink rank)
 
 /-- An upper path judgment of the extension between original variables holds in the original
 constraint. -/
-theorem Extension.upperAt_reflect (e : Extension χ ψ Source Sink rank)
+theorem Extension.upperAt_reflect (e : Extension Γ ψ Source Sink rank)
     {π : List (Fin n)} {a b : Fin (k + m)} (h : UpperAt ψ π a b) :
-    ∀ u v : Fin k, a = Fin.castAdd m u → b = Fin.castAdd m v → UpperAt χ π u v := by
+    ∀ u v : Fin k, a = Fin.castAdd m u → b = Fin.castAdd m v → UpperAt Γ π u v := by
   induction h with
   | nil hd =>
     rintro u v rfl rfl
@@ -237,18 +237,18 @@ theorem Extension.upperAt_reflect (e : Extension χ ψ Source Sink rank)
     · exact UpperAt.cons ((e.derives_original _ _).mp hd) hl' (ih _ _ rfl rfl)
     · exact False.elim (e.not_sink_original v (e.upperAt_sink hp (hc i).1).1)
 
-theorem Extension.lowerAt_original (e : Extension χ ψ Source Sink rank)
+theorem Extension.lowerAt_original (e : Extension Γ ψ Source Sink rank)
     (π : List (Fin n)) (u v : Fin k) :
-    LowerAt ψ π (Fin.castAdd m u) (Fin.castAdd m v) ↔ LowerAt χ π u v :=
+    LowerAt ψ π (Fin.castAdd m u) (Fin.castAdd m v) ↔ LowerAt Γ π u v :=
   ⟨fun h => e.lowerAt_reflect h u v rfl rfl, fun h => h.map _ e.original_mem⟩
 
-theorem Extension.upperAt_original (e : Extension χ ψ Source Sink rank)
+theorem Extension.upperAt_original (e : Extension Γ ψ Source Sink rank)
     (π : List (Fin n)) (u v : Fin k) :
-    UpperAt ψ π (Fin.castAdd m u) (Fin.castAdd m v) ↔ UpperAt χ π u v :=
+    UpperAt ψ π (Fin.castAdd m u) (Fin.castAdd m v) ↔ UpperAt Γ π u v :=
   ⟨fun h => e.upperAt_reflect h u v rfl rfl, fun h => h.map _ e.original_mem⟩
 
 /-- The two variables of a cycle clash of the extension are original variables. -/
-theorem Extension.cycle_original (e : Extension χ ψ Source Sink rank)
+theorem Extension.cycle_original (e : Extension Γ ψ Source Sink rank)
     {π : List (Fin n)} {a b : Fin (k + m)} (hn : π ≠ []) (hl : LowerAt ψ π a a)
     (hd : Derives ψ a b) (hu : UpperAt ψ π b b) :
     (∃ u : Fin k, a = Fin.castAdd m u) ∧ (∃ v : Fin k, b = Fin.castAdd m v) := by
@@ -268,10 +268,10 @@ theorem Extension.cycle_original (e : Extension χ ψ Source Sink rank)
 
 /-- A cycle clash of the extension along a path `π` gives a cycle clash of the original
 constraint along `π`. -/
-theorem Extension.cycle_reflect (e : Extension χ ψ Source Sink rank)
+theorem Extension.cycle_reflect (e : Extension Γ ψ Source Sink rank)
     {π : List (Fin n)} {a b : Fin (k + m)} (hn : π ≠ []) (hl : LowerAt ψ π a a)
     (hd : Derives ψ a b) (hu : UpperAt ψ π b b) :
-    ∃ u v : Fin k, LowerAt χ π u u ∧ Derives χ u v ∧ UpperAt χ π v v := by
+    ∃ u v : Fin k, LowerAt Γ π u u ∧ Derives Γ u v ∧ UpperAt Γ π v v := by
   obtain ⟨⟨u, rfl⟩, ⟨v, rfl⟩⟩ := e.cycle_original hn hl hd hu
   exact ⟨u, v, (e.lowerAt_original ..).mp hl, (e.derives_original ..).mp hd,
     (e.upperAt_original ..).mp hu⟩
@@ -288,20 +288,20 @@ variable {n k m : ℕ}
 
 section Extension
 
-variable {χ : List (LitT n (Fin k))} {ψ : List (LitT n (Fin (k + m)))}
+variable {Γ : List (LitT n (Fin k))} {ψ : List (LitT n (Fin (k + m)))}
   {Source Sink : Fin (k + m) → Prop} {rank : Fin (k + m) → ℕ}
 
 /-- A solution of an extension, restricted to the original variables, solves the original
 constraint. -/
-theorem Extension.restrict_sat (e : Extension χ ψ Source Sink rank)
+theorem Extension.restrict_sat (e : Extension Γ ψ Source Sink rank)
     {ρ' : Fin (k + m) → Semantics.Tree n} (h : Covariant.Sat ρ' ψ) : Covariant.Sat
-        (ρ' ∘ Fin.castAdd m) χ := by
+        (ρ' ∘ Fin.castAdd m) Γ := by
   intro l hl
   exact (covariant_holds_map _ _ _).mp (h _ (e.original_mem l hl))
 
 /-- A ranked extension has a cycle clash exactly when the original constraint has one. -/
-theorem Extension.cycleClash_iff (e : Extension χ ψ Source Sink rank) :
-    CycleClash ψ ↔ CycleClash χ := by
+theorem Extension.cycleClash_iff (e : Extension Γ ψ Source Sink rank) :
+    CycleClash ψ ↔ CycleClash Γ := by
   constructor
   · rintro ⟨π, a, b, hn, hl, hd, hu⟩
     obtain ⟨u, v, hl', hd', hu'⟩ := e.cycle_reflect hn hl hd hu
@@ -311,9 +311,9 @@ theorem Extension.cycleClash_iff (e : Extension χ ψ Source Sink rank) :
 
 /-- A ranked extension has a finite solution exactly when it has a solution and the original
 constraint has a finite solution. -/
-theorem Extension.satFin_iff (e : Extension χ ψ Source Sink rank) :
+theorem Extension.satFin_iff (e : Extension Γ ψ Source Sink rank) :
     (∃ σ : Fin (k + m) → FTree n, Covariant.Sat (FTree.toTree ∘ σ) ψ) ↔
-      (∃ ρ', Covariant.Sat ρ' ψ) ∧ ∃ σ : Fin k → FTree n, Covariant.Sat (FTree.toTree ∘ σ) χ := by
+      (∃ ρ', Covariant.Sat ρ' ψ) ∧ ∃ σ : Fin k → FTree n, Covariant.Sat (FTree.toTree ∘ σ) Γ := by
   constructor
   · rintro ⟨σ, hσ⟩
     exact ⟨⟨_, hσ⟩, ⟨σ ∘ Fin.castAdd m, e.restrict_sat hσ⟩⟩

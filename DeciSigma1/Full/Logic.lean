@@ -258,9 +258,9 @@ theorem TreeClass.termClosed : (C : TreeClass) → TermClosed (C.Contains (n := 
 /-- The procedures for disjunctive entailment over arbitrary, regular and finite trees. -/
 @[instance_reducible] def disjEntailmentDecider :
     (C : TreeClass) → DeciSigma1.Logic.DisjEntailmentDecider (flattening c) C.Contains
-  | .arbitrary => fun χ q => decideDisjEntails c χ q
-  | .regular => fun χ q => decideDisjEntailsReg c χ q
-  | .finite => fun χ q => decideDisjEntailsFin c χ q
+  | .arbitrary => fun Γ q => decideDisjEntails c Γ q
+  | .regular => fun Γ q => decideDisjEntailsReg c Γ q
+  | .finite => fun Γ q => decideDisjEntailsFin c Γ q
 
 /-- Boolean sentences over `{⊥, f, ⊤}` are decidable over arbitrary, regular and finite
 trees. -/
@@ -275,7 +275,7 @@ theorem booleanSentence_regular_iff (φ : BooleanSentence n) :
     φ.HoldsIn RegularTop c ↔ φ.HoldsIn (fun _ => True) c :=
   DeciSigma1.Logic.BooleanSentence.holdsIn_iff_of_disjEntailsIn_iff (flattening c)
     (termClosed_reg.eval c) (termClosed_all.eval c)
-    (fun χ q => show (flattening c).DisjEntailsIn RegularTop χ q ↔
-      (flattening c).DisjEntailsIn (fun _ => True) χ q from Reduction.disjEntails_regular_iff) φ
+    (fun Γ q => show (flattening c).DisjEntailsIn RegularTop Γ q ↔
+      (flattening c).DisjEntailsIn (fun _ => True) Γ q from Reduction.disjEntails_regular_iff) φ
 
 end DeciSigma1.Full.Logic

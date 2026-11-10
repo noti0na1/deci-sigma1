@@ -1,4 +1,5 @@
 import DeciSigma1.Arithmetic.DifferenceConstraints
+import DeciSigma1.Arithmetic.ElementaryBounds
 import DeciSigma1.Arithmetic.FinitePaths
 import DeciSigma1.Automata.Basic
 import DeciSigma1.Automata.Constraints
@@ -8,6 +9,7 @@ import DeciSigma1.Constraints.Signed
 import DeciSigma1.Constraints.GroundBounds
 import DeciSigma1.Constraints.RankedExtensions
 import DeciSigma1.Constraints.TopFree.Basic
+import DeciSigma1.Encodings
 import DeciSigma1.Entailment.Basic
 import DeciSigma1.Entailment.Decide
 import DeciSigma1.Entailment.Embedding
@@ -31,6 +33,7 @@ import DeciSigma1.Full.Reduction.Realization
 import DeciSigma1.Full.Reduction.Transfer
 import DeciSigma1.Holes.Bound
 import DeciSigma1.Holes.Fresh.Bound
+import DeciSigma1.Holes.Fresh.ElementaryBound
 import DeciSigma1.Holes.Fresh.ChannelPreservation
 import DeciSigma1.Holes.Fresh.ChannelTransport
 import DeciSigma1.Holes.Fresh.Deletion
@@ -45,12 +48,14 @@ import DeciSigma1.Holes.Periodic.Transport
 import DeciSigma1.Holes.Tail.Candidates
 import DeciSigma1.Holes.Tail.ClosedFactors
 import DeciSigma1.Holes.Tail.Compression
+import DeciSigma1.Holes.Tail.ElementaryBound
 import DeciSigma1.Holes.Tail.Levels
 import DeciSigma1.Holes.Tail.RayCompatibility
 import DeciSigma1.Holes.Tail.RayFamilies
 import DeciSigma1.Holes.Tail.Rays
 import DeciSigma1.Holes.Tail.RunCovers
 import DeciSigma1.Holes.Tail.TerminalRays
+import DeciSigma1.Holes.Tail.WindowChains
 import DeciSigma1.Logic.Decide
 import DeciSigma1.Logic.Flatten
 import DeciSigma1.Logic.Syntax
@@ -70,12 +75,13 @@ import DeciSigma1.Words.Deletion
 import DeciSigma1.Words.Periods
 import DeciSigma1.Words.SuffixChains
 
-/-! # Disjunctive non-structural subtype entailment
+/-! # The Σ₁ theory of non-structural subtype constraints
 
-Decision procedures for disjunctive entailment `χ ⊨ x₁ ≤ y₁ ∨ … ∨ x_k ≤ y_k` between a finite
-conjunction of subtype constraints and a disjunction of variable inequalities, over one
-constructor of any finite arity: for bottom, the constructor and top with any variance, over
-arbitrary, regular and finite trees, and for bottom and a covariant constructor over arbitrary
-and regular trees. The same procedures decide the Boolean combinations of existential and
-universal sentences. The public statements are in `DeciSigma1.Main`.
+Decision procedures for the Boolean combinations of existential and universal sentences over
+non-structural subtype constraints, and for the core problem of the proof, disjunctive
+entailment `Γ ⊨ x₁ ≤ y₁ ∨ … ∨ x_k ≤ y_k` between a finite conjunction of subtype constraints
+and a disjunction of variable inequalities. They cover one constructor of any finite arity: for
+bottom, the constructor and top with any variance, and for bottom and a covariant constructor,
+over arbitrary, regular and finite trees. Satisfiability and entailment are special sentences
+(`DeciSigma1.Encodings`). The public statements are in `DeciSigma1.Main`.
 -/

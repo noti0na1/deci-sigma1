@@ -305,18 +305,18 @@ def RegularTop (t : Semantics.Tree n) : Prop := (Characterization.subtrees t).Fi
 /-- A finite tree: the tree of a finite term. -/
 def FiniteTop (t : Semantics.Tree n) : Prop := ∃ g : FTree n, g.toTree = t
 
-/-- `χ` has a solution with variance `c` whose values lie in the class `C`. -/
+/-- `Γ` has a solution with variance `c` whose values lie in the class `C`. -/
 def SatisfiableIn {V : Type*} (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
-    (χ : List (LitT n V)) : Prop :=
-  ∃ ρ, (∀ v, C (ρ v)) ∧ SatT c ρ χ
+    (Γ : List (LitT n V)) : Prop :=
+  ∃ ρ, (∀ v, C (ρ v)) ∧ SatT c ρ Γ
 
 /-- A flat constraint has a finite solution with variance `c`. -/
-abbrev SatFin {V : Type*} (c : Fin n → Bool) (χ : List (LitT n V)) : Prop :=
-  SatisfiableIn FiniteTop c χ
+abbrev SatFin {V : Type*} (c : Fin n → Bool) (Γ : List (LitT n V)) : Prop :=
+  SatisfiableIn FiniteTop c Γ
 
 /-- Finite satisfiability can be witnessed by an assignment of finite trees. -/
-theorem satFin_iff_finite_assignment {V : Type*} (c : Fin n → Bool) (χ : List (LitT n V)) :
-    SatFin c χ ↔ ∃ σ : V → FTree n, SatT c (FTree.toTree ∘ σ) χ := by
+theorem satFin_iff_finite_assignment {V : Type*} (c : Fin n → Bool) (Γ : List (LitT n V)) :
+    SatFin c Γ ↔ ∃ σ : V → FTree n, SatT c (FTree.toTree ∘ σ) Γ := by
   constructor
   · rintro ⟨ρ, hf, hs⟩
     choose σ hσ using hf
@@ -324,13 +324,13 @@ theorem satFin_iff_finite_assignment {V : Type*} (c : Fin n → Bool) (χ : List
   · rintro ⟨σ, hs⟩
     exact ⟨FTree.toTree ∘ σ, fun v => ⟨σ v, rfl⟩, hs⟩
 
-/-- Finitely many ground bounds that hold together in some covariant solution of `χ` hold together
-in a finite covariant solution, provided `χ` has a finite covariant solution. -/
-def FiniteBoundPinning {V : Type*} (χ : List (LitT n V)) : Prop :=
-  SatisfiableIn FiniteTop (fun _ => false) χ →
+/-- Finitely many ground bounds that hold together in some covariant solution of `Γ` hold together
+in a finite covariant solution, provided `Γ` has a finite covariant solution. -/
+def FiniteBoundPinning {V : Type*} (Γ : List (LitT n V)) : Prop :=
+  SatisfiableIn FiniteTop (fun _ => false) Γ →
     ∀ B : List (GroundBound n V),
-      (∃ ρ, SatT (fun _ => false) ρ χ ∧ ∀ b ∈ B, b.Holds ρ) →
-      ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT (fun _ => false) τ χ ∧
+      (∃ ρ, SatT (fun _ => false) ρ Γ ∧ ∀ b ∈ B, b.Holds ρ) →
+      ∃ τ, (∀ v, FiniteTop (τ v)) ∧ SatT (fun _ => false) τ Γ ∧
         ∀ b ∈ B, b.Holds τ
 
 end DeciSigma1.Full.Models

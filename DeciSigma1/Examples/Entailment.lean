@@ -6,7 +6,7 @@ import DeciSigma1.Entailment.Basic
 
 /-! # Examples of disjunctive entailment
 
-A disjunctive entailment `χ ⊨ x₁ ≤ y₁ ∨ … ∨ x_k ≤ y_k` can hold although no single disjunct
+A disjunctive entailment `Γ ⊨ x₁ ≤ y₁ ∨ … ∨ x_k ≤ y_k` can hold although no single disjunct
 is entailed. The examples below exhibit this with `k = 2`, over `{⊥, f}` with `f` covariant
 and over `{⊥, f, ⊤}` with a contravariant argument, next to entailments of the same shape that
 fail. All proofs are semantic; no decision procedure is evaluated.

@@ -144,11 +144,11 @@ namespace Flattening
 variable (F : Flattening I)
 
 /-- Disjunctive entailment between flat constraints over the class `C`: every assignment with
-values in `C` that satisfies `χ` satisfies one of the inequalities `x_i ≤ y_i` with
+values in `C` that satisfies `Γ` satisfies one of the inequalities `x_i ≤ y_i` with
 `q i = (x_i, y_i)`. -/
-def DisjEntailsIn {W : Type} {k : ℕ} (C : D → Prop) (χ : List (F.Lit W))
+def DisjEntailsIn {W : Type} {k : ℕ} (C : D → Prop) (Γ : List (F.Lit W))
     (q : Fin k → W × W) : Prop :=
-  ∀ σ : W → D, (∀ w, C (σ w)) → (∀ l ∈ χ, F.Holds σ l) → ∃ i, I.le (σ (q i).1) (σ (q i).2)
+  ∀ σ : W → D, (∀ w, C (σ w)) → (∀ l ∈ Γ, F.Holds σ l) → ∃ i, I.le (σ (q i).1) (σ (q i).2)
 
 end Flattening
 

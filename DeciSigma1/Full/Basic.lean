@@ -2,8 +2,8 @@ import DeciSigma1.Full.Closure.Basic
 
 /-! # Disjunctive entailment over `{⊥, f, ⊤}`
 
-A conjunction `χ` of flat constraints over `{⊥, f, ⊤}` with variance `c` entails the disjunction
-`x₁ ≤ y₁ ∨ … ∨ x_k ≤ y_k` over a class `C` of trees when every solution of `χ` with values in `C`
+A conjunction `Γ` of flat constraints over `{⊥, f, ⊤}` with variance `c` entails the disjunction
+`x₁ ≤ y₁ ∨ … ∨ x_k ≤ y_k` over a class `C` of trees when every solution of `Γ` with values in `C`
 satisfies one of the inequalities; otherwise a countermodel refutes all of them. In the leaf
 representation of `DeciSigma1.Full.Closure`, an inequality `x ≤ y` fails in one of two modes: some
 path reaches `⊤` in (the normalization of) `x` but not in `y`, or reaches `⊥` in `y` but not in `x`.
@@ -35,24 +35,24 @@ def seed (q : V × V) (m : Bool) (w : List (Fin n)) : Closure.Config n V :=
 def exclusion (q : V × V) (m : Bool) (w : List (Fin n)) : Closure.Config n V :=
   (if m then q.1 else q.2, m, w)
 
-/-- A countermodel in the class `C`: a solution of `χ` with values in `C` that refutes every
+/-- A countermodel in the class `C`: a solution of `Γ` with values in `C` that refutes every
 inequality `x_i ≤ y_i`. -/
 def HasCountermodelIn (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
-    (χ : List (LitT n V)) (q : Fin k → V × V) : Prop :=
-  ∃ ρ, (∀ v, C (ρ v)) ∧ SatT c ρ χ ∧
+    (Γ : List (LitT n V)) (q : Fin k → V × V) : Prop :=
+  ∃ ρ, (∀ v, C (ρ v)) ∧ SatT c ρ Γ ∧
     ∀ i, ¬ Tree.Le c (ρ (q i).1) (ρ (q i).2)
 
-/-- Disjunctive entailment over the class `C`: every solution of `χ` with values in `C` satisfies
+/-- Disjunctive entailment over the class `C`: every solution of `Γ` with values in `C` satisfies
 one of the inequalities `x_i ≤ y_i` with `q i = (x_i, y_i)`, ordered with variance `c`. -/
 def DisjEntailsIn (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
-    (χ : List (LitT n V)) (q : Fin k → V × V) : Prop :=
-  ∀ ρ, (∀ v, C (ρ v)) → SatT c ρ χ →
+    (Γ : List (LitT n V)) (q : Fin k → V × V) : Prop :=
+  ∀ ρ, (∀ v, C (ρ v)) → SatT c ρ Γ →
     ∃ i, Tree.Le c (ρ (q i).1) (ρ (q i).2)
 
 /-- A disjunctive entailment fails exactly when it has a countermodel in the class. -/
 theorem not_disjEntailsIn_iff (C : Semantics.Tree n → Prop) (c : Fin n → Bool)
-    (χ : List (LitT n V)) (q : Fin k → V × V) :
-    ¬ DisjEntailsIn C c χ q ↔ HasCountermodelIn C c χ q := by
+    (Γ : List (LitT n V)) (q : Fin k → V × V) :
+    ¬ DisjEntailsIn C c Γ q ↔ HasCountermodelIn C c Γ q := by
   classical
   simp only [DisjEntailsIn, HasCountermodelIn, not_forall, not_exists, exists_prop]
 

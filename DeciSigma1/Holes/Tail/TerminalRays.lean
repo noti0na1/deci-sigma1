@@ -66,7 +66,7 @@ theorem rayState_eq_runPrefix (M : StructuralReader α S k) {W : Fin k → List 
     rayState M (M.start i) Ω a = M.runPrefix W i a := by
   simp only [rayState, Table.runPrefix, h.streamPrefix_eq ha]
 
-/-- The ray of a closed factor agrees with the original word up to the end of the factor. -/
+/-- The ray of a factor agrees with the original word up to the end of the factor. -/
 theorem repeatFactorRay_agrees {x : List α} {c c' : ℕ} (hcc : c < c') (hc' : c' ≤ x.length) :
     RayAgrees (repeatFactorRay x c c' hcc hc') x c' := by
   refine ⟨hc', ?_⟩

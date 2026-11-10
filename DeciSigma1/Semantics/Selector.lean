@@ -58,10 +58,10 @@ its literals. -/
 def FlipClosed (ψ : List (LitT n (V × Bool))) : Prop :=
   ∀ l ∈ ψ, dualFlip l ∈ ψ
 
-/-- The signed translation is closed under the sign involution: each literal of `χ` produces a
+/-- The signed translation is closed under the sign involution: each literal of `Γ` produces a
 pair of signed literals that the involution exchanges. -/
-theorem signed_flipClosed (c : Fin n → Bool) (χ : List (LitT n V)) :
-    FlipClosed (signed c χ) := by
+theorem signed_flipClosed (c : Fin n → Bool) (Γ : List (LitT n V)) :
+    FlipClosed (signed c Γ) := by
   intro l hl
   obtain ⟨m, hm, hl⟩ := List.mem_flatMap.mp hl
   apply List.mem_flatMap.mpr
@@ -195,8 +195,8 @@ def SignCoherent (c : Fin n → Bool) (ψ : List (LitT n (V × Bool))) : Prop :=
   (∀ u a, LitT.leF u a ∈ ψ → ∀ i, sign (a i) = Bool.xor (sign u) (c i)) ∧
     (∀ a u, LitT.fLe a u ∈ ψ → ∀ i, sign (a i) = Bool.xor (sign u) (c i))
 
-theorem signed_signCoherent (c : Fin n → Bool) (χ : List (LitT n V)) :
-    SignCoherent c (signed c χ) := by
+theorem signed_signCoherent (c : Fin n → Bool) (Γ : List (LitT n V)) :
+    SignCoherent c (signed c Γ) := by
   refine ⟨?_, ?_, ?_⟩
   · intro u v h
     obtain ⟨l, _, hl⟩ := List.mem_flatMap.mp h
@@ -351,9 +351,9 @@ theorem select_sat_of_coherent {c : Fin n → Bool} {ψ : List (LitT n (V × Boo
         exact hb (i :: π) _ _ hr' hs'
 
 /-- The selected assignment solves the signed translation whenever `B` does. -/
-theorem select_sat {c : Fin n → Bool} {χ : List (LitT n V)} {B : (V × Bool) → Tree n}
-    (hs : Covariant.Sat B (signed c χ)) (h : ∀ z, SameShape (B z) (dual B z)) :
-    Covariant.Sat (select c B h) (signed c χ) :=
-  select_sat_of_coherent (signed_signCoherent c χ) hs (sat_signedDual c hs) h
+theorem select_sat {c : Fin n → Bool} {Γ : List (LitT n V)} {B : (V × Bool) → Tree n}
+    (hs : Covariant.Sat B (signed c Γ)) (h : ∀ z, SameShape (B z) (dual B z)) :
+    Covariant.Sat (select c B h) (signed c Γ) :=
+  select_sat_of_coherent (signed_signCoherent c Γ) hs (sat_signedDual c hs) h
 
 end DeciSigma1.Semantics.SignSelection

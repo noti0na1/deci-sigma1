@@ -3,8 +3,8 @@ import DeciSigma1.Main
 
 /-! # Examples of Boolean Σ₁/Π₁ sentences
 
-A true and a false sentence over `{⊥, f}`, and a sentence over `{⊥, f, ⊤}` with a
-contravariant argument that is true over regular trees and false over finite trees.
+A true and a false sentence over `{⊥, f}`, and over each signature a sentence that is true over
+regular trees and false over finite trees.
 All proofs are semantic; no decision procedure is evaluated.
 
 ## Main declarations
@@ -13,6 +13,9 @@ All proofs are semantic; no decision procedure is evaluated.
 - `comparable_unary`, `comparable_unary_regular`: it holds over unary trees, arbitrary or
   regular (the latter by `booleanSentenceTopFree_regular_iff`).
 - `not_comparable_binary`: it fails over binary trees.
+- `postFixedPoint`, `postFixedPoint_regular`, `not_postFixedPoint_finite`: the Σ₁ sentence
+  `∃ x, f(x) ≤ x` over unary trees over `{⊥, f}` holds over regular trees and fails over finite
+  trees.
 - `fixedPoint`, `fixedPoint_regular`, `not_fixedPoint_finite`: the Σ₁ sentence `∃ x, x = f(x)`
   with `f` unary contravariant holds over regular trees and fails over finite trees.
 -/
@@ -42,6 +45,27 @@ theorem not_comparable_binary : ¬ (comparable 2).HoldsIn (fun _ => True) := by
   rcases h ![.node ![leaf, .bot], .node ![.bot, leaf]] (fun _ => trivial) with hj | hj
   · exact PrefixSet.not_node_le_bot _ ((PrefixSet.node_le_node _ _).mp hj 0)
   · exact PrefixSet.not_node_le_bot _ ((PrefixSet.node_le_node _ _).mp hj 1)
+
+/-- The Σ₁ sentence `∃ x, f(x) ≤ x` over unary trees. -/
+def postFixedPoint : DeciSigma1.Entailment.Logic.BooleanSentence 1 :=
+  .ex ⟨1, .le (.node fun _ => .var 0) (.var 0)⟩
+
+/-- The tree all of whose paths are constructor positions is regular and satisfies
+`f(x) ≤ x`. -/
+theorem postFixedPoint_regular : postFixedPoint.HoldsIn IsRegularTree :=
+  ⟨fun _ => PrefixSet.univ, fun _ => isRegularTree_univ, PrefixSet.node_univ.le⟩
+
+/-- A unary tree `t` with `f(t) ≤ t` contains every path, so no finite tree satisfies
+`f(x) ≤ x`. -/
+theorem not_postFixedPoint_finite : ¬ postFixedPoint.HoldsIn IsFiniteTree := by
+  rintro ⟨ρ, hρ, h⟩
+  have hle : PrefixSet.node (fun _ => ρ 0) ≤ ρ 0 := h
+  have hmem (k : ℕ) : List.replicate k (0 : Fin 1) ∈ (ρ 0).carrier := by
+    induction k with
+    | zero => exact hle (PrefixSet.nil_mem_node _)
+    | succ k ih => exact hle ((PrefixSet.cons_mem_node _ 0 _).mpr ih)
+  exact Set.infinite_of_injective_forall_mem
+    (fun a b hab => by simpa using congrArg List.length hab) hmem (hρ 0)
 
 /-! ## Signature `{⊥, f, ⊤}` with `f` unary contravariant -/
 

@@ -163,10 +163,10 @@ fresh variable. -/
 noncomputable def rank (g : FTree n) : Fin (k + Fintype.card (Occurrence g)) → ℕ :=
   Fin.addCases (fun _ => 0) (fun i => depth g ((Fintype.equivFin (Occurrence g)).symm i))
 
-/-- Adding the compiled literals of a ground bound to a constraint `χ` gives a ranked extension
-of `χ`: the fresh variables are sources for a lower bound and sinks for an upper bound. -/
-theorem extension (lower : Bool) (g : FTree n) (x : Fin k) (χ : List (LitT n (Fin k))) :
-    Ranked.Extension χ (lift χ _ ++ compile lower (Fin.castAdd _ x) g (occurrenceVar g))
+/-- Adding the compiled literals of a ground bound to a constraint `Γ` gives a ranked extension
+of `Γ`: the fresh variables are sources for a lower bound and sinks for an upper bound. -/
+theorem extension (lower : Bool) (g : FTree n) (x : Fin k) (Γ : List (LitT n (Fin k))) :
+    Ranked.Extension Γ (lift Γ _ ++ compile lower (Fin.castAdd _ x) g (occurrenceVar g))
       (fun z => lower = true ∧ k ≤ z.val) (fun z => lower = false ∧ k ≤ z.val) (rank g) := by
   let Fresh : Fin (k + Fintype.card (Occurrence g)) → Prop := fun z => k ≤ z.val
   have hf (o : Occurrence g) : Fresh (occurrenceVar g o) := by simp [Fresh, occurrenceVar]

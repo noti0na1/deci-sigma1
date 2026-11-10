@@ -34,7 +34,7 @@ def Lit.Holds {V : Type*} (ρ : V → PrefixSet n) : Lit n V → Prop
   | .eqBot u => ρ u = PrefixSet.bot
 
 /-- Satisfaction of a finite conjunction of literals. -/
-def Sat {V : Type*} (ρ : V → PrefixSet n) (χ : List (Lit n V)) : Prop :=
-  ∀ l ∈ χ, l.Holds ρ
+def Sat {V : Type*} (ρ : V → PrefixSet n) (Γ : List (Lit n V)) : Prop :=
+  ∀ l ∈ Γ, l.Holds ρ
 
 end DeciSigma1.Constraints.TopFree

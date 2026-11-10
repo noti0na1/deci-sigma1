@@ -226,8 +226,8 @@ theorem exists_hole_with_run_cover (C : LevelBounds (Fintype.card α) k (Fintype
     intro i h
     have hcl := F.closed i h
     have := hLc i h
-    have := hcl.2.1
-    rw [hWr i h, F.ray_eq i h, ← streamPrefix_repeatFactorRay hcl.2.1 hcl.2.2.1]
+    have := hcl.1
+    rw [hWr i h, F.ray_eq i h, ← streamPrefix_repeatFactorRay hcl.1 hcl.2.1]
     congr 1; omega
   have hray : ∀ i (h : i ∈ F.rays), M.Eligible W' i ∧ M.Immortal (M.endState W' i) ∧
       M.firstRejection W' i = M.firstRejection W i := by
@@ -266,9 +266,8 @@ theorem exists_hole_with_run_cover (C : LevelBounds (Fintype.card α) k (Fintype
     · -- ray host, fixed target: comparisons of the original words
       have hcl := F.closed i hi
       have := hLc i hi
-      have hsub :=
-          comparison_of_pumpFactor (T := M.toTable) (qt := M.start j) hcl (F.free i hi j hj)
-        (L := L ⟨i, hi⟩ - F.startCut i) (by omega)
+      have hsub := comparison_of_pumpFactor (T := M.toTable) (qt := M.start j) hcl
+        (F.mem_targets j hj) (F.free i hi j hj) (L := L ⟨i, hi⟩ - F.startCut i) (by omega)
       simp only [Table.channel] at hpq
       rw [hstay i hi, hWf j hj] at hpq
       exact hW.2 i j pq (hsub hpq)
@@ -301,17 +300,16 @@ theorem exists_hole_with_run_cover (C : LevelBounds (Fintype.card α) k (Fintype
   by_cases h : i ∈ F.rays
   · have hcl := F.closed i h
     have hLi := hLc i h
-    have hcc := hcl.2.1
-    have hc' := hcl.2.2.1
-    -- the pumped factor `[c - B, L)`, with the period of the ray
-    let sf : PeriodicFactor :=
-      ⟨F.startCut i - F.windowLength i, L ⟨i, h⟩, (F.ray ⟨i, h⟩).period⟩
+    have hcc := hcl.1
+    have hc' := hcl.2.1
+    -- the pumped factor `[c, L)`, with the period of the ray
+    let sf : PeriodicFactor := ⟨F.startCut i, L ⟨i, h⟩, (F.ray ⟨i, h⟩).period⟩
     have hsf : sf.Valid (W' i) (C.periodBound (levelCount k)) := by
       refine ⟨Ray.period_pos, (F.period_le_bound i h).trans (heD _ le_rfl), (hlenr i h).ge, ?_⟩
       have hag : RayAgrees (F.ray ⟨i, h⟩) (W' i) (L ⟨i, h⟩) :=
         ⟨(hlenr i h).ge, by rw [hWr i h, List.take_of_length_le (by rw [length_streamPrefix])]⟩
       exact (periodicOn_of_rayAgrees hag).mono
-        (by rw [F.ray_eq i h]; exact onset_repeatFactorRay_le_sub hcl) le_rfl
+        (by rw [F.ray_eq i h]; exact onset_repeatFactorRay_le hcc hc') le_rfl
     -- letters of the edited word below `c'` are original letters
     have hlet : ∀ q < F.endCut i, (W' i)[q]? = (W i)[q]? := by
       intro q hq
@@ -320,13 +318,13 @@ theorem exists_hole_with_run_cover (C : LevelBounds (Fintype.card α) k (Fintype
     rcases F.cover i h with ⟨hc'eq, hcov⟩ | hcov
     · -- terminal ray: its cover of `[J, |w|)` and the pumped factor
       refine (((hcov.mono le_rfl (heD _ (by omega)) le_rfl).cons_of_agree hsf
-        (show F.startCut i - F.windowLength i ≤ _ by omega) (hlenr i h).symm
+        (show F.startCut i ≤ _ by omega) (hlenr i h).symm
         (by rw [hlenr i h]; omega) fun q hq => hlet q (by omega)).mono (by omega) le_rfl ?_)
       exact (hTt _ (by omega)).trans (Nat.le_add_right _ _)
     · -- other ray: its cover of `[J, c)` and the pumped factor
       have hlc : ((W i).take (F.startCut i)).length = F.startCut i := by simp; omega
       refine (((hcov.mono le_rfl (heD _ le_rfl) le_rfl).cons_of_agree hsf
-        (show F.startCut i - F.windowLength i ≤ _ by rw [hlc]; omega) (hlenr i h).symm
+        hlc.ge (hlenr i h).symm
         (by rw [hlc, hlenr i h]; omega) fun q hq => ?_).mono (by omega) le_rfl ?_)
       · rw [hlc] at hq
         rw [hlet q (by omega), List.getElem?_take_of_lt hq]

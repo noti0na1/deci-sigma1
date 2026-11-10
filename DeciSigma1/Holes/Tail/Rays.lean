@@ -4,27 +4,44 @@ import DeciSigma1.Words.SuffixChains
 
 /-! # Closed factors and rays
 
-Tools for replacing a rejected tail by a periodic continuation. The *window state* of a cut `c`
-at window `b` is the state of the run `b` letters before `c` together with those `b` letters
-(`windowState`); there are at most `windowStateBound σ N b` window states. If two cuts `c < c'`
-have the same window state, the factor `x[c, c')` is closed (`ClosedAt`), and
-`pumpFactor x c c' L` repeats it: `x[0, c)` followed by the first `L` letters of
-`x[c, c')^ω`. Along the pumped word, letters and states repeat with period `c' - c` from
-`c - B` on, and every state is a state of `x` at a cut at most `c'`. If no occurrence of the
-suffix of length `B` of a target ends in `(c, c']`, every comparison of the pumped word with the
-target is a comparison of `x` with the target (`comparison_of_pumpFactor`). Pumping a closed
-factor after the first rejected cut keeps the coordinate eligible with the same first rejected
-cut and makes its endpoint immortal (`pumpFactor_eligible`).
+Tools for replacing a rejected tail by a periodic continuation. A factor `x[c, c')` is repeated
+by `pumpFactor x c c' L`: `x[0, c)` followed by the first `L` letters of `x[c, c')^ω`. The
+repetition must create no new comparison with the target words, which is guaranteed when the two
+cuts `c` and `c'` have the same finite summary.
+
+The summary is the *suffix node*. The *suffix dictionary* of the targets at window `B`
+(`suffixDictionary`) consists of the empty word and the nonempty factors of the suffixes of
+length `B` of the targets; for `m` targets it has at most `m B (B + 1) / 2 + 1` words. The suffix
+node of a word (`suffixNode`) is its longest suffix in the dictionary, together with the state of
+the run before that suffix. Suffix nodes form a deterministic automaton (`suffixNode_snoc`), and
+for `N` states there are at most `suffixNodeBound m N B` of them, whatever the alphabet. Two cuts
+`c < c'` with the same suffix node bound a *closed* factor (`NodeClosedAt`); among the cuts
+`u, u + s, u + 2 s, …` a closed factor of length at least `s` occurs early
+(`exists_nodeClosedAt_of_spaced_cuts`). Along the pumped word, letters, states and suffix nodes
+repeat with period `c' - c` from `c` on. If no occurrence of the suffix of length `B` of a target
+ends in `(c, c']`, every comparison of the pumped word with the target is a comparison of `x`
+with the target (`comparison_of_pumpFactor`). Pumping a closed factor after the first rejected
+cut keeps the coordinate eligible with the same first rejected cut and makes its endpoint
+immortal (`pumpFactor_eligible`).
+
+Long periodic suffixes give closed factors directly, through the *window state* of a cut at
+window `B`: the state of the run `B` letters before the cut together with those `B` letters
+(`windowState`). Equal window states (`ClosedAt`) make the letters of the pumped word periodic
+from `c - B` on, and give equal suffix nodes for every dictionary of words of length at most `B`
+(`ClosedAt.nodeClosedAt`).
 
 The second part treats rays as continuations. The state along a ray (`rayState`) repeats after
-a computable horizon (`ray_state_reduce`), and `repeatFactorRay` is the ray of a closed factor.
+a computable horizon (`ray_state_reduce`), and `repeatFactorRay` is the ray of a factor.
 To choose the lengths of several ray prefixes at once, the admitted comparisons between
 distinct rays give constraints `L j ≥ L i + (b - a + 1)` (`raySystem`); a solution makes the
 prefixes free of admitted comparisons (`ray_prefix_hole`).
 
 ## Main declarations
 
-- `windowState`, `windowStateBound`, `ClosedAt`: window states and closed factors.
+- `suffixDictionary`, `suffixNode`, `suffixNode_snoc`: suffix dictionaries and the suffix-node
+  automaton.
+- `NodeClosedAt`, `factorLengthBound`, `exists_nodeClosedAt_of_spaced_cuts`: closed factors.
+- `windowState`, `ClosedAt`, `ClosedAt.nodeClosedAt`: factors closed at a window.
 - `NoSuffixOccurrenceEndsBetween`: no occurrence of a suffix of a target ends inside a factor.
 - `pumpFactor`, `comparison_of_pumpFactor`, `pumpFactor_eligible`: pumping a closed factor.
 - `rayState`, `ray_state_reduce`, `repeatFactorRay`: runs along rays.
@@ -80,16 +97,24 @@ theorem getElem?_suffixOfLength (t : List α) (B j : ℕ) :
     (Words.suffixOfLength t B)[j]? = t[t.length - B + j]? := by
   simp [Words.suffixOfLength, List.getElem?_drop]
 
-/-! ## Window states and closed factors -/
+/-- Comparing suffixes after appending one letter to each word. -/
+theorem snoc_suffix_snoc_iff {u w : List α} {a b : α} :
+    u ++ [b] <:+ w ++ [a] ↔ u <:+ w ∧ b = a := by
+  constructor
+  · rintro ⟨r, hr⟩
+    rw [← List.append_assoc] at hr
+    obtain ⟨h1, h2⟩ := List.append_inj' hr rfl
+    exact ⟨⟨r, h1⟩, by simpa using h2⟩
+  · rintro ⟨⟨r, rfl⟩, rfl⟩
+    exact ⟨r, by simp⟩
 
-/-- A bound `N · max(2, σ)^(b+1)` on the number of window states at window `b`, for an alphabet
-of size `σ` and `N` states. -/
-def windowStateBound (σ N b : ℕ) : ℕ := N * max 2 σ ^ (b + 1)
+/-- A word is its prefix before a suffix, followed by that suffix. -/
+theorem take_append_suffix {s w : List α} (h : s <:+ w) :
+    w.take (w.length - s.length) ++ s = w := by
+  conv_rhs => rw [← List.take_append_drop (w.length - s.length) w]
+  rw [← List.suffix_iff_eq_drop.mp h]
 
-theorem windowStateBound_mono (σ N : ℕ) : Monotone (windowStateBound σ N) := by
-  intro b b' h
-  unfold windowStateBound
-  exact Nat.mul_le_mul_left _ (Nat.pow_le_pow_right (by omega) (by omega))
+/-! ## Window states and pumped factors -/
 
 /-- The window state of cut `c` at window `b`: the state before the last `b` letters before `c`,
 and those letters (the whole prefix if `c < b`). -/
@@ -114,71 +139,340 @@ theorem NoSuffixOccurrenceEndsBetween.mono [DecidableEq α] {x t : List α} {b B
     (hb : b ≤ B) : NoSuffixOccurrenceEndsBetween x t B c c' :=
   fun e he => h e (Words.occurrences_antitone hb he)
 
-/-- Equal window states at distinct cuts have full windows. -/
-theorem le_of_windowState_eq {T : Table α S k} {q0 : S} {x : List α} {b c c' : ℕ} (hcc : c < c')
-    (hc' : c' ≤ x.length) (h : windowState T q0 x b c = windowState T q0 x b c') : b ≤ c := by
-  have := congrArg (fun n => n.2.length) h
-  simp only [windowState, List.length_drop, List.length_take] at this
+/-! ## Suffix dictionaries -/
+
+section Dictionary
+
+variable [DecidableEq α]
+
+/-- The nonempty factors of `w`. -/
+def nonemptyFactors (w : List α) : Finset (List α) :=
+  (Finset.range w.length).biUnion fun i =>
+    (Finset.range (w.length - i)).image fun j => (w.drop i).take (j + 1)
+
+theorem mem_nonemptyFactors {u w : List α} : u ∈ nonemptyFactors w ↔ u ≠ [] ∧ u <:+: w := by
+  simp only [nonemptyFactors, Finset.mem_biUnion, Finset.mem_range, Finset.mem_image]
+  constructor
+  · rintro ⟨i, hi, j, hj, rfl⟩
+    refine ⟨?_, (List.take_prefix _ _).isInfix.trans (List.drop_suffix _ _).isInfix⟩
+    rw [← List.length_pos_iff, List.length_take, List.length_drop]
+    omega
+  · rintro ⟨hne, s, t, rfl⟩
+    have hu := List.length_pos_iff.mpr hne
+    refine ⟨s.length, by simp; omega, u.length - 1, by simp; omega, ?_⟩
+    rw [show u.length - 1 + 1 = u.length by omega, List.append_assoc, List.drop_left,
+      List.take_left]
+
+/-- A word of length `n` has at most `n (n + 1) / 2` nonempty factors. -/
+theorem card_nonemptyFactors_le (w : List α) :
+    (nonemptyFactors w).card ≤ w.length * (w.length + 1) / 2 := by
+  have hsum : ∀ n : ℕ, (∑ i ∈ Finset.range n, (n - i)) * 2 = n * (n + 1) := by
+    intro n
+    induction n with
+    | zero => simp
+    | succ n ih =>
+      rw [Finset.sum_range_succ', Nat.add_mul]
+      have : ∑ i ∈ Finset.range n, (n + 1 - (i + 1)) = ∑ i ∈ Finset.range n, (n - i) :=
+        Finset.sum_congr rfl fun i _ => by omega
+      rw [this, ih, Nat.sub_zero]
+      ring
+  calc (nonemptyFactors w).card
+      ≤ ∑ i ∈ Finset.range w.length, ((Finset.range (w.length - i)).image
+          fun j => (w.drop i).take (j + 1)).card := Finset.card_biUnion_le
+    _ ≤ ∑ i ∈ Finset.range w.length, (w.length - i) :=
+        Finset.sum_le_sum fun i _ => Finset.card_image_le.trans (by simp)
+    _ = w.length * (w.length + 1) / 2 := by have := hsum w.length; omega
+
+/-- The suffix dictionary of the targets `ts` at window `B`: the empty word and the nonempty
+factors of the suffixes of length `B` of the targets (of the whole target if it is shorter). -/
+def suffixDictionary (ts : List (List α)) (B : ℕ) : Finset (List α) :=
+  insert [] (ts.toFinset.biUnion fun t => nonemptyFactors (Words.suffixOfLength t B))
+
+variable {ts : List (List α)} {B : ℕ}
+
+theorem mem_suffixDictionary {u : List α} :
+    u ∈ suffixDictionary ts B ↔ u = [] ∨ ∃ t ∈ ts, u <:+: Words.suffixOfLength t B := by
+  simp only [suffixDictionary, Finset.mem_insert, Finset.mem_biUnion, List.mem_toFinset,
+    mem_nonemptyFactors]
+  constructor
+  · rintro (h | ⟨t, ht, -, h⟩)
+    exacts [.inl h, .inr ⟨t, ht, h⟩]
+  · rintro (h | ⟨t, ht, h⟩)
+    · exact .inl h
+    · by_cases hu : u = []
+      exacts [.inl hu, .inr ⟨t, ht, hu, h⟩]
+
+theorem nil_mem_suffixDictionary : ([] : List α) ∈ suffixDictionary ts B :=
+  Finset.mem_insert_self _ _
+
+theorem length_le_of_mem_suffixDictionary {u : List α} (h : u ∈ suffixDictionary ts B) :
+    u.length ≤ B := by
+  rcases mem_suffixDictionary.mp h with rfl | ⟨t, -, h⟩
+  · simp
+  · have := h.length_le
+    simp only [Words.length_suffixOfLength] at this
+    omega
+
+/-- The suffix dictionary is closed under factors. -/
+theorem mem_suffixDictionary_of_infix {u v : List α} (hv : v ∈ suffixDictionary ts B)
+    (hu : u <:+: v) : u ∈ suffixDictionary ts B := by
+  rcases mem_suffixDictionary.mp hv with rfl | ⟨t, ht, h⟩
+  · exact mem_suffixDictionary.mpr (.inl (List.infix_nil.mp hu))
+  · exact mem_suffixDictionary.mpr (.inr ⟨t, ht, hu.trans h⟩)
+
+/-- The suffixes of length at most `B` of a target lie in the suffix dictionary. -/
+theorem mem_suffixDictionary_of_suffix {t p : List α} (ht : t ∈ ts) (hp : p <:+ t)
+    (hpB : p.length ≤ B) : p ∈ suffixDictionary ts B := by
+  have hpt := hp.length_le
+  refine mem_suffixDictionary.mpr (.inr ⟨t, ht, (List.suffix_of_suffix_length_le hp
+    (List.drop_suffix _ _) ?_).isInfix⟩)
+  simp only [List.length_drop]
   omega
 
-/-- Words of length `≤ n` over `σ` letters number at most `max 2 σ ^ (n+1) - 1`. -/
-theorem card_wordsUpTo_le [Fintype α] [DecidableEq α] (n : ℕ) :
-    (Automata.wordsUpTo (α := α) n).card + 1 ≤ max 2 (Fintype.card α) ^ (n + 1) := by
-  set m := max 2 (Fintype.card α)
-  have hm : 2 ≤ m := le_max_left _ _
-  have hσ : Fintype.card α ≤ m := le_max_right _ _
-  induction n with
-  | zero => simp [Automata.wordsUpTo]; omega
-  | succ n ih =>
-    simp only [Automata.wordsUpTo]
-    have h1 := Finset.card_insert_le ([] : List α)
-      (Finset.univ.biUnion fun a : α => (Automata.wordsUpTo n).image (List.cons a))
-    have h2 := Finset.card_biUnion_le (s := (Finset.univ : Finset α))
-      (t := fun a : α => (Automata.wordsUpTo n).image (List.cons a))
-    have h3 : ∑ a : α, ((Automata.wordsUpTo n).image (List.cons a)).card ≤
-        Fintype.card α * (Automata.wordsUpTo (α := α) n).card := by
-      calc ∑ a : α, ((Automata.wordsUpTo n).image (List.cons a)).card
-          ≤ ∑ _a : α, (Automata.wordsUpTo (α := α) n).card :=
-            Finset.sum_le_sum fun a _ => Finset.card_image_le
-        _ = Fintype.card α * (Automata.wordsUpTo (α := α) n).card := by
-            simp [Finset.sum_const, Finset.card_univ]
-    have h4 : Fintype.card α * (Automata.wordsUpTo (α := α) n).card ≤
-        m * (Automata.wordsUpTo (α := α) n).card := Nat.mul_le_mul_right _ hσ
-    have h5 : m * ((Automata.wordsUpTo (α := α) n).card + 1) ≤ m * m ^ (n + 1) :=
-      Nat.mul_le_mul_left _ ih
-    rw [pow_succ]
-    nlinarith
+/-- The suffix dictionary of `m` targets at window `B` has at most `m B (B + 1) / 2 + 1`
+words. -/
+theorem card_suffixDictionary_le (ts : List (List α)) (B : ℕ) :
+    (suffixDictionary ts B).card ≤ ts.length * (B * (B + 1) / 2) + 1 := by
+  refine (Finset.card_insert_le _ _).trans (Nat.add_le_add_right ?_ 1)
+  have hB : ∀ t : List α, (Words.suffixOfLength t B).length ≤ B := fun t => by simp
+  calc _ ≤ ∑ t ∈ ts.toFinset, (nonemptyFactors (Words.suffixOfLength t B)).card :=
+        Finset.card_biUnion_le
+    _ ≤ ∑ _t ∈ ts.toFinset, B * (B + 1) / 2 := Finset.sum_le_sum fun t _ =>
+        (card_nonemptyFactors_le _).trans (Nat.div_le_div_right
+          (Nat.mul_le_mul (hB t) (Nat.add_le_add_right (hB t) 1)))
+    _ = ts.toFinset.card * (B * (B + 1) / 2) := by simp
+    _ ≤ ts.length * (B * (B + 1) / 2) := Nat.mul_le_mul_right _ (List.toFinset_card_le ts)
 
-/-- With `V = windowStateBound σ N b`, any `V + 1` consecutive cuts `u, …, u + V` contain two with
-equal window states at window `b`; they bound a closed factor of length at most `V`. Windows
-shorter than `b` are allowed, since they cannot repeat. -/
-theorem exists_closedInterval_of_window_bound [Fintype α] [DecidableEq α] [Fintype S]
-    [DecidableEq S]
-    (T : Table α S k) (q0 : S) (x : List α) {b u : ℕ}
-    (hu : u + windowStateBound (Fintype.card α) (Fintype.card S) b ≤ x.length) :
-    ∃ c c', u ≤ c ∧ c' ≤ u + windowStateBound (Fintype.card α) (Fintype.card S) b ∧
-        ClosedAt T q0 x b c c' := by
-  set V := windowStateBound (Fintype.card α) (Fintype.card S) b
-  have hmaps : ∀ c ∈ Finset.Icc u (u + V),
-      windowState T q0 x b c ∈ (Finset.univ : Finset S) ×ˢ Automata.wordsUpTo b := by
-    intro c _
-    simp only [Finset.mem_product, Finset.mem_univ, true_and, Automata.mem_wordsUpTo, windowState,
-      List.length_drop, List.length_take]
-    omega
-  have hcard : ((Finset.univ : Finset S) ×ˢ Automata.wordsUpTo (α := α) b).card <
-      (Finset.Icc u (u + V)).card := by
-    rw [Finset.card_product, Finset.card_univ, Nat.card_Icc]
-    have h1 := card_wordsUpTo_le (α := α) b
-    have h2 : Fintype.card S * ((Automata.wordsUpTo (α := α) b).card + 1) ≤ V :=
-      Nat.mul_le_mul_left _ h1
-    have hN : 0 < Fintype.card S := Fintype.card_pos_iff.mpr ⟨q0⟩
-    rw [Nat.mul_succ] at h2
-    omega
-  obtain ⟨c₁, hc₁, c₂, hc₂, hne, he⟩ := Finset.exists_ne_map_eq_of_card_lt_of_maps_to hcard hmaps
-  rw [Finset.mem_Icc] at hc₁ hc₂
+end Dictionary
+
+/-! ## Suffix nodes -/
+
+section Nodes
+
+variable [DecidableEq α] {D : Finset (List α)}
+
+/-- The longest suffix of `w` that lies in the dictionary `D`, or the empty word if there is
+none. -/
+def dictSuffix (D : Finset (List α)) : List α → List α
+  | [] => []
+  | a :: w => if a :: w ∈ D then a :: w else dictSuffix D w
+
+theorem dictSuffix_suffix (D : Finset (List α)) : ∀ w : List α, dictSuffix D w <:+ w
+  | [] => List.suffix_refl _
+  | a :: w => by
+    rw [dictSuffix]
+    split_ifs
+    · exact List.suffix_refl _
+    · exact (dictSuffix_suffix D w).trans (List.suffix_cons _ _)
+
+theorem dictSuffix_mem (hD : [] ∈ D) : ∀ w : List α, dictSuffix D w ∈ D
+  | [] => hD
+  | a :: w => by
+    rw [dictSuffix]
+    split_ifs with h
+    exacts [h, dictSuffix_mem hD w]
+
+theorem length_le_length_dictSuffix : ∀ {w s : List α}, s <:+ w → s ∈ D →
+    s.length ≤ (dictSuffix D w).length
+  | [], s, hs, _ => by rw [List.suffix_nil.mp hs]; simp
+  | a :: w, s, hs, hsD => by
+    rw [dictSuffix]
+    split_ifs with h
+    · exact hs.length_le
+    · rcases List.suffix_cons_iff.mp hs with rfl | hs
+      · exact absurd hsD h
+      · exact length_le_length_dictSuffix hs hsD
+
+/-- Every suffix of `w` in `D` is a suffix of `dictSuffix D w`. -/
+theorem suffix_dictSuffix {w s : List α} (hs : s <:+ w) (hsD : s ∈ D) : s <:+ dictSuffix D w :=
+  List.suffix_of_suffix_length_le hs (dictSuffix_suffix D w) (length_le_length_dictSuffix hs hsD)
+
+/-- A longest suffix of `w` in `D` is `dictSuffix D w`. -/
+theorem dictSuffix_eq (hD : [] ∈ D) {w s : List α} (hs : s <:+ w) (hsD : s ∈ D)
+    (hmax : ∀ r, r <:+ w → r ∈ D → r.length ≤ s.length) : dictSuffix D w = s := by
+  have h1 := hmax _ (dictSuffix_suffix D w) (dictSuffix_mem hD w)
+  have h2 := length_le_length_dictSuffix (D := D) hs hsD
+  exact ((suffix_dictSuffix hs hsD).eq_of_length (by omega)).symm
+
+/-- If `D` contains the empty word and is closed under prefixes, the longest suffix in `D` after
+one more letter `a` is the longest suffix in `D` of `dictSuffix D w ++ [a]`. -/
+theorem dictSuffix_snoc (hD : [] ∈ D) (hpre : ∀ u a, u ++ [a] ∈ D → u ∈ D) (w : List α)
+    (a : α) : dictSuffix D (w ++ [a]) = dictSuffix D (dictSuffix D w ++ [a]) := by
+  apply dictSuffix_eq hD ((dictSuffix_suffix D _).trans
+    (snoc_suffix_snoc_iff.mpr ⟨dictSuffix_suffix D w, rfl⟩)) (dictSuffix_mem hD _)
+  intro r hr hrD
+  rcases List.eq_nil_or_concat r with rfl | ⟨r0, b, rfl⟩
+  · simp
+  · rw [List.concat_eq_append] at hr hrD ⊢
+    obtain ⟨hr0, rfl⟩ := snoc_suffix_snoc_iff.mp hr
+    exact length_le_length_dictSuffix
+      (snoc_suffix_snoc_iff.mpr ⟨suffix_dictSuffix hr0 (hpre r0 _ hrD), rfl⟩) hrD
+
+/-- The suffix node of `w` for the dictionary `D`: the longest suffix of `w` in `D`, and the state
+of the run of `T` from `q0` before that suffix. -/
+def suffixNode (T : Table α S k) (q0 : S) (D : Finset (List α)) (w : List α) : List α × S :=
+  (dictSuffix D w, runFrom T.step q0 (w.take (w.length - (dictSuffix D w).length)))
+
+/-- One step of the suffix-node automaton: the node after the letter `a`, from the node `n`. -/
+def suffixNodeStep (T : Table α S k) (D : Finset (List α)) (n : List α × S) (a : α) :
+    List α × S :=
+  (dictSuffix D (n.1 ++ [a]),
+    runFrom T.step n.2 ((n.1 ++ [a]).take (n.1.length + 1 - (dictSuffix D (n.1 ++ [a])).length)))
+
+/-- The suffix nodes form a deterministic automaton: the node after one more letter is computed
+from the node before, if `D` contains the empty word and is closed under prefixes. -/
+theorem suffixNode_snoc (T : Table α S k) (q0 : S) (hD : [] ∈ D)
+    (hpre : ∀ u a, u ++ [a] ∈ D → u ∈ D) (w : List α) (a : α) :
+    suffixNode T q0 D (w ++ [a]) = suffixNodeStep T D (suffixNode T q0 D w) a := by
+  have hsnoc := dictSuffix_snoc hD hpre w a
+  simp only [suffixNode, suffixNodeStep, ← hsnoc]
+  refine Prod.ext rfl ?_
+  simp only
+  have hs := dictSuffix_suffix D w
+  have hsw := hs.length_le
+  have h2 : (dictSuffix D (w ++ [a])).length ≤ (dictSuffix D w).length + 1 := by
+    rw [hsnoc]; simpa using (dictSuffix_suffix D (dictSuffix D w ++ [a])).length_le
+  generalize dictSuffix D (w ++ [a]) = s' at h2 ⊢
+  generalize dictSuffix D w = s at hs hsw h2 ⊢
+  have e : w ++ [a] = w.take (w.length - s.length) ++ (s ++ [a]) := by
+    rw [← List.append_assoc, take_append_suffix hs]
+  rw [← runFrom_append, e, List.take_append, List.take_of_length_le (by simp; omega)]
+  congr 3
+  simp
+  omega
+
+/-- The state after `w` is read from its suffix node. -/
+theorem runFrom_eq_suffixNode (T : Table α S k) (q0 : S) (D : Finset (List α)) (w : List α) :
+    runFrom T.step q0 w = runFrom T.step (suffixNode T q0 D w).2 (suffixNode T q0 D w).1 := by
+  simp only [suffixNode]
+  rw [← runFrom_append, take_append_suffix (dictSuffix_suffix D w)]
+
+/-- A suffix `p ∈ D` of `w` is a suffix of the word of the suffix node of `w`, and the state before
+it is read from the node. -/
+theorem suffixNode_suffix (T : Table α S k) (q0 : S) {w p : List α} (hp : p <:+ w)
+    (hpD : p ∈ D) :
+    p <:+ (suffixNode T q0 D w).1 ∧
+      runFrom T.step q0 (w.take (w.length - p.length)) =
+        runFrom T.step (suffixNode T q0 D w).2
+          ((suffixNode T q0 D w).1.take ((suffixNode T q0 D w).1.length - p.length)) := by
+  have hps := suffix_dictSuffix hp hpD
+  refine ⟨hps, ?_⟩
+  simp only [suffixNode]
+  have hpl := hps.length_le
+  have hs := dictSuffix_suffix D w
+  have hsw := hs.length_le
+  generalize dictSuffix D w = s at hs hsw hpl ⊢
+  have e : w = w.take (w.length - s.length) ++ s := (take_append_suffix hs).symm
+  rw [← runFrom_append]
+  conv_lhs => rw [e]
+  rw [List.take_append, List.take_of_length_le (by simp; omega)]
+  congr 3
+  simp
+  omega
+
+/-- Two words with the same suffix node have the same suffixes in `D`, with the same states before
+them. -/
+theorem suffix_of_suffixNode_eq (T : Table α S k) (q0 : S) {w w' p : List α}
+    (he : suffixNode T q0 D w = suffixNode T q0 D w') (hp : p <:+ w) (hpD : p ∈ D) :
+    p <:+ w' ∧ runFrom T.step q0 (w'.take (w'.length - p.length)) =
+      runFrom T.step q0 (w.take (w.length - p.length)) := by
+  obtain ⟨h1, h2⟩ := suffixNode_suffix T q0 hp hpD
+  rw [he] at h1 h2
+  have hp' : p <:+ w' := h1.trans (dictSuffix_suffix D w')
+  exact ⟨hp', (suffixNode_suffix T q0 hp' hpD).2.trans h2.symm⟩
+
+/-- The factor `x[c, c')` is closed for the dictionary `D`: the cuts `c < c'` have the same suffix
+node. -/
+def NodeClosedAt (T : Table α S k) (q0 : S) (D : Finset (List α)) (x : List α) (c c' : ℕ) :
+    Prop :=
+  c < c' ∧ c' ≤ x.length ∧ suffixNode T q0 D (x.take c) = suffixNode T q0 D (x.take c')
+
+variable {T : Table α S k} {q0 : S} {x : List α} {B c c' : ℕ}
+
+/-- The cuts of a closed factor have the same state. -/
+theorem NodeClosedAt.state (hcl : NodeClosedAt T q0 D x c c') :
+    runFrom T.step q0 (x.take c) = runFrom T.step q0 (x.take c') := by
+  rw [runFrom_eq_suffixNode T q0 D (x.take c), runFrom_eq_suffixNode T q0 D (x.take c'),
+    hcl.2.2]
+
+/-- For a dictionary of words of length at most `|v|`, the suffix node of `u ++ v` depends only on
+the state after `u` and on `v`. -/
+theorem suffixNode_append (T : Table α S k) (q0 : S) (hD : [] ∈ D) {u v : List α}
+    (hB : ∀ r ∈ D, r.length ≤ v.length) :
+    suffixNode T q0 D (u ++ v) = (dictSuffix D v, runFrom T.step (runFrom T.step q0 u)
+      (v.take (v.length - (dictSuffix D v).length))) := by
+  have hdv : dictSuffix D (u ++ v) = dictSuffix D v := by
+    apply dictSuffix_eq hD ((dictSuffix_suffix D v).trans (List.suffix_append _ _))
+      (dictSuffix_mem hD v)
+    intro r hr hrD
+    exact length_le_length_dictSuffix
+      (List.suffix_of_suffix_length_le hr (List.suffix_append _ _) (hB r hrD)) hrD
+  simp only [suffixNode, hdv]
+  have := (dictSuffix_suffix D v).length_le
+  rw [← runFrom_append, List.take_append, List.take_of_length_le (by simp; omega)]
+  congr 3
+  simp
+  omega
+
+/-- A factor closed at window `B` is closed for every dictionary of words of length at most `B`
+that contains the empty word. -/
+theorem ClosedAt.nodeClosedAt (hcl : ClosedAt T q0 x B c c') (hD : [] ∈ D)
+    (hB : ∀ r ∈ D, r.length ≤ B) : NodeClosedAt T q0 D x c c' := by
+  obtain ⟨hBc, hcc, hc', hw⟩ := hcl
+  refine ⟨hcc, hc', ?_⟩
+  have hsplit : ∀ e, x.take e = x.take (e - B) ++ (x.take e).drop (e - B) := fun e => by
+    conv_lhs => rw [← List.take_append_drop (e - B) (x.take e)]
+    rw [List.take_take, min_eq_left (Nat.sub_le _ _)]
+  have hlen : ∀ e, B ≤ e → e ≤ x.length → ((x.take e).drop (e - B)).length = B := fun e h1 h2 => by
+    simp; omega
+  rw [hsplit c, hsplit c', suffixNode_append T q0 hD (by rw [hlen c hBc (by omega)]; exact hB),
+    suffixNode_append T q0 hD (by rw [hlen c' (by omega) hc']; exact hB)]
+  simp only [windowState, Prod.mk.injEq] at hw
+  rw [hw.1, hw.2]
+
+/-- A bound `N (m B (B + 1) / 2 + 1)` on the number of suffix nodes for the dictionary of `m`
+targets at window `B`, with `N` states. -/
+def suffixNodeBound (m N B : ℕ) : ℕ := N * (m * (B * (B + 1) / 2) + 1)
+
+/-- A bound `(B + 1) · suffixNodeBound m N B` on the length of a closed factor found among cuts
+spaced `B + 1` apart. -/
+def factorLengthBound (m N B : ℕ) : ℕ := (B + 1) * suffixNodeBound m N B
+
+theorem factorLengthBound_mono (m N : ℕ) : Monotone (factorLengthBound m N) := by
+  intro B B' h
+  have h1 : B * (B + 1) / 2 ≤ B' * (B' + 1) / 2 :=
+    Nat.div_le_div_right (Nat.mul_le_mul h (by omega))
+  exact Nat.mul_le_mul (by omega)
+    (Nat.mul_le_mul_left _ (Nat.add_le_add_right (Nat.mul_le_mul_left _ h1) 1))
+
+/-- Among the cuts `u, u + s, …, u + V s` of `x`, where `V = |D| · N` and `[] ∈ D`, two have the
+same suffix node; they bound a closed factor of length at least `s`. -/
+theorem exists_nodeClosedAt_of_spaced_cuts [Fintype S] (T : Table α S k) (q0 : S) (hD : [] ∈ D)
+    (x : List α) {s u : ℕ} (hs : 0 < s) (hu : u + s * (D.card * Fintype.card S) ≤ x.length) :
+    ∃ c c', u ≤ c ∧ c' ≤ u + s * (D.card * Fintype.card S) ∧ s ≤ c' - c ∧
+      NodeClosedAt T q0 D x c c' := by
+  set V := D.card * Fintype.card S
+  have hmaps : ∀ j ∈ Finset.range (V + 1),
+      suffixNode T q0 D (x.take (u + j * s)) ∈ D ×ˢ (Finset.univ : Finset S) := fun j _ =>
+    Finset.mem_product.mpr ⟨dictSuffix_mem hD _, Finset.mem_univ _⟩
+  have hcard : (D ×ˢ (Finset.univ : Finset S)).card < (Finset.range (V + 1)).card := by
+    rw [Finset.card_product, Finset.card_univ, Finset.card_range]; omega
+  obtain ⟨j₁, hj₁, j₂, hj₂, hne, he⟩ := Finset.exists_ne_map_eq_of_card_lt_of_maps_to hcard hmaps
+  rw [Finset.mem_range] at hj₁ hj₂
+  have key : ∀ i j, i < j → j < V + 1 →
+      suffixNode T q0 D (x.take (u + i * s)) = suffixNode T q0 D (x.take (u + j * s)) →
+      ∃ c c', u ≤ c ∧ c' ≤ u + s * V ∧ s ≤ c' - c ∧ NodeClosedAt T q0 D x c c' := by
+    intro i j hij hj heq
+    have h1 : (i + 1) * s ≤ j * s := Nat.mul_le_mul_right s hij
+    have h2 : j * s ≤ V * s := Nat.mul_le_mul_right s (by omega)
+    rw [Nat.add_mul, Nat.one_mul] at h1
+    rw [Nat.mul_comm s V] at hu ⊢
+    exact ⟨u + i * s, u + j * s, by omega, by omega, by omega, by omega, by omega, heq⟩
   rcases Nat.lt_or_gt_of_ne hne with h | h
-  · exact ⟨c₁, c₂, hc₁.1, hc₂.2, le_of_windowState_eq h (by omega) he, h, by omega, he⟩
-  · exact ⟨c₂, c₁, hc₂.1, hc₁.2, le_of_windowState_eq h (by omega) he.symm, h, by omega, he.symm⟩
+  · exact key j₁ j₂ h hj₂ he
+  · exact key j₂ j₁ h hj₁ he.symm
+
+end Nodes
 
 /-! ## Structure of a pumped factor -/
 
@@ -261,10 +555,9 @@ end PumpFactor
 
 /-! ## Pumping a closed factor -/
 
-/-- One step of a run along a prefix. -/
-theorem runFrom_take_succ (T : Table α S k) (q : S) (w : List α) {p : ℕ} (h : p < w.length) :
-    runFrom T.step q (w.take (p + 1)) = T.step (runFrom T.step q (w.take p)) w[p] := by
-  rw [List.take_add_one, List.getElem?_eq_getElem h, Option.toList_some, runFrom_snoc]
+theorem take_succ_eq_append {w : List α} {p : ℕ} (h : p < w.length) :
+    w.take (p + 1) = w.take p ++ [w[p]] := by
+  rw [List.take_add_one, List.getElem?_eq_getElem h, Option.toList_some]
 
 section Closed
 
@@ -276,10 +569,6 @@ theorem ClosedAt.window (hcl : ClosedAt T q0 x B c c') {j : ℕ} (hj : j < B) :
   have h2 := congrArg (fun n => n.2[j]?) hn
   simp only [windowState, List.getElem?_drop, List.getElem?_take] at h2
   rwa [ite_eq_left (by omega), ite_eq_left (by omega)] at h2
-
-theorem ClosedAt.state (hcl : ClosedAt T q0 x B c c') :
-    runFrom T.step q0 (x.take (c - B)) = runFrom T.step q0 (x.take (c' - B)) :=
-  congrArg Prod.fst hcl.2.2.2
 
 /-- The letters of the pumped factor repeat with period `c' - c` from `c - B` on. -/
 theorem pumpFactor_letter_period (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) {p : ℕ}
@@ -294,75 +583,43 @@ theorem pumpFactor_letter_period (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤
       show c' - B + (p - (c - B)) = p + (c' - c) by omega] at this
   · exact (getElem?_stay_period hcc hc' (by omega) hpL).symm
 
-/-- The states along the pumped factor repeat with period `c' - c` from `c - B` on. -/
-theorem pumpFactor_state_period (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) {p : ℕ}
-    (hp : c - B ≤ p) (hpL : p + (c' - c) ≤ c + L) :
-    runFrom T.step q0 ((pumpFactor x c c' L).take (p + (c' - c))) =
-        runFrom T.step q0 ((pumpFactor x c c' L).take p) := by
-  have ⟨hB, hcc, hc', _⟩ := hcl
+/-- A function `F` of words that is updated letter by letter, `F (w ++ [a]) = G (F w) a`, and
+takes the same value on the prefixes of length `c < c'` repeats with period `c' - c` from `c` on
+along the pumped factor. -/
+theorem pumpFactor_period_of_snoc {β : Type*} (F : List α → β) (G : β → α → β)
+    (hF : ∀ w a, F (w ++ [a]) = G (F w) a) (hcc : c < c') (hc' : c' ≤ x.length)
+    (hFc : F (x.take c) = F (x.take c')) (hL : c' - c ≤ L) {p : ℕ} (hp : c ≤ p)
+    (hpL : p + (c' - c) ≤ c + L) :
+    F ((pumpFactor x c c' L).take (p + (c' - c))) = F ((pumpFactor x c c' L).take p) := by
   have hlen := length_pumpFactor (L := L) hcc hc'
   induction p, hp using Nat.le_induction with
   | base =>
-    rw [show c - B + (c' - c) = c' - B by omega, pumpFactor_take hcc hc' hL (by omega),
-      pumpFactor_take hcc hc' hL (by omega)]
-    exact hcl.state.symm
+    rw [show c + (c' - c) = c' by omega, pumpFactor_take hcc hc' hL le_rfl,
+      pumpFactor_take hcc hc' hL hcc.le]
+    exact hFc.symm
   | succ p hp ih =>
-    have ih' := ih (by omega)
-    have hlet := pumpFactor_letter_period hcl hL hp (by omega)
+    have hlet := getElem?_stay_period hcc hc' hp (by omega : p + (c' - c) < c + L)
     rw [List.getElem?_eq_getElem (by omega), List.getElem?_eq_getElem (by omega),
       Option.some_inj] at hlet
-    rw [show p + 1 + (c' - c) = p + (c' - c) + 1 by omega,
-      runFrom_take_succ T q0 _ (by omega), runFrom_take_succ T q0 _ (by omega), ih', hlet]
+    rw [show p + 1 + (c' - c) = p + (c' - c) + 1 by omega, take_succ_eq_append (by omega),
+      take_succ_eq_append (by omega), hF, hF, ih (by omega), hlet]
 
-/-- The suffix of the pumped factor from `p + (c' - c)` is a prefix of the suffix from `p`. -/
-theorem pumpFactor_drop_period (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) {p : ℕ}
-    (hp : c - B ≤ p) (hpL : p + (c' - c) ≤ c + L) :
-    (pumpFactor x c c' L).drop (p + (c' - c)) <+: (pumpFactor x c c' L).drop p := by
-  have ⟨hB, hcc, hc', _⟩ := hcl
-  have hlen := length_pumpFactor (L := L) hcc hc'
-  rw [prefix_drop_iff (by omega)]
-  refine ⟨by simp; omega, fun j hj => ?_⟩
-  simp only [List.length_drop] at hj
-  rw [List.getElem?_drop, pumpFactor_letter_period hcl hL (p := p + j) (by omega) (by omega)]
-  congr 1; omega
-
-/-- An occurrence of a word of length `ℓ ≤ B` in the pumped factor that ends after `c` is
-reproduced, with the same state before it, by an occurrence ending in `(c, c']`. -/
-theorem pumpFactor_occurrence_reduce (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) {ℓ : ℕ}
-    (hℓ : ℓ ≤ B)
-    {u : List α} (hu : u.length = ℓ) :
-    ∀ a, a + ℓ ≤ c + L → c < a + ℓ → u <+: (pumpFactor x c c' L).drop a →
-      ∃ a', c < a' + ℓ ∧ a' + ℓ ≤ c' ∧ u <+: (pumpFactor x c c' L).drop a' ∧
-        runFrom T.step q0 ((pumpFactor x c c' L).take a') =
-            runFrom T.step q0 ((pumpFactor x c c' L).take a) := by
-  intro a
-  induction a using Nat.strong_induction_on with
-  | _ a ih =>
-    intro haL hca hpre
-    have ⟨hB, hcc, hc', _⟩ := hcl
-    by_cases h1 : a + ℓ ≤ c'
-    · exact ⟨a, hca, h1, hpre, rfl⟩
-    · have hp : c - B ≤ a - (c' - c) := by omega
-      have hshift := pumpFactor_drop_period hcl hL hp (by omega)
-      have hst := pumpFactor_state_period hcl hL hp (by omega)
-      rw [show a - (c' - c) + (c' - c) = a by omega] at hshift hst
-      obtain ⟨a', h1', h2', h3', h4'⟩ := ih (a - (c' - c)) (by omega) (by omega) (by omega)
-        (hpre.trans hshift)
-      exact ⟨a', h1', h2', h3', h4'.trans hst.symm⟩
-
-/-- Every state of the pumped factor is a state of `x` at a cut at most `c'`, and at a cut at
-least `c` if the cut of the pumped factor is at least `c`. -/
-theorem pumpFactor_state_reduce (hcl : ClosedAt T q0 x B c c') (hL : c' - c ≤ L) :
-    ∀ p ≤ c + L, ∃ p' ≤ c', (c ≤ p → c ≤ p') ∧
-      runFrom T.step q0 ((pumpFactor x c c' L).take p) = runFrom T.step q0 (x.take p') := by
+/-- Under the hypotheses of `pumpFactor_period_of_snoc`, the value of `F` on every prefix of the
+pumped factor is its value on a prefix of `x` of length at most `c'`, and longer than `c` if the
+prefix of the pumped factor is. -/
+theorem pumpFactor_reduce_of_snoc {β : Type*} (F : List α → β) (G : β → α → β)
+    (hF : ∀ w a, F (w ++ [a]) = G (F w) a) (hcc : c < c') (hc' : c' ≤ x.length)
+    (hFc : F (x.take c) = F (x.take c')) (hL : c' - c ≤ L) :
+    ∀ p ≤ c + L, ∃ p' ≤ c', (c < p → c < p') ∧
+      F ((pumpFactor x c c' L).take p) = F (x.take p') := by
   intro p
   induction p using Nat.strong_induction_on with
   | _ p ih =>
     intro hp
-    have ⟨hB, hcc, hc', _⟩ := hcl
     by_cases h1 : p ≤ c'
     · exact ⟨p, h1, id, by rw [pumpFactor_take hcc hc' hL h1]⟩
-    · have hst := pumpFactor_state_period hcl hL (p := p - (c' - c)) (by omega) (by omega)
+    · have hst := pumpFactor_period_of_snoc F G hF hcc hc' hFc hL (p := p - (c' - c)) (by omega)
+        (by omega)
       rw [show p - (c' - c) + (c' - c) = p by omega] at hst
       obtain ⟨p', hp', hc, he⟩ := ih (p - (c' - c)) (by omega) (by omega)
       exact ⟨p', hp', fun _ => hc (by omega), hst.trans he⟩
@@ -371,63 +628,65 @@ end Closed
 
 /-! ## Comparisons with a target -/
 
-/-- If `x[c, c')` is closed at `B` and no occurrence of the suffix of length `B` of `t` ends in
-`(c, c']`, every comparison of the pumped factor with the target `t`, read from any state `qt`,
-is a comparison of `x` with `t`. Empty targets are included. -/
+/-- If `x[c, c')` is closed for the suffix dictionary of the targets `ts` at window `B`, and no
+occurrence of the suffix of length `B` of the target `t ∈ ts` ends in `(c, c']`, every comparison
+of the pumped factor with `t`, read from any state `qt`, is a comparison of `x` with `t`. Empty
+targets are included. -/
 theorem comparison_of_pumpFactor [DecidableEq α] [DecidableEq S] {T : Table α S k} {q0 qt : S}
-    {x t : List α}
-    {B c c' L : ℕ} (hcl : ClosedAt T q0 x B c c') (hfree : NoSuffixOccurrenceEndsBetween x t B c c')
-    (hL : c' - c ≤ L) : T.pathChannel q0 (pumpFactor x c c' L) qt t ⊆ T.pathChannel q0 x qt t := by
+    {x t : List α} {ts : List (List α)} {B c c' L : ℕ}
+    (hcl : NodeClosedAt T q0 (suffixDictionary ts B) x c c') (ht : t ∈ ts)
+    (hfree : NoSuffixOccurrenceEndsBetween x t B c c') (hL : c' - c ≤ L) :
+    T.pathChannel q0 (pumpFactor x c c' L) qt t ⊆ T.pathChannel q0 x qt t := by
   intro pq hpq
   rw [mem_pathChannel] at hpq ⊢
   obtain ⟨a, ha, b, hb, hpre, rfl⟩ := hpq
-  have ⟨hB, hcc, hc', _⟩ := hcl
+  have ⟨hcc, hc', hnode⟩ := hcl
   have hlen := length_pumpFactor (L := L) hcc hc'
+  set y := pumpFactor x c c' L with hy
   set ℓ := t.length - b with hℓ
   have hu : (t.drop b).length = ℓ := by simp [hℓ]
   have hpre' := (prefix_drop_iff ha).mp hpre
   rw [hu] at hpre'
-  -- reduce to an occurrence ending at or before `c'`
-  suffices key : ∃ a', a' + ℓ ≤ c' ∧ t.drop b <+: (pumpFactor x c c' L).drop a' ∧
-      runFrom T.step q0 ((pumpFactor x c c' L).take a') =
-        runFrom T.step q0 ((pumpFactor x c c' L).take a) by
-    obtain ⟨a', h1, h2, h3⟩ := key
-    refine ⟨a', by omega, b, hb, ?_, ?_⟩
-    · have h2' := (prefix_drop_iff (by omega)).mp h2
-      rw [prefix_drop_iff (by omega)]
-      rw [hu] at h2' ⊢
-      refine ⟨by omega, fun j hj => ?_⟩
-      rw [← h2'.2 j hj, getElem?_pumpFactor_of_lt hcc hc' hL (by omega)]
-    · rw [← h3, pumpFactor_take hcc hc' hL (by omega)]
   by_cases h1 : a + ℓ ≤ c'
-  · exact ⟨a, h1, hpre, rfl⟩
+  · -- the occurrence ends at or before `c'`, where the pumped factor agrees with `x`
+    refine ⟨a, by omega, b, hb, ?_, by rw [hy, pumpFactor_take hcc hc' hL (by omega)]⟩
+    rw [prefix_drop_iff (by omega), hu]
+    refine ⟨by omega, fun j hj => ?_⟩
+    rw [← hpre'.2 j hj, hy, getElem?_pumpFactor_of_lt hcc hc' hL (by omega)]
+  -- the occurrence ends at `a + ℓ > c'`, with the suffix node of a cut `e ∈ (c, c']` of `x`
+  have hD : [] ∈ suffixDictionary ts B := nil_mem_suffixDictionary
+  have hpreD : ∀ u (a : α), u ++ [a] ∈ suffixDictionary ts B → u ∈ suffixDictionary ts B :=
+    fun u _ h => mem_suffixDictionary_of_infix h (List.prefix_append _ _).isInfix
+  obtain ⟨e, he, hce, hen⟩ := pumpFactor_reduce_of_snoc (suffixNode T q0 (suffixDictionary ts B))
+    (suffixNodeStep T (suffixDictionary ts B)) (suffixNode_snoc T q0 hD hpreD) hcc hc' hnode hL
+    (a + ℓ) (by omega)
+  have hce' := hce (by omega)
+  have hsuf : t.drop b <:+ y.take (a + ℓ) := by
+    rw [suffix_take_iff (by omega), hu]
+    refine ⟨by omega, fun j hj => ?_⟩
+    rw [show a + ℓ - ℓ + j = a + j by omega, hpre'.2 j hj]
   by_cases h2 : ℓ ≤ B
-  · obtain ⟨a', _, h2', h3', h4'⟩ :=
-      pumpFactor_occurrence_reduce ⟨hB, hcc, hc', hcl.2.2.2⟩ hL h2 hu a
-      (by omega) (by omega) hpre
-    exact ⟨a', h2', h3', h4'⟩
-  · exfalso
-    -- the last `B` letters of the target are `v_B(t)`, which would end inside `(c, c']`
+  · -- the compared suffix lies in the dictionary: it ends at `e` with the same state before it
+    obtain ⟨hpx, hst⟩ := suffix_of_suffixNode_eq T q0 hen hsuf
+      (mem_suffixDictionary_of_suffix ht (List.drop_suffix b t) (by omega))
+    simp only [List.length_take, hu, List.take_take] at hst
+    rw [min_eq_left (by omega : e ≤ x.length), min_eq_left (by omega : a + ℓ ≤ y.length),
+      min_eq_left (by omega : e - ℓ ≤ e), min_eq_left (by omega : a + ℓ - ℓ ≤ a + ℓ),
+      show a + ℓ - ℓ = a by omega] at hst
+    rw [suffix_take_iff (by omega), hu] at hpx
+    refine ⟨e - ℓ, by omega, b, hb, ?_, by rw [hst]⟩
+    rw [prefix_drop_iff (by omega), hu]
+    exact ⟨by omega, fun j hj => hpx.2 j hj⟩
+  · -- the suffix of length `B` of the target would end inside `(c, c']`
+    exfalso
     have hBt : B ≤ t.length := by omega
-    have hv : Words.suffixOfLength t B <+: (pumpFactor x c c' L).drop (a + (ℓ - B)) := by
-      rw [prefix_drop_iff (by omega)]
-      simp only [Words.length_suffixOfLength, min_eq_left hBt]
-      refine ⟨by omega, fun j hj => ?_⟩
-      rw [show a + (ℓ - B) + j = a + (ℓ - B + j) by omega, hpre'.2 _ (by omega),
-        getElem?_suffixOfLength, List.getElem?_drop]
-      congr 1; omega
-    have hvlen : (Words.suffixOfLength t B).length = B := by simp [hBt]
-    obtain ⟨a'', h1'', h2'', h3'', _⟩ :=
-        pumpFactor_occurrence_reduce ⟨hB, hcc, hc', hcl.2.2.2⟩ hL le_rfl hvlen
-      (a + (ℓ - B)) (by omega) (by omega) hv
-    have hocc : a'' + B ∈ Words.occurrences x t B := by
-      rw [Words.mem_occurrences]
-      refine ⟨by omega, hBt, ?_⟩
-      rw [suffix_take_iff (by omega), hvlen]
-      refine ⟨by omega, fun j hj => ?_⟩
-      have := ((prefix_drop_iff (by omega)).mp h3'').2 j (by rw [hvlen]; exact hj)
-      rw [← this, getElem?_pumpFactor_of_lt hcc hc' hL (by omega)]
-      congr 1; omega
+    have hv : Words.suffixOfLength t B <:+ y.take (a + ℓ) :=
+      (List.suffix_of_suffix_length_le (List.drop_suffix _ t) (List.drop_suffix b t)
+        (by simp; omega)).trans hsuf
+    obtain ⟨hvx, -⟩ := suffix_of_suffixNode_eq T q0 hen hv
+      (mem_suffixDictionary_of_suffix ht (List.drop_suffix _ t) (by simp))
+    have hocc : e ∈ Words.occurrences x t B :=
+      Words.mem_occurrences.mpr ⟨by omega, hBt, hvx⟩
     rcases hfree _ hocc with h | h <;> omega
 
 /-- If `x[c, c')`, with `h = c' - c`, is closed at a window `B' ≥ B + h` and
@@ -475,30 +734,33 @@ theorem noSuffixOccurrenceEndsBetween_of_closedAt_of_suffixReturnGap_gt [Decidab
 
 /-- Replacing an eligible word by a pumped closed factor after its first rejected cut gives an
 eligible word with an immortal endpoint and the same first rejected cut. -/
-theorem pumpFactor_eligible [DecidableEq S] (M : StructuralReader α S k) {W W' : Fin k → List α}
-    {i : Fin k}
-    {B c c' L : ℕ} (hW : M.Eligible W i) (hcl : ClosedAt M.toTable (M.start i) (W i) B c c')
-    (hJ : M.firstRejection W i ≤ c) (hL : c' - c ≤ L) (hW' : W' i = pumpFactor (W i) c c' L) :
+theorem pumpFactor_eligible [DecidableEq α] [DecidableEq S] (M : StructuralReader α S k)
+    {W W' : Fin k → List α} {i : Fin k} {D : Finset (List α)} {c c' L : ℕ} (hW : M.Eligible W i)
+    (hcl : NodeClosedAt M.toTable (M.start i) D (W i) c c') (hJ : M.firstRejection W i ≤ c)
+    (hL : c' - c ≤ L) (hW' : W' i = pumpFactor (W i) c c' L) :
     M.Eligible W' i ∧ M.Immortal (M.endState W' i) ∧ M.firstRejection W' i =
         M.firstRejection W i := by
-  have ⟨hB, hcc, hc', _⟩ := hcl
+  have ⟨hcc, hc', _⟩ := hcl
   have hlen := length_pumpFactor (L := L) hcc hc'
+  have hred : ∀ L', c' - c ≤ L' → ∀ p ≤ c + L', ∃ p' ≤ c', (c < p → c < p') ∧
+      runFrom M.step (M.start i) ((pumpFactor (W i) c c' L').take p) =
+        runFrom M.step (M.start i) ((W i).take p') := fun L' hL' =>
+    pumpFactor_reduce_of_snoc (runFrom M.step (M.start i)) M.step (runFrom_snoc M.step _) hcc
+      hc' hcl.state hL'
   have hq : ∀ a, M.runPrefix W' i a =
       runFrom M.step (M.start i) ((pumpFactor (W i) c c' L).take a) := by
     intro a; simp only [Table.runPrefix, hW']
   have hlive : ∀ L', c' - c ≤ L' → ∀ p ≤ c + L',
       runFrom M.step (M.start i) ((pumpFactor (W i) c c' L').take p) ≠ M.dead := by
     intro L' hL' p hp
-    obtain ⟨p', hp', _, he⟩ := pumpFactor_state_reduce (T := M.toTable) ⟨hB, hcc, hc', hcl.2.2.2⟩
-      hL' p hp
+    obtain ⟨p', hp', _, he⟩ := hred L' hL' p hp
     rw [he]
     exact hW.1 p' (by omega)
   have helig : M.Eligible W' i := by
     refine ⟨fun a ha => ?_, ?_⟩
     · rw [hq]; rw [hW', hlen] at ha; exact hlive L hL a ha
     · simp only [Table.endState, hq, hW', hlen]
-      obtain ⟨p', hp', hc, he⟩ := pumpFactor_state_reduce (T := M.toTable) ⟨hB, hcc, hc', hcl.2.2.2⟩
-        hL (c + L) le_rfl
+      obtain ⟨p', hp', hc, he⟩ := hred L hL (c + L) le_rfl
       rw [he]
       exact StructuralReader.rejected_of_firstRejection_le hW (by have := hc (by omega); omega)
           (by omega)
@@ -640,6 +902,11 @@ theorem streamPrefix_repeatFactorRay {x : List α} {c c' : ℕ} (hcc : c < c') (
   have h := Ray.streamPrefix_stream (Ω := repeatFactorRay x c c' hcc hc') L
   simp only [repeatFactorRay, List.length_take, min_eq_left (by omega : c ≤ x.length)] at h
   exact h
+
+/-- The onset of the ray of a factor `x[c, c')` is at most `c`. -/
+theorem onset_repeatFactorRay_le [DecidableEq α] {x : List α} {c c' : ℕ} (hcc : c < c')
+    (hc' : c' ≤ x.length) : (repeatFactorRay x c c' hcc hc').onset ≤ c :=
+  Ray.onset_le_stem.trans (by simp [repeatFactorRay])
 
 theorem period_repeatFactorRay_le [DecidableEq α] {x : List α} {c c' : ℕ} (hcc : c < c')
     (hc' : c' ≤ x.length) : (repeatFactorRay x c c' hcc hc').period ≤ c' - c := by

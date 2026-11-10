@@ -36,30 +36,30 @@ variable {n : Nat} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The seed `a` derives `b`, witnessed at cuts `i` of `a` and `j` of `b`: the remaining suffix of
 `a` is a prefix of that of `b`, and the upper run of `a` meets the lower run of `b`. -/
-def Event (c : Fin n → Bool) (χ : List (LitT n V)) (a b : Closure.Config n V) : Prop :=
+def Event (c : Fin n → Bool) (Γ : List (LitT n V)) (a b : Closure.Config n V) : Prop :=
   ∃ i ≤ a.2.2.length, ∃ j ≤ b.2.2.length,
     (a.2.2.drop i).IsPrefix (b.2.2.drop j) ∧
-    (Automata.upperRun (signed c χ) (a.1, a.2.1) (a.2.2.take i) ∩
-      Automata.lowerRun (signed c χ) (b.1, b.2.1) (b.2.2.take j)).Nonempty
+    (Automata.upperRun (signed c Γ) (a.1, a.2.1) (a.2.2.take i) ∩
+      Automata.lowerRun (signed c Γ) (b.1, b.2.1) (b.2.2.take j)).Nonempty
 
 /-- The seeds `a` and `b` derive opposite signs of one configuration, witnessed at cuts with
 comparable remaining suffixes. -/
-def Collision (c : Fin n → Bool) (χ : List (LitT n V)) (a b : Closure.Config n V) : Prop :=
+def Collision (c : Fin n → Bool) (Γ : List (LitT n V)) (a b : Closure.Config n V) : Prop :=
   ∃ i ≤ a.2.2.length, ∃ j ≤ b.2.2.length,
     ((a.2.2.drop i).IsPrefix (b.2.2.drop j) ∨
       (b.2.2.drop j).IsPrefix (a.2.2.drop i)) ∧
-    (Automata.upperRun (signed c χ) (a.1, a.2.1) (a.2.2.take i) ∩
-      (Automata.upperRun (signed c χ) (b.1, b.2.1) (b.2.2.take j)).map
+    (Automata.upperRun (signed c Γ) (a.1, a.2.1) (a.2.2.take i) ∩
+      (Automata.upperRun (signed c Γ) (b.1, b.2.1) (b.2.2.take j)).map
         flipEmb).Nonempty
 
 /-- The configurations `a` and `b` derive opposite signs of one configuration. -/
-def CrossClash (c : Fin n → Bool) (χ : List (LitT n V)) (a b : Closure.Config n V) : Prop :=
-  ∃ v s w, Reach c χ a (v, s, w) ∧ Reach c χ b (v, !s, w)
+def CrossClash (c : Fin n → Bool) (Γ : List (LitT n V)) (a b : Closure.Config n V) : Prop :=
+  ∃ v s w, Reach c Γ a (v, s, w) ∧ Reach c Γ b (v, !s, w)
 
-variable {c : Fin n → Bool} {χ : List (LitT n V)}
+variable {c : Fin n → Bool} {Γ : List (LitT n V)}
 
 theorem collision_iff_events (a b : Closure.Config n V) :
-    Collision c χ a b ↔ Event c χ a (flipC b) ∨ Event c χ b (flipC a) := by
+    Collision c Γ a b ↔ Event c Γ a (flipC b) ∨ Event c Γ b (flipC a) := by
   simp only [Collision, Event, flipC]
   change _ ↔ (∃ i ≤ _, ∃ j ≤ _, _ ∧
     (Automata.upperRun _ _ _ ∩ Automata.lowerRun _ (flipV (b.1, b.2.1)) _).Nonempty) ∨
@@ -74,30 +74,30 @@ theorem collision_iff_events (a b : Closure.Config n V) :
     · exact ⟨i, hi, j, hj, Or.inl hp, hg⟩
     · exact ⟨i, hi, j, hj, Or.inr hp, flip_inter_symm.mp hg⟩
 
-theorem Event.reach {a b : Closure.Config n V} (h : Event c χ a b) : Reach c χ a b := by
+theorem Event.reach {a b : Closure.Config n V} (h : Event c Γ a b) : Reach c Γ a b := by
   obtain ⟨i, hi, j, hj, hp, hg⟩ := h
   exact reach_of_cuts hi hj hp hg
 
 /-- Without a unary obstruction at `a`, the configuration `a` derives `b` exactly when there is an
 event from `a` to `b`. -/
 theorem reach_iff_event (a b : Closure.Config n V)
-    (ha : ¬ HasUnaryObstruction c χ (a.1, a.2.1) a.2.2) :
-    Reach c χ a b ↔ Event c χ a b :=
+    (ha : ¬ HasUnaryObstruction c Γ (a.1, a.2.1) a.2.2) :
+    Reach c Γ a b ↔ Event c Γ a b :=
   reach_iff_cuts_of_not_hasUnaryObstruction (q := (b.1, b.2.1)) (t := b.2.2) ha
 
 /-- Without unary obstructions at `a` and `b`, the two configurations derive opposite signs of one
 configuration exactly when they collide. -/
 theorem crossClash_iff_collision (a b : Closure.Config n V)
-    (ha : ¬ HasUnaryObstruction c χ (a.1, a.2.1) a.2.2)
-    (hb : ¬ HasUnaryObstruction c χ (b.1, b.2.1) b.2.2) :
-    CrossClash c χ a b ↔ Collision c χ a b := by
+    (ha : ¬ HasUnaryObstruction c Γ (a.1, a.2.1) a.2.2)
+    (hb : ¬ HasUnaryObstruction c Γ (b.1, b.2.1) b.2.2) :
+    CrossClash c Γ a b ↔ Collision c Γ a b := by
   constructor
   · rintro ⟨v, s, w, hra, hrb⟩
     obtain ⟨δ, hr⟩ := collision_return hra hrb
     obtain ⟨α, hα⟩ := reach_iff_moves.mp hr
     obtain ⟨i, hi, j, hj, heq, r, hg⟩ := lowest_point_leaf.mp hα
     obtain ⟨hp, hq⟩ := Finset.mem_inter.mp hg
-    change r ∈ Automata.lowerRun (signed c χ) (flipV (b.1, b.2.1))
+    change r ∈ Automata.lowerRun (signed c Γ) (flipV (b.1, b.2.1))
       ((b.2.2 ++ δ).take j) at hq
     rw [lowerRun_flip, mem_map_flip] at hq
     have hib := cut_le_of_not_hasUnaryObstruction ha hi ⟨r, hp⟩
@@ -124,11 +124,11 @@ open DeciSigma1.Full.Closure
 open DeciSigma1.Constraints
 
 variable {n : Nat} {V : Type} [Fintype V] [DecidableEq V]
-variable {c : Fin n → Bool} {χ : List (LitT n V)}
+variable {c : Fin n → Bool} {Γ : List (LitT n V)}
 
 theorem upperStep_eq_empty_of_disjoint (P : Finset (V × Bool)) (l : Fin n)
-    (h : Disjoint P (forbiddenPredecessors c χ)) :
-    Automata.upperStep (signed c χ) P l = ∅ := by
+    (h : Disjoint P (forbiddenPredecessors c Γ)) :
+    Automata.upperStep (signed c Γ) P l = ∅ := by
   apply Finset.eq_empty_iff_forall_notMem.mpr
   intro x hx
   obtain ⟨r, hr, a, hl, _⟩ := Automata.mem_upperStep.mp hx
@@ -140,29 +140,29 @@ theorem upperStep_eq_empty_of_disjoint (P : Finset (V × Bool)) (l : Fin n)
 meets the signed variables below a negative fact. -/
 theorem endpoint_neg_of_extended_cut {p : V × Bool} {w z : List (Fin n)} {e : Nat}
     (he : e ≤ (w ++ z).length) (hlt : w.length < e)
-    (hp : (Automata.upperRun (signed c χ) p ((w ++ z).take e)).Nonempty) :
-    (Automata.upperRun (signed c χ) p w ∩ forbiddenPredecessors c χ).Nonempty := by
+    (hp : (Automata.upperRun (signed c Γ) p ((w ++ z).take e)).Nonempty) :
+    (Automata.upperRun (signed c Γ) p w ∩ forbiddenPredecessors c Γ).Nonempty := by
   have hh := upperRun_proper_prefix_neg hp
     (show w.length < ((w ++ z).take e).length by
       rw [List.length_take, Nat.min_eq_left he]; exact hlt)
   simpa [List.take_take, Nat.min_eq_left (Nat.le_of_lt hlt)] using hh
 
 theorem hasUnaryObstruction_iff_endpoint_or_leastClosure (p : V × Bool) (w : List (Fin n)) :
-    HasUnaryObstruction c χ p w ↔
-      (Automata.upperRun (signed c χ) p w ∩ forbiddenPredecessors c χ).Nonempty ∨
-      (p.1, !p.2, w) ∈ Closure.leastClosure c χ := by
+    HasUnaryObstruction c Γ p w ↔
+      (Automata.upperRun (signed c Γ) p w ∩ forbiddenPredecessors c Γ).Nonempty ∨
+      (p.1, !p.2, w) ∈ Closure.leastClosure c Γ := by
   constructor
   · rintro (⟨z, r, hr⟩ | ⟨z, hm⟩)
     · by_cases hz : z = []
       · exact Or.inl (by simpa [hz] using (show
-          (Automata.upperRun (signed c χ) p
-              (w ++ z) ∩ forbiddenPredecessors c χ).Nonempty from ⟨r, hr⟩))
+          (Automata.upperRun (signed c Γ) p
+              (w ++ z) ∩ forbiddenPredecessors c Γ).Nonempty from ⟨r, hr⟩))
       · apply Or.inl
         apply endpoint_neg_of_extended_cut (e := (w ++ z).length) le_rfl
         · have := List.length_pos_iff.mpr hz
           simp only [List.length_append]; omega
         · simpa only [List.take_length] using
-            (show (Automata.upperRun (signed c χ) p (w ++ z)).Nonempty from
+            (show (Automata.upperRun (signed c Γ) p (w ++ z)).Nonempty from
             ⟨r, (Finset.mem_inter.mp hr).1⟩)
     · obtain ⟨e, he, hh⟩ := leastClosure_flip_membership.mp hm
       by_cases h : e ≤ w.length
@@ -177,17 +177,17 @@ theorem hasUnaryObstruction_iff_endpoint_or_leastClosure (p : V × Bool) (w : Li
     · exact Or.inr ⟨[], by simpa using hm⟩
 
 theorem not_hasUnaryObstruction_iff (a : Closure.Config n V) :
-    ¬ HasUnaryObstruction c χ (a.1, a.2.1) a.2.2 ↔
-      Disjoint (Automata.upperRun (signed c χ) (a.1, a.2.1) a.2.2)
-          (forbiddenPredecessors c χ) ∧
-      flipC a ∉ Closure.leastClosure c χ := by
+    ¬ HasUnaryObstruction c Γ (a.1, a.2.1) a.2.2 ↔
+      Disjoint (Automata.upperRun (signed c Γ) (a.1, a.2.1) a.2.2)
+          (forbiddenPredecessors c Γ) ∧
+      flipC a ∉ Closure.leastClosure c Γ := by
   rw [hasUnaryObstruction_iff_endpoint_or_leastClosure, not_or]
   simp only [Finset.not_nonempty_iff_eq_empty, Finset.disjoint_iff_inter_eq_empty, flipC]
 
-/-- `Event c χ a (flipC a)` holds exactly when `a` has a self-collision event. -/
+/-- `Event c Γ a (flipC a)` holds exactly when `a` has a self-collision event. -/
 theorem self_iff_event (a : Closure.Config n V) :
-    Event c χ a (flipC a) ↔
-      ∃ i j, SelfCollisionEvent c χ (a.1, a.2.1) a.2.2 i j := by
+    Event c Γ a (flipC a) ↔
+      ∃ i j, SelfCollisionEvent c Γ (a.1, a.2.1) a.2.2 i j := by
   unfold Event
   simp only [flipC]
   change (∃ i ≤ _, ∃ j ≤ _, _ ∧ (Automata.upperRun _ _ _ ∩
@@ -212,36 +212,36 @@ variable {n k : Nat} {V : Type} [Fintype V] [DecidableEq V]
 
 /-- The conditions for realizing the seeds `A` and excluding `B`: each seed is live, no exclusion is
 in the least closure, no seed derives an exclusion, and no two distinct seeds collide. -/
-def SeedConsistency (c : Fin n → Bool) (χ : List (LitT n V))
+def SeedConsistency (c : Fin n → Bool) (Γ : List (LitT n V))
     (A B : Fin k → Closure.Config n V) : Prop :=
-  (∀ i, ¬ HasUnaryObstruction c χ ((A i).1, (A i).2.1) (A i).2.2 ∧
-    ¬ ∃ s t, SelfCollisionEvent c χ ((A i).1, (A i).2.1) (A i).2.2 s t) ∧
-  (∀ i, B i ∉ leastClosure c χ) ∧
-  (∀ j i, ¬ Event c χ (A j) (B i)) ∧
-  (∀ j i, j ≠ i → ¬ Collision c χ (A j) (A i))
+  (∀ i, ¬ HasUnaryObstruction c Γ ((A i).1, (A i).2.1) (A i).2.2 ∧
+    ¬ ∃ s t, SelfCollisionEvent c Γ ((A i).1, (A i).2.1) (A i).2.2 s t) ∧
+  (∀ i, B i ∉ leastClosure c Γ) ∧
+  (∀ j i, ¬ Event c Γ (A j) (B i)) ∧
+  (∀ j i, j ≠ i → ¬ Collision c Γ (A j) (A i))
 
 /-- The conditions of `SeedConsistency`, stated through the run automata at the full words of the
 configurations. -/
-def TerminalRootConditions (c : Fin n → Bool) (χ : List (LitT n V))
+def TerminalRootConditions (c : Fin n → Bool) (Γ : List (LitT n V))
     (A B : Fin k → Closure.Config n V) : Prop :=
   (∀ i, Disjoint
-    (Automata.upperRun (signed c χ) ((A i).1, (A i).2.1) (A i).2.2)
-    (forbiddenPredecessors c χ)) ∧
-  (∀ i, B i ∉ leastClosure c χ ∧ flipC (A i) ∉ leastClosure c χ) ∧
-  (∀ j i, ¬ Event c χ (A j) (B i) ∧
-    ¬ Event c χ (A j) (flipC (A i)))
+    (Automata.upperRun (signed c Γ) ((A i).1, (A i).2.1) (A i).2.2)
+    (forbiddenPredecessors c Γ)) ∧
+  (∀ i, B i ∉ leastClosure c Γ ∧ flipC (A i) ∉ leastClosure c Γ) ∧
+  (∀ j i, ¬ Event c Γ (A j) (B i) ∧
+    ¬ Event c Γ (A j) (flipC (A i)))
 
 /-- Some solution contains every seed `A i` and no exclusion `B i`. -/
-def Realizes (c : Fin n → Bool) (χ : List (LitT n V))
+def Realizes (c : Fin n → Bool) (Γ : List (LitT n V))
     (A B : Fin k → Closure.Config n V) : Prop :=
-  ∃ ρ, SatT c ρ χ ∧ ∀ i,
+  ∃ ρ, SatT c ρ Γ ∧ ∀ i,
     A i ∈ configSet c ρ ∧ B i ∉ configSet c ρ
 
-variable {c : Fin n → Bool} {χ : List (LitT n V)}
+variable {c : Fin n → Bool} {Γ : List (LitT n V)}
 
 /-- `SeedConsistency` and `TerminalRootConditions` are equivalent. -/
 theorem seedConsistency_iff_terminalRootConditions (A B : Fin k → Closure.Config n V) :
-    SeedConsistency c χ A B ↔ TerminalRootConditions c χ A B := by
+    SeedConsistency c Γ A B ↔ TerminalRootConditions c Γ A B := by
   constructor
   · rintro ⟨hL, hM, hE, hC⟩
     refine ⟨fun i => ((not_hasUnaryObstruction_iff (A i)).mp (hL i).1).1,
@@ -265,7 +265,7 @@ omit [Fintype V] [DecidableEq V] in
 /-- A configuration is derivable from the facts and the seeds `A` exactly when it lies in the
 least closure or is derivable from a single seed. -/
 theorem mem_seedHull (A : Fin k → Closure.Config n V) (z : Closure.Config n V) :
-    z ∈ hull c χ (Set.range A) ↔ z ∈ leastClosure c χ ∨ ∃ i, Reach c χ (A i) z := by
+    z ∈ hull c Γ (Set.range A) ↔ z ∈ leastClosure c Γ ∨ ∃ i, Reach c Γ (A i) z := by
   constructor
   · rintro ⟨a, hf | ⟨i, rfl⟩, hr⟩
     · exact Or.inl (mem_leastClosure.mpr ⟨a, hf, hr⟩)
@@ -278,13 +278,13 @@ theorem mem_seedHull (A : Fin k → Closure.Config n V) (z : Closure.Config n V)
 /-- For every signed variable, the set of paths at which it lies in the least closure is
 regular. -/
 theorem leastClosure_cone_regular (q : V × Bool) :
-    IsRegular {t | (q.1, q.2, t) ∈ leastClosure c χ} := by
-  have h1 := isRegular_dfa (lower (signed c χ) q)
-    {P | (P ∩ factReachableVariables c χ).Nonempty}
+    IsRegular {t | (q.1, q.2, t) ∈ leastClosure c Γ} := by
+  have h1 := isRegular_dfa (lower (signed c Γ) q)
+    {P | (P ∩ factReachableVariables c Γ).Nonempty}
   have h := isRegular_concat h1 (isRegular_univ (n := n))
   convert h using 1
   ext t
-  change (q.1, q.2, t) ∈ leastClosure c χ ↔ t ∈ concat _ _
+  change (q.1, q.2, t) ∈ leastClosure c Γ ↔ t ∈ concat _ _
   rw [Closure.leastClosure_membership]
   constructor
   · rintro ⟨e, he, hr⟩
@@ -297,12 +297,12 @@ theorem leastClosure_cone_regular (q : V × Bool) :
 /-- For a seed without a unary obstruction and every signed variable, the set of paths at which
 the seed derives the variable is regular. -/
 theorem seed_cone_regular (a : Closure.Config n V)
-    (ha : ¬ HasUnaryObstruction c χ (a.1, a.2.1) a.2.2) (q : V × Bool) :
-    IsRegular {t | Reach c χ a (q.1, q.2, t)} := by
+    (ha : ¬ HasUnaryObstruction c Γ (a.1, a.2.1) a.2.2) (q : V × Bool) :
+    IsRegular {t | Reach c Γ a (q.1, q.2, t)} := by
   let D : ℕ → Language n := fun i =>
-    concat {γ | (upperRun (signed c χ) (a.1, a.2.1) (a.2.2.take i) ∩
-      lowerRun (signed c χ) q γ).Nonempty} (concat {a.2.2.drop i} Set.univ)
-  have key : {t | Reach c χ a (q.1, q.2, t)} = ⋃₀ (D '' {i | i ≤ a.2.2.length}) := by
+    concat {γ | (upperRun (signed c Γ) (a.1, a.2.1) (a.2.2.take i) ∩
+      lowerRun (signed c Γ) q γ).Nonempty} (concat {a.2.2.drop i} Set.univ)
+  have key : {t | Reach c Γ a (q.1, q.2, t)} = ⋃₀ (D '' {i | i ≤ a.2.2.length}) := by
     ext t
     have h := reach_iff_cuts_of_not_hasUnaryObstruction (q := q) (t := t) ha
     simp only [Set.mem_ofPred_eq, Set.sUnion_image, Set.mem_iUnion, exists_prop]
@@ -317,16 +317,16 @@ theorem seed_cone_regular (a : Closure.Config n V)
   rintro _ ⟨i, -, rfl⟩
   refine isRegular_concat ?_ (isRegular_concat (isRegular_finite (Set.finite_singleton _))
     isRegular_univ)
-  exact isRegular_dfa (lower (signed c χ) q)
-    {P | (upperRun (signed c χ) (a.1, a.2.1) (a.2.2.take i) ∩ P).Nonempty}
+  exact isRegular_dfa (lower (signed c Γ) q)
+    {P | (upperRun (signed c Γ) (a.1, a.2.1) (a.2.2.take i) ∩ P).Nonempty}
 
 /-- Under `SeedConsistency`, for every signed variable the set of paths at which it lies in the
 hull of the seeds is regular. -/
-theorem seedHull_cone_regular {A B : Fin k → Closure.Config n V} (h : SeedConsistency c χ A B)
-    (q : V × Bool) : IsRegular {t | (q.1, q.2, t) ∈ hull c χ (Set.range A)} := by
-  have key : {t | (q.1, q.2, t) ∈ hull c χ (Set.range A)} =
-      {t | (q.1, q.2, t) ∈ leastClosure c χ} ∪
-        ⋃₀ Set.range (fun i => {t | Reach c χ (A i) (q.1, q.2, t)}) := by
+theorem seedHull_cone_regular {A B : Fin k → Closure.Config n V} (h : SeedConsistency c Γ A B)
+    (q : V × Bool) : IsRegular {t | (q.1, q.2, t) ∈ hull c Γ (Set.range A)} := by
+  have key : {t | (q.1, q.2, t) ∈ hull c Γ (Set.range A)} =
+      {t | (q.1, q.2, t) ∈ leastClosure c Γ} ∪
+        ⋃₀ Set.range (fun i => {t | Reach c Γ (A i) (q.1, q.2, t)}) := by
     ext t
     simp only [Set.mem_ofPred_eq, mem_seedHull, Set.mem_union, Set.sUnion_range, Set.mem_iUnion]
   rw [key]
@@ -335,8 +335,8 @@ theorem seedHull_cone_regular {A B : Fin k → Closure.Config n V} (h : SeedCons
   rintro _ ⟨i, rfl⟩
   exact seed_cone_regular (A i) (h.1 i).1 q
 
-theorem SeedConsistency.live (hs : ∃ ρ, SatT c ρ χ) {A B : Fin k → Closure.Config n V}
-    (h : SeedConsistency c χ A B) (i : Fin k) : Live c χ (A i) := by
+theorem SeedConsistency.live (hs : ∃ ρ, SatT c ρ Γ) {A B : Fin k → Closure.Config n V}
+    (h : SeedConsistency c Γ A B) (i : Fin k) : Live c Γ (A i) := by
   by_contra hn
   rcases (not_live_iff_unaryObstruction_or_selfCollision (sat_iff_leastClosure.mp hs)
     (p := ((A i).1, (A i).2.1)) (u := (A i).2.2)).mp hn with hd | he
@@ -345,8 +345,8 @@ theorem SeedConsistency.live (hs : ∃ ρ, SatT c ρ χ) {A B : Fin k → Closur
 
 /-- For a satisfiable constraint, under `SeedConsistency` the configurations derivable from the
 facts and the seeds form a solution. -/
-theorem seedConsistency_hull_isSolution (hs : ∃ ρ, SatT c ρ χ) {A B : Fin k → Closure.Config n V}
-    (h : SeedConsistency c χ A B) : IsSolution c χ (hull c χ (Set.range A)) := by
+theorem seedConsistency_hull_isSolution (hs : ∃ ρ, SatT c ρ Γ) {A B : Fin k → Closure.Config n V}
+    (h : SeedConsistency c Γ A B) : IsSolution c Γ (hull c Γ (Set.range A)) := by
   have hμ := sat_iff_leastClosure.mp hs
   have hCl (i : Fin k) := live_iff.mp (h.live hs i)
   refine ⟨hull_closed _, (fun {_} => hull_facts _), ?_, ?_⟩
@@ -374,16 +374,16 @@ theorem seedConsistency_hull_isSolution (hs : ∃ ρ, SatT c ρ χ) {A B : Fin k
 
 /-- For a satisfiable constraint, seeds and exclusions that satisfy `SeedConsistency` are realized
 by a solution whose values are regular trees. -/
-theorem SeedConsistency.regular_realizes (hs : ∃ ρ, SatT c ρ χ)
-    {A B : Fin k → Closure.Config n V} (h : SeedConsistency c χ A B) :
-    ∃ ρ, (∀ v, Models.RegularTop (ρ v)) ∧ SatT c ρ χ ∧ ∀ i,
+theorem SeedConsistency.regular_realizes (hs : ∃ ρ, SatT c ρ Γ)
+    {A B : Fin k → Closure.Config n V} (h : SeedConsistency c Γ A B) :
+    ∃ ρ, (∀ v, Models.RegularTop (ρ v)) ∧ SatT c ρ Γ ∧ ∀ i,
       A i ∈ configSet c ρ ∧ B i ∉ configSet c ρ := by
   obtain ⟨ρ, hρ, heq⟩ := isSolution_iff_assignment.mp (seedConsistency_hull_isSolution hs h)
   refine ⟨ρ, ?_, hρ, ?_⟩
   · intro v
     apply regular_of_leaf c
     intro s
-    have hc : leaf c (ρ v) s = {t | (v, s, t) ∈ hull c χ (Set.range A)} := by
+    have hc : leaf c (ρ v) s = {t | (v, s, t) ∈ hull c Γ (Set.range A)} := by
       ext t
       change (v, s, t) ∈ configSet c ρ ↔ _
       rw [heq]
@@ -400,19 +400,19 @@ theorem SeedConsistency.regular_realizes (hs : ∃ ρ, SatT c ρ χ)
 
 /-- For a satisfiable constraint, seeds and exclusions that satisfy `SeedConsistency` are
 realized. -/
-theorem SeedConsistency.realizes (hs : ∃ ρ, SatT c ρ χ) {A B : Fin k → Closure.Config n V}
-    (h : SeedConsistency c χ A B) : Realizes c χ A B := by
+theorem SeedConsistency.realizes (hs : ∃ ρ, SatT c ρ Γ) {A B : Fin k → Closure.Config n V}
+    (h : SeedConsistency c Γ A B) : Realizes c Γ A B := by
   obtain ⟨ρ, _, ht, hw⟩ := h.regular_realizes hs
   exact ⟨ρ, ht, hw⟩
 
 theorem Realizes.seedConsistency {A B : Fin k → Closure.Config n V}
-    (h : Realizes c χ A B) : SeedConsistency c χ A B := by
+    (h : Realizes c Γ A B) : SeedConsistency c Γ A B := by
   obtain ⟨ρ, hρ, hab⟩ := h
   have hS := (sat_iff_isSolution ρ).mp hρ
-  have hl (i : Fin k) : Live c χ (A i) := ⟨_, hS, (hab i).1⟩
+  have hl (i : Fin k) : Live c Γ (A i) := ⟨_, hS, (hab i).1⟩
   have hL (i : Fin k) :
-      ¬ HasUnaryObstruction c χ ((A i).1, (A i).2.1) (A i).2.2 ∧
-      ¬ ∃ s t, SelfCollisionEvent c χ ((A i).1, (A i).2.1) (A i).2.2 s t := by
+      ¬ HasUnaryObstruction c Γ ((A i).1, (A i).2.1) (A i).2.2 ∧
+      ¬ ∃ s t, SelfCollisionEvent c Γ ((A i).1, (A i).2.1) (A i).2.2 s t := by
     have hd := (not_live_iff_unaryObstruction_or_selfCollision (sat_iff_leastClosure.mp ⟨ρ, hρ⟩)
       (p := ((A i).1, (A i).2.1)) (u := (A i).2.2))
     exact ⟨fun h => hd.mpr (Or.inl h) (hl i), fun h => hd.mpr (Or.inr h) (hl i)⟩
@@ -426,10 +426,10 @@ theorem Realizes.seedConsistency {A B : Fin k → Closure.Config n V}
 
 /-- A satisfiable constraint has a countermodel to all queries exactly when, for some modes and
 paths, the seeds and exclusions of the failures satisfy `SeedConsistency`. -/
-theorem hasCountermodelIn_iff_exists_seedConsistency (hs : ∃ ρ, SatT c ρ χ) (q : Fin k → V × V) :
-    HasCountermodelIn (fun _ => True) c χ q ↔
+theorem hasCountermodelIn_iff_exists_seedConsistency (hs : ∃ ρ, SatT c ρ Γ) (q : Fin k → V × V) :
+    HasCountermodelIn (fun _ => True) c Γ q ↔
       ∃ (m : Fin k → Bool) (W : Fin k → List (Fin n)),
-        SeedConsistency c χ (fun i => seed (q i) (m i) (W i))
+        SeedConsistency c Γ (fun i => seed (q i) (m i) (W i))
           (fun i => exclusion (q i) (m i) (W i)) := by
   constructor
   · rintro ⟨ρ, _, hρ, hq⟩

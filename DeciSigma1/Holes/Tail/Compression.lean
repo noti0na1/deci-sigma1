@@ -3,22 +3,23 @@ import DeciSigma1.Holes.Periodic.Transport
 import DeciSigma1.Holes.Tail.RunCovers
 
 /-! # Compression of runs and the bound on rejected tails
-A hole whose immortal rejected tails are covered by designated runs is shortened one period class at
-a time. A *pass* takes a designated run of largest period and applies an admissible deletion to its
-class (`Holes.Periodic`), which gives a hole with the same endpoints, whose first rejected cuts are
-the images of the original ones, and preserves the other designated runs
-(`exists_preserved_piece_of_nonconjugate_root`). The occurrence height of the class is bounded by
-the number of states, the designated runs and the uncovered positions (`occurrenceHeight_le`):
-pieces with pairwise comparable followers end at distinct live states before the first rejected cut,
-and at most two of them end in each designated run. So after the pass the processed runs have at
-most `pieceLengthBound` letters each and count as uncovered letters (`exists_hole_compressed_step`).
-After all runs are processed the immortal rejected tails are bounded by `compressionLengthBound`
-(`exists_hole_tail_le_compressionLengthBound`). With `exists_hole_with_run_cover` this gives the
-rejected-tail bound `tailLengthBound` (`exists_hole_rejectedTailLength_le`).
+
+A hole whose immortal rejected tails are covered by designated runs is shortened one period class
+at a time. A pass takes a designated run of largest period and applies an admissible deletion to
+its class. The resulting hole has the same endpoints, its first rejected cuts are the images of
+the original ones, and the other designated runs survive.
+
+Pieces ending at or before first rejection, or in mortal words, form the heads. Every comparable
+set of heads has at most `k * (N - 1)` members, by distinct live states. All remaining pieces are
+tails; there are at most two per designated run plus the uncovered positions. The resulting
+`OccurrenceSplit` gives a cap affine in the number of uncovered positions. Processed runs become
+uncovered positions for the next pass. After all runs are processed, the immortal rejected tails
+are bounded by `compressionLengthBound`. Combining this with `exists_hole_with_run_cover` gives
+`tailLengthBound`.
 
 ## Main declarations
 
-- `occurrenceHeight_le`: the occurrence height of a class in a hole with a run cover.
+- `occurrenceSplit`: head height and total tail count for a class in a hole with a run cover.
 - `exists_hole_compressed_step`: one pass of compression.
 - `compressionLengthBound`, `exists_hole_tail_le_compressionLengthBound`: the bound after all
   passes.
@@ -301,85 +302,92 @@ theorem card_tail_le (M : StructuralReader α S k) {ρ : List α} (runs : Finset
       simp only at he
       omega
 
-/-- The occurrence height of a class whose period is at least every designated period is at most
-`k (N - 1) + 2 · |runs|` plus the uncovered positions of the immortal rejected tails. -/
-theorem occurrenceHeight_le [Fintype α] [Fintype S] (M : StructuralReader α S k) (hU : M.IsHole U)
-    (ρ : List α) (runs : Finset (RunSpec k))
+/-- Pieces ending at or before first rejection, and pieces of mortal words, have bounded comparable
+height. The remaining pieces are counted by designated runs and uncovered tail positions. -/
+noncomputable def occurrenceSplit [Fintype α] [Fintype S] (M : StructuralReader α S k)
+    (hU : M.IsHole U) (ρ : List α) (runs : Finset (RunSpec k))
     (hruns : ∀ r ∈ runs,
-        IsPeriodicPiece U r.period r.coordinate r.start r.stop ∧ r.period ≤ ρ.length) :
-    occurrenceHeight U ρ ≤ k * (Fintype.card S - 1) + 2 * runs.card +
-      ∑ i, (if M.Immortal (M.endState U i) then
-          (uncoveredTailPositions M U runs i).card else 0) := by
+      IsPeriodicPiece U r.period r.coordinate r.start r.stop ∧ r.period ≤ ρ.length)
+    {t : ℕ} (ht : 2 * runs.card + ∑ i, (if M.Immortal (M.endState U i) then
+      (uncoveredTailPositions M U runs i).card else 0) ≤ t) :
+    OccurrenceSplit U ρ (k * (Fintype.card S - 1)) t := by
   classical
-  unfold occurrenceHeight
-  apply Finset.sup_le
-  intro c hc
-  obtain ⟨hcsub, hchain⟩ := Finset.mem_filter.mp hc
-  rw [Finset.mem_powerset] at hcsub
-  have hword : ∀ i, (c.filter (fun P => P.coordinate = i)).card ≤ (Fintype.card S - 1) +
-      2 * (runs.filter (fun r => r.coordinate = i)).card +
-      (if M.Immortal (M.endState U i) then (uncoveredTailPositions M U runs i).card else 0) := by
-    intro i
-    set ci := c.filter (fun P => P.coordinate = i)
-    have hci : ∀ P ∈ ci, P ∈ c ∧ P.coordinate = i := fun P hP => Finset.mem_filter.mp hP
-    have hdrop : ∀ P ∈ ci, ∀ Q ∈ ci, P.stop < Q.stop → (U i).drop Q.stop <+: (U i).drop P.stop := by
-      intro P hP Q hQ hlt
-      have h := followerEdge_drop ((hci P hP).2.trans (hci Q hQ).2.symm) hlt
-        (hchain P (hci P hP).1 Q (hci Q hQ).1)
-      rwa [(hci P hP).2] at h
-    have hlive : ∀ P ∈ ci, M.runPrefix U i P.stop ≠ M.dead := fun P _ => (hU.1 i).runPrefix_ne _
-    have hlen : ∀ P ∈ ci, P.stop ≤ (U i).length := fun P hP => by
-      have := P.stop_le_length; rwa [(hci P hP).2] at this
-    split_ifs with him
-    · -- immortal word: ends before the first rejected cut by distinct states, later ends by runs
-      rw [← Finset.card_filter_add_card_filter_not
-        (fun P : Piece U ρ.length => P.stop ≤ M.firstRejection U i)]
-      have h1 : (ci.filter (fun P => P.stop ≤ M.firstRejection U i)).card ≤ Fintype.card S - 1 := by
-        apply card_chain_le M _ (fun P hP => (hci P (Finset.mem_filter.mp hP).1).2)
-        · intro P hP Q hQ hlt
-          obtain ⟨hP, -⟩ := Finset.mem_filter.mp hP
-          obtain ⟨hQ, hQJ⟩ := Finset.mem_filter.mp hQ
-          exact StructuralReader.runPrefix_ne_of_le_firstRejection (hU.1 i) hlt hQJ
-              (hdrop P hP Q hQ hlt)
-        · intro P hP; exact hlive P (Finset.mem_filter.mp hP).1
-      have h2 :=
-          card_tail_le M runs hruns (ci.filter (fun P => ¬ P.stop ≤ M.firstRejection U i)) (by
-        intro P hP
-        obtain ⟨hP, hPJ⟩ := Finset.mem_filter.mp hP
-        exact ⟨hcsub (hci P hP).1, (hci P hP).2, by omega⟩)
-      omega
-    · -- mortal word: every end by distinct states
-      have := card_chain_le M ci (fun P hP => (hci P hP).2)
-        (fun P hP Q hQ hlt => StructuralReader.runPrefix_ne_of_mortal (hU.1 i) him hlt (hlen Q hQ)
-          (hdrop P hP Q hQ hlt)) hlive
-      omega
-  calc c.card = ∑ i, (c.filter (fun P => P.coordinate = i)).card :=
-        Finset.card_eq_sum_card_fiberwise (fun P _ => Finset.mem_univ P.coordinate)
-    _ ≤ ∑ i, ((Fintype.card S - 1) + 2 * (runs.filter (fun r => r.coordinate = i)).card +
-        (if M.Immortal (M.endState U i) then (uncoveredTailPositions M U runs i).card else 0)) :=
-        Finset.sum_le_sum fun i _ => hword i
-    _ = k * (Fintype.card S - 1) + 2 * runs.card +
-        ∑ i, (if M.Immortal (M.endState U i) then
+  refine ⟨(fun P => ¬ M.Immortal (M.endState U P.coordinate) ∨
+    P.stop ≤ M.firstRejection U P.coordinate), ?_, ?_⟩
+  · intro c _ hhead hchain
+    have hword : ∀ i, (c.filter (fun P => P.coordinate = i)).card ≤ Fintype.card S - 1 := by
+      intro i
+      set ci := c.filter (fun P => P.coordinate = i)
+      have hci : ∀ P ∈ ci, P ∈ c ∧ P.coordinate = i := fun P hP => Finset.mem_filter.mp hP
+      have hdrop : ∀ P ∈ ci, ∀ Q ∈ ci, P.stop < Q.stop →
+          (U i).drop Q.stop <+: (U i).drop P.stop := by
+        intro P hP Q hQ hlt
+        have h := followerEdge_drop ((hci P hP).2.trans (hci Q hQ).2.symm) hlt
+          (hchain P (hci P hP).1 Q (hci Q hQ).1)
+        rwa [(hci P hP).2] at h
+      apply card_chain_le M ci (fun P hP => (hci P hP).2)
+      · intro P hP Q hQ hlt
+        by_cases him : M.Immortal (M.endState U i)
+        · have hQJ := hhead Q (hci Q hQ).1
+          rw [(hci Q hQ).2] at hQJ
+          exact StructuralReader.runPrefix_ne_of_le_firstRejection (hU.1 i) hlt
+            (hQJ.resolve_left (not_not.mpr him)) (hdrop P hP Q hQ hlt)
+        · have hlen := Q.stop_le_length
+          rw [(hci Q hQ).2] at hlen
+          exact StructuralReader.runPrefix_ne_of_mortal (hU.1 i) him hlt hlen
+            (hdrop P hP Q hQ hlt)
+      · intro P _; exact (hU.1 i).runPrefix_ne _
+    calc c.card = ∑ i, (c.filter (fun P => P.coordinate = i)).card :=
+          Finset.card_eq_sum_card_fiberwise (fun P _ => Finset.mem_univ P.coordinate)
+      _ ≤ ∑ _ : Fin k, (Fintype.card S - 1) := Finset.sum_le_sum fun i _ => hword i
+      _ = k * (Fintype.card S - 1) := by simp
+  · intro c hcsub htail
+    have hword : ∀ i, (c.filter (fun P => P.coordinate = i)).card ≤
+        2 * (runs.filter (fun r => r.coordinate = i)).card +
+          (if M.Immortal (M.endState U i) then
             (uncoveredTailPositions M U runs i).card else 0) := by
-        rw [Finset.sum_add_distrib, Finset.sum_add_distrib, ← Finset.mul_sum,
+      intro i
+      by_cases him : M.Immortal (M.endState U i)
+      · rw [ite_eq_left him]
+        apply card_tail_le M runs hruns
+        intro P hP
+        obtain ⟨hP, hPi⟩ := Finset.mem_filter.mp hP
+        have hPJ := htail P hP
+        rw [hPi] at hPJ
+        exact ⟨hcsub hP, hPi, by omega⟩
+      · have he : c.filter (fun P => P.coordinate = i) = ∅ := by
+          apply Finset.eq_empty_iff_forall_notMem.mpr
+          intro P hP
+          obtain ⟨hP, hPi⟩ := Finset.mem_filter.mp hP
+          exact htail P hP (Or.inl (by rwa [hPi]))
+        rw [he, Finset.card_empty]
+        exact Nat.zero_le _
+    refine le_trans ?_ ht
+    calc c.card = ∑ i, (c.filter (fun P => P.coordinate = i)).card :=
+          Finset.card_eq_sum_card_fiberwise (fun P _ => Finset.mem_univ P.coordinate)
+      _ ≤ ∑ i, (2 * (runs.filter (fun r => r.coordinate = i)).card +
+          (if M.Immortal (M.endState U i) then
+            (uncoveredTailPositions M U runs i).card else 0)) :=
+        Finset.sum_le_sum fun i _ => hword i
+      _ = 2 * runs.card + ∑ i, (if M.Immortal (M.endState U i) then
+          (uncoveredTailPositions M U runs i).card else 0) := by
+        rw [Finset.sum_add_distrib, ← Finset.mul_sum,
           ← Finset.card_eq_sum_card_fiberwise (fun r _ => Finset.mem_univ (RunSpec.coordinate r))]
-        simp
 
 end Count
 
 /-! ## One pass -/
 
-/-- `pieceLengthBound` is monotone in the period and in the height. -/
-theorem pieceLengthBound_mono {N d d' H H' : ℕ} (hd : d ≤ d') (hH : H ≤ H') :
-    Periodic.pieceLengthBound N d H ≤ Periodic.pieceLengthBound N d' H' := by
-  unfold Periodic.pieceLengthBound Periodic.fixedMargin Periodic.comparisonGap
-    Periodic.boundaryMargin Periodic.stateTransientLength Periodic.statePeriodModulus
-  have h1 : 2 ^ H ≤ 2 ^ H' := Nat.pow_le_pow_right (by norm_num) hH
-  have h2 : d * N.factorial ≤ d' * N.factorial := Nat.mul_le_mul_right _ hd
-  have h3 : N * d ≤ N * d' := Nat.mul_le_mul_left _ hd
-  have h4 := Nat.mul_le_mul h1 (show 2 * (N * d + d * N.factorial) + d * N.factorial +
-    d * N.factorial ≤ 2 * (N * d' + d' * N.factorial) + d' * N.factorial + d' * N.factorial by
-      omega)
+/-- The split cap is monotone in the period. -/
+theorem pieceLengthBound_mono {N d d' h t : ℕ} (hd : d ≤ d') :
+    pieceLengthBound N d h t ≤ pieceLengthBound N d' h t := by
+  unfold pieceLengthBound fixedMargin comparisonGap boundaryMargin stateTransientLength
+    statePeriodModulus
+  have h2 := Nat.mul_le_mul_right N.factorial hd
+  have h3 := Nat.mul_le_mul_left N hd
+  have h4 := Nat.mul_le_mul_left ((t + 1) * 2 ^ h - 1)
+    (show 2 * (N * d + d * N.factorial) + d * N.factorial + d * N.factorial ≤
+      2 * (N * d' + d' * N.factorial) + d' * N.factorial + d' * N.factorial by omega)
   omega
 
 section Pass
@@ -388,7 +396,7 @@ variable [Fintype α] [DecidableEq α] [Fintype S] [DecidableEq S]
 
 /-- One pass of compression: shorten the class of a designated run of largest period. The other
 designated runs survive at their retained cuts, and the processed runs become uncovered
-positions, at most `pieceLengthBound N D H` each, where `H` bounds the occurrence height. -/
+positions, at most `pieceLengthBound N D (k * (N - 1)) (2 * (n + 1) + E)` each. -/
 theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k → List α}
     (hU : M.IsHole U) {n D E : ℕ}
     (runs : Finset (RunSpec k)) (hcard : runs.card ≤ n + 1) (hruns : ∀ r ∈ runs, IsBoundedRun U D r)
@@ -397,10 +405,11 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
     (hne : runs.Nonempty) :
     ∃ U', M.IsHole U' ∧
       HasBoundedRunCover M U' n D (E + (n + 1) * Periodic.pieceLengthBound (Fintype.card S) D
-        (k * (Fintype.card S - 1) + 2 * (n + 1) + E)) := by
+        (k * (Fintype.card S - 1)) (2 * (n + 1) + E)) := by
   classical
   set N := Fintype.card S with hNdef
-  set H := k * (N - 1) + 2 * (n + 1) + E with hHdef
+  set H := k * (N - 1)
+  set T := 2 * (n + 1) + E
   obtain ⟨r0, hr0, hmax⟩ := Finset.exists_max_image runs RunSpec.period hne
   let P0 : Piece U r0.period := Piece.ofIsPeriodicPiece (hruns r0 hr0).1
   have hρ : IsPrimitive P0.root := P0.primitive
@@ -408,11 +417,10 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
   set ρ := P0.root with hρdef
   have hρD : ρ.length ≤ D := hρlen ▸ (hruns r0 hr0).2.1
   have hle : ∀ r ∈ runs, r.period ≤ ρ.length := fun r hr => hρlen ▸ hmax r hr
-  have hH : occurrenceHeight U ρ ≤ H := by
-    have := occurrenceHeight_le M hU ρ runs (fun r hr => ⟨(hruns r hr).1, hle r hr⟩)
-    rw [← hNdef] at this
-    omega
-  obtain ⟨x, hx, hcap⟩ := exists_admissible_edit_bounded M.toTable hρ H hH
+  have hsplit : OccurrenceSplit U ρ H T :=
+    occurrenceSplit M hU ρ runs (fun r hr => ⟨(hruns r hr).1, hle r hr⟩) (by
+      dsimp [T]; omega)
+  obtain ⟨x, hx, hcap⟩ := cap_exists N hρ hsplit
   have hdom := editedTuple_dominates M.toTable hρ hx
   obtain ⟨hU', hends⟩ := StructuralReader.IsHole.of_dominates hU hdom
   have hJ' : ∀ l, M.firstRejection (editedTuple U ρ N x) l =
@@ -448,11 +456,12 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
         retainedCount (deletedPositions U ρ N x r.coordinate) r.start
     omega
   · -- the letters: original letters and the retained letters of the processed runs
-    have hcapD : Periodic.pieceLengthBound N ρ.length H ≤ Periodic.pieceLengthBound N D H :=
-        pieceLengthBound_mono hρD le_rfl
+    have hcapD : Periodic.pieceLengthBound N ρ.length H T ≤
+        Periodic.pieceLengthBound N D H T :=
+        pieceLengthBound_mono hρD
     have hword : ∀ i, (uncoveredTailPositions M (editedTuple U ρ N x) runs' i).card ≤
         (uncoveredTailPositions M U runs i).card +
-          Periodic.pieceLengthBound N D H *
+          Periodic.pieceLengthBound N D H T *
               (runs.filter (fun r => r.coordinate = i ∧ same r)).card := by
       intro i
       have hsub : uncoveredTailPositions M (editedTuple U ρ N x) runs' i ⊆
@@ -516,7 +525,7 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
           retainedCount (deletedPositions U ρ N x r.coordinate) r.start +
         (r.stop - r.start - Periodic.statePeriodModulus N ρ.length * x R) at hend
       change r.stop - r.start - Periodic.statePeriodModulus N ρ.length * x R ≤
-          Periodic.pieceLengthBound N ρ.length H at hc
+          Periodic.pieceLengthBound N ρ.length H T at hc
       rw [← hrl]
       have hkc :=
           retainedCount_eq_add_card (D := deletedPositions U ρ N x r.coordinate)
@@ -527,7 +536,8 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
             (uncoveredTailPositions M (editedTuple U ρ N x) runs' i).card else 0)
         ≤ ∑ i,
             ((if M.Immortal (M.endState U i) then (uncoveredTailPositions M U runs i).card else 0) +
-            Periodic.pieceLengthBound N D H * (runs.filter (fun r => r.coordinate = i)).card) := by
+            Periodic.pieceLengthBound N D H T *
+              (runs.filter (fun r => r.coordinate = i)).card) := by
           apply Finset.sum_le_sum
           intro i _
           rw [hends i]
@@ -535,17 +545,17 @@ theorem exists_hole_compressed_step (M : StructuralReader α S k) {U : Fin k →
               (runs.filter (fun r => r.coordinate = i)).card :=
             Finset.card_le_card (fun r hr => by
               simp only [Finset.mem_filter] at hr ⊢; exact ⟨hr.1, hr.2.1⟩)
-          have := Nat.mul_le_mul_left (Periodic.pieceLengthBound N D H) hf
+          have := Nat.mul_le_mul_left (Periodic.pieceLengthBound N D H T) hf
           split_ifs
           · have := hword i; omega
           · omega
       _ = (∑ i,
           (if M.Immortal (M.endState U i) then (uncoveredTailPositions M U runs i).card else 0)) +
-            Periodic.pieceLengthBound N D H * runs.card := by
+            Periodic.pieceLengthBound N D H T * runs.card := by
           rw [Finset.sum_add_distrib, ← Finset.mul_sum,
             ← Finset.card_eq_sum_card_fiberwise (fun r _ => Finset.mem_univ (RunSpec.coordinate r))]
-      _ ≤ E + (n + 1) * Periodic.pieceLengthBound N D H := by
-          have := Nat.mul_le_mul_left (Periodic.pieceLengthBound N D H) hcard
+      _ ≤ E + (n + 1) * Periodic.pieceLengthBound N D H T := by
+          have := Nat.mul_le_mul_left (Periodic.pieceLengthBound N D H T) hcard
           rw [Nat.mul_comm (n + 1)]
           omega
 
@@ -564,14 +574,12 @@ theorem tail_le_of_empty (M : StructuralReader α S k) {U : Fin k → List α} {
 end Pass
 
 /-- The bound after the passes, for `n` remaining designated runs and `E` uncovered positions; a
-pass at height `H = k (N - 1) + 2 (n + 1) + E` adds `pieceLengthBound N D H` positions for each
-of at most `n + 1` processed runs. -/
+pass adds the split cap for each of at most `n + 1` processed runs. The head height is
+`k * (N - 1)` and the tail count is at most `2 * (n + 1) + E`, so each pass is affine in `E`. -/
 def compressionLengthBoundIter (k N D : ℕ) : ℕ → ℕ → ℕ
   | 0, E => E
-  | n +
-      1, E =>
-          compressionLengthBoundIter k N D n
-              (E + (n + 1) * Periodic.pieceLengthBound N D (k * (N - 1) + 2 * (n + 1) + E))
+  | n + 1, E => compressionLengthBoundIter k N D n
+      (E + (n + 1) * Periodic.pieceLengthBound N D (k * (N - 1)) (2 * (n + 1) + E))
 
 theorem le_compressionLengthBoundIter (k N D : ℕ) : ∀ n E, E ≤ compressionLengthBoundIter k N D n E
   | 0, _ => le_rfl

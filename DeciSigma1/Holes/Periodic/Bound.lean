@@ -4,23 +4,24 @@ import DeciSigma1.Holes.Periodic.Deletion
 
 /-! # Admissible deletions that leave short pieces
 
-For a class of pieces, the deletion counts of an admissible deletion are found as a solution of
-a system of difference constraints on the pieces of the class (`shiftSystem`): pieces joined by
-a follower edge with nearly equal lengths get equal shifts, and a shorter piece keeps its gap
-to a longer one. Every piece has a lower bound `shiftFloor` that leaves at least
-`fixedMargin` letters. The original tuple, with no deletion, is a solution, so there is a least
-solution above the lower bounds (`Arithmetic.DifferenceSystem.least_above`). In the least
-solution every value is reached along a duplicate-free path of tight constraints from a piece at
-its lower bound; such a path is a path in the follower graph, so its length is at most
-`2 ^ H` for the occurrence height `H` (`Arithmetic.simplePath_le_pow_prefix`). Hence every piece
-keeps at most `pieceLengthBound N |ρ| H` letters (`exists_admissible_edit_bounded`).
+The deletion counts for a period class solve a system of difference constraints (`shiftSystem`).
+Pieces joined by a follower edge with nearly equal lengths get equal shifts, and shorter pieces
+keep their gaps to longer ones. Each shift has a floor that leaves at least `fixedMargin` letters.
+The zero shift solves the system, so there is a least solution above the floors.
+
+Every value in the least solution is reached along a duplicate-free path of tight constraints
+from a piece at its floor. An `OccurrenceSplit` partitions the class into heads of comparable
+height at most `h` and at most `t` tails. Splitting a path at its tails and applying
+`Arithmetic.simplePath_le_pow_prefix` to the head segments bounds its length by
+`(t + 1) * 2 ^ h - 1`. Each tight step increases the retained length by less than
+`comparisonGap + statePeriodModulus`, giving the cap `pieceLengthBound N |ρ| h t`.
 
 ## Main declarations
 
-- `shiftFloor`, `shiftSystem`: the difference system of the deletion counts.
-- `deletionCounts`: the deletion counts of a solution.
-- `exists_admissible_edit_bounded`: an admissible deletion that leaves every piece of the class
-  with at most `pieceLengthBound` letters.
+- `shiftFloor`, `shiftSystem`, `deletionCounts`: the difference system and its deletion counts.
+- `simplePath_le_pow_split`: a prefix-comparability path bound with heads and tails.
+- `OccurrenceSplit`, `occurrence_path_bound`: the partition and follower-path bound.
+- `cap_exists`: an admissible deletion whose retained pieces satisfy the split cap.
 -/
 
 namespace DeciSigma1.Holes.Periodic
@@ -218,30 +219,104 @@ theorem tight_step (hM : 0 < statePeriodModulus N ρ.length)
     subst c
     exact ⟨hg, far_tight hM hfar (by simpa only [sub_eq_add_neg] using he)⟩
 
-/-- A duplicate-free path in the follower graph of the class has at most `2 ^ H - 1` pieces, for
-every `H` at least the occurrence height. -/
-theorem occurrence_path_bound (H : ℕ) (hH : occurrenceHeight W ρ ≤ H)
-    (p : List {P // P ∈ piecesOf W ρ}) (hnd : p.Nodup)
-    (hp : p.IsChain (fun P Q => FollowerEdge P.val Q.val)) : p.length ≤ 2 ^ H - 1 := by
+/-- A prefix-comparability path is bounded by its number of tails and the comparable height
+of its heads. -/
+theorem simplePath_le_pow_split {β γ : Type*} (f : β → List γ) (head : β → Prop)
+    [DecidablePred head] (h : ℕ) (p : List β) (hnd : p.Nodup)
+    (hp : p.IsChain (fun x y => f x <+: f y ∨ f y <+: f x))
+    (hh : ∀ c : Finset β, (∀ x ∈ c, x ∈ p) → (∀ x ∈ c, head x) →
+      (∀ x ∈ c, ∀ y ∈ c, f x <+: f y ∨ f y <+: f x) → c.card ≤ h) :
+    p.length + 1 ≤ ((p.filter (fun x => decide (¬ head x))).length + 1) * 2 ^ h := by
   classical
-  apply simplePath_le_pow_prefix (fun P : {P // P ∈ piecesOf W ρ} => P.val.follower) H p hnd hp
-  intro c _ hc
-  let c' : Finset (Piece W ρ.length) := c.image Subtype.val
-  have hsub : c' ⊆ piecesOf W ρ := by
-    intro P hP
-    obtain ⟨Q, _, rfl⟩ := Finset.mem_image.mp hP
-    exact Q.property
-  have hcomp : ∀ P ∈ c', ∀ Q ∈ c', FollowerEdge P Q := by
-    intro P hP Q hQ
-    obtain ⟨P', hP', rfl⟩ := Finset.mem_image.mp hP
-    obtain ⟨Q', hQ', rfl⟩ := Finset.mem_image.mp hQ
-    exact hc P' hP' Q' hQ'
-  have hm : c' ∈ ((piecesOf W ρ).powerset).filter
-      (fun a => ∀ P ∈ a, ∀ Q ∈ a, FollowerEdge P Q) := by
-    simp only [Finset.mem_filter, Finset.mem_powerset]
-    exact ⟨hsub, hcomp⟩
-  have hb : c'.card ≤ occurrenceHeight W ρ := Finset.le_sup (f := Finset.card) hm
-  have hcard : c'.card = c.card := Finset.card_image_of_injective _ Subtype.val_injective
+  generalize he : p.length = n
+  induction n using Nat.strong_induction_on generalizing p with
+  | h n ih =>
+    by_cases hall : ∀ x ∈ p, head x
+    · have hb := simplePath_le_pow_prefix f h p hnd hp
+        (fun c hc hcomp => hh c hc (fun x hx => hall x (hc x hx)) hcomp)
+      have hempty : p.filter (fun x => decide (¬ head x)) = [] := by
+        apply List.filter_eq_nil_iff.mpr
+        intro x hx
+        simp [hall x hx]
+      rw [hempty]
+      simp only [List.length_nil, zero_add, one_mul]
+      have : 1 ≤ 2 ^ h := Nat.one_le_two_pow
+      omega
+    · obtain ⟨m, hm⟩ := not_forall.mp hall
+      obtain ⟨hm, hmtail⟩ := not_imp.mp hm
+      obtain ⟨s, t, rfl⟩ := List.append_of_mem hm
+      have hnd' := List.nodup_middle.mp hnd
+      rw [List.nodup_cons] at hnd'
+      have hs_nd := (List.nodup_append.mp hnd'.2).1
+      have ht_nd := (List.nodup_append.mp hnd'.2).2.1
+      have hsplit := List.isChain_split.mp hp
+      have hs_ch := (List.isChain_append.mp hsplit.1).1
+      have ht_ch := hsplit.2.tail
+      have hside : ∀ q : List β, (∀ x ∈ q, x ∈ s ++ m :: t) → q.length < n →
+          q.Nodup → q.IsChain (fun x y => f x <+: f y ∨ f y <+: f x) →
+          q.length + 1 ≤ ((q.filter (fun x => decide (¬ head x))).length + 1) * 2 ^ h := by
+        intro q hq hqn hqnd hqch
+        exact ih q.length hqn q hqnd hqch
+          (fun c hc => hh c (fun x hx => hq x (hc x hx))) rfl
+      have hs := hside s (fun x hx => List.mem_append_left _ hx)
+        (by simp only [List.length_append, List.length_cons] at he; omega) hs_nd hs_ch
+      have ht := hside t (fun x hx => List.mem_append_right _ (List.mem_cons_of_mem _ hx))
+        (by simp only [List.length_append, List.length_cons] at he; omega) ht_nd ht_ch
+      simp only [List.length_append, List.length_cons] at he
+      simp [List.filter_append, hmtail] at hs ht ⊢
+      nlinarith
+
+/-- A partition of a period class into heads of bounded comparable height and a bounded
+number of tails. -/
+structure OccurrenceSplit (W : Fin k → List α) (ρ : List α) (h t : ℕ) where
+  head : Piece W ρ.length → Prop
+  head_bound : ∀ c : Finset (Piece W ρ.length), c ⊆ piecesOf W ρ →
+    (∀ P ∈ c, head P) → (∀ P ∈ c, ∀ Q ∈ c, FollowerEdge P Q) → c.card ≤ h
+  tail_bound : ∀ c : Finset (Piece W ρ.length), c ⊆ piecesOf W ρ →
+    (∀ P ∈ c, ¬ head P) → c.card ≤ t
+
+/-- A simple follower path with head height `h` and at most `t` tails has at most
+`(t + 1) * 2 ^ h - 1` vertices. -/
+theorem occurrence_path_bound {h t : ℕ} (split : OccurrenceSplit W ρ h t)
+    (p : List {P // P ∈ piecesOf W ρ}) (hnd : p.Nodup)
+    (hp : p.IsChain (fun P Q => FollowerEdge P.val Q.val)) :
+    p.length ≤ (t + 1) * 2 ^ h - 1 := by
+  classical
+  let head : {P // P ∈ piecesOf W ρ} → Prop := fun P => split.head P.val
+  have hb := simplePath_le_pow_split (fun P : {P // P ∈ piecesOf W ρ} => P.val.follower)
+    head h p hnd hp (by
+      intro c _ hc hcomp
+      let c' := c.image (fun P => P.val)
+      have hcard : c'.card = c.card := Finset.card_image_of_injective _ Subtype.val_injective
+      rw [← hcard]
+      apply split.head_bound c'
+      · intro P hP
+        obtain ⟨Q, _, rfl⟩ := Finset.mem_image.mp hP
+        exact Q.property
+      · intro P hP
+        obtain ⟨Q, hQ, rfl⟩ := Finset.mem_image.mp hP
+        exact hc Q hQ
+      · intro P hP Q hQ
+        obtain ⟨P', hP', rfl⟩ := Finset.mem_image.mp hP
+        obtain ⟨Q', hQ', rfl⟩ := Finset.mem_image.mp hQ
+        exact hcomp P' hP' Q' hQ')
+  let q := p.filter (fun P => decide (¬ head P))
+  have hqnd : q.Nodup := hnd.filter _
+  have ht : q.length ≤ t := by
+    let c := q.toFinset.image (fun P => P.val)
+    have hc : c.card = q.length := by
+      rw [Finset.card_image_of_injective _ Subtype.val_injective, List.toFinset_card_of_nodup hqnd]
+    rw [← hc]
+    apply split.tail_bound c
+    · intro P hP
+      obtain ⟨Q, _, rfl⟩ := Finset.mem_image.mp hP
+      exact Q.property
+    · intro P hP
+      obtain ⟨Q, hQ, rfl⟩ := Finset.mem_image.mp hP
+      have := List.mem_filter.mp (List.mem_toFinset.mp hQ)
+      exact of_decide_eq_true this.2
+  have hmul := Nat.mul_le_mul_right (2 ^ h) (Nat.add_le_add_right ht 1)
+  change p.length + 1 ≤ (q.length + 1) * 2 ^ h at hb
   omega
 
 /-- If each step of a path increases `v` by at most `B`, the whole path increases `v` by at most
@@ -262,11 +337,12 @@ theorem path_length_bound {ι : Type} (v : ι → ℤ) (B : ℤ) (r : ι → ι 
     nlinarith
 
 /-- There is an admissible deletion after which every piece of the class has at most
-`pieceLengthBound N |ρ| H` letters. -/
-theorem cap_exists (N H : ℕ) (hρ : IsPrimitive ρ) (hH : occurrenceHeight W ρ ≤ H) :
+`pieceLengthBound N |ρ| h t` letters. -/
+theorem cap_exists (N : ℕ) {h t : ℕ} (hρ : IsPrimitive ρ)
+    (split : OccurrenceSplit W ρ h t) :
     ∃ x, AdmissibleDeletion W ρ N x ∧
       ∀ P ∈ piecesOf W ρ, P.len - statePeriodModulus N ρ.length * x P ≤
-          pieceLengthBound N ρ.length H := by
+          pieceLengthBound N ρ.length h t := by
   have hd : 0 < ρ.length := List.length_pos_iff.mpr hρ.ne_nil
   have hM : 0 < statePeriodModulus N ρ.length := lt_of_lt_of_le hd (d_le_statePeriodModulus _ _)
   obtain ⟨z, hs, hf, _, hz0, hpath⟩ := least_shifts (W := W) (ρ := ρ) N
@@ -275,7 +351,7 @@ theorem cap_exists (N H : ℕ) (hρ : IsPrimitive ρ) (hH : occurrenceHeight W �
   obtain ⟨p, hnd, hlast, ⟨Q, hhead, hanchor⟩, ht⟩ := hpath ⟨P, hP⟩
   have hg : p.IsChain (fun P Q => FollowerEdge P.val Q.val) :=
     ht.imp (fun _ _ h => (tight_step hM h).1)
-  have hplen := occurrence_path_bound H hH p hnd hg
+  have hplen := occurrence_path_bound split p hnd hg
   cases p with
   | nil => simp at hlast
   | cons R p =>
@@ -297,7 +373,7 @@ theorem cap_exists (N H : ℕ) (hρ : IsPrimitive ρ) (hH : occurrenceHeight W �
     rw [hlast'] at hb
     have hfloor : v Q < (fixedMargin N ρ.length : ℤ) + statePeriodModulus N ρ.length := by
       dsimp [v]; rw [hanchor]; exact floor_remainder_lt hM
-    have hlen : (p.length : ℤ) ≤ (2 ^ H : ℕ) := by
+    have hlen : (p.length : ℤ) ≤ ((t + 1) * 2 ^ h - 1 : ℕ) := by
       simp only [List.length_cons] at hplen
       omega
     have hB : (0 : ℤ) ≤
@@ -306,23 +382,12 @@ theorem cap_exists (N H : ℕ) (hρ : IsPrimitive ρ) (hH : occurrenceHeight W �
     have hcast := retained_cast hf hz0 ⟨P, hP⟩
     change ((P.len - statePeriodModulus N ρ.length * deletionCounts z P : ℕ) : ℤ) =
         v ⟨P, hP⟩ at hcast
-    have hcap : ((pieceLengthBound N ρ.length H : ℕ) : ℤ) =
-        fixedMargin N ρ.length + statePeriodModulus N ρ.length + (2 ^ H : ℕ) *
+    have hcap : ((pieceLengthBound N ρ.length h t : ℕ) : ℤ) =
+        fixedMargin N ρ.length + statePeriodModulus N ρ.length + ((t + 1) * 2 ^ h - 1 : ℕ) *
           (comparisonGap N ρ.length + statePeriodModulus N ρ.length :
               ℕ) := by simp [pieceLengthBound]
     omega
 
 end
-
-/-- For a primitive word `ρ` whose class has occurrence height at most `H`, there is an
-admissible deletion after which every piece of the class has at most
-`pieceLengthBound N |ρ| H` letters. -/
-theorem exists_admissible_edit_bounded {α S : Type} [DecidableEq α] [Fintype S] {k : ℕ}
-    (_T : Readers.Table α S k) {W : Fin k → List α} {ρ : List α}
-    (hρ : IsPrimitive ρ) (H : ℕ) (hH : occurrenceHeight W ρ ≤ H) :
-    ∃ x, AdmissibleDeletion W ρ (Fintype.card S) x ∧
-      ∀ P ∈ piecesOf W ρ, P.len - Periodic.statePeriodModulus (Fintype.card S) ρ.length * x P ≤
-        Periodic.pieceLengthBound (Fintype.card S) ρ.length H :=
-  Periodic.cap_exists (Fintype.card S) H hρ hH
 
 end DeciSigma1.Holes.Periodic

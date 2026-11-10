@@ -29,8 +29,8 @@ variable {T : Type → Type} {D : Type} {I : Interpretation T D} (F : Flattening
 /-- A decision procedure for disjunctive entailment between flat constraints over the class
 `C`, uniform in the finite type of variables and in the number of queries. -/
 abbrev DisjEntailmentDecider (C : D → Prop) :=
-  ∀ {W : Type} [Fintype W] [DecidableEq W] {k : ℕ} (χ : List (F.Lit W)) (q : Fin k → W × W),
-    Decidable (F.DisjEntailsIn C χ q)
+  ∀ {W : Type} [Fintype W] [DecidableEq W] {k : ℕ} (Γ : List (F.Lit W)) (q : Fin k → W × W),
+    Decidable (F.DisjEntailsIn C Γ q)
 
 /-- A clause is realizable in `C` if some assignment with values in `C` satisfies it. -/
 def ConjunctiveClause.Realizable {V : Type} (c : ConjunctiveClause T V) (I : Interpretation T D)
@@ -82,8 +82,8 @@ def decideBooleanSentence (hC : I.TermClosed C) (dec : DisjEntailmentDecider F C
 closed classes, then so does every Boolean sentence. -/
 theorem BooleanSentence.holdsIn_iff_of_disjEntailsIn_iff {C C' : D → Prop} (hC : I.TermClosed C)
     (hC' : I.TermClosed C')
-    (h : ∀ {W : Type} [Fintype W] [DecidableEq W] {k : ℕ} (χ : List (F.Lit W))
-      (q : Fin k → W × W), F.DisjEntailsIn C χ q ↔ F.DisjEntailsIn C' χ q)
+    (h : ∀ {W : Type} [Fintype W] [DecidableEq W] {k : ℕ} (Γ : List (F.Lit W))
+      (q : Fin k → W × W), F.DisjEntailsIn C Γ q ↔ F.DisjEntailsIn C' Γ q)
     (φ : BooleanSentence T) : φ.HoldsIn I C ↔ φ.HoldsIn I C' := by
   have hs (s : Sigma1 T) : s.HoldsIn I C ↔ s.HoldsIn I C' := by
     rw [s.holdsIn_iff_exists_realizable, s.holdsIn_iff_exists_realizable]

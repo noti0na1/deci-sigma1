@@ -1,4 +1,5 @@
 import Mathlib.Data.Set.Finite.Lattice
+import Mathlib.Data.Set.Finite.List
 import Mathlib.Tactic.Common
 
 /-! # Trees over `{⊥, f}` as sets of constructor positions
@@ -6,15 +7,19 @@ import Mathlib.Tactic.Common
 Without `⊤`, a tree over `{⊥, f}` is determined by the set of paths labeled `f`, a prefix-closed
 set of words; every other path of its domain is a `⊥` leaf. In this representation the covariant
 subtype order is inclusion, `⊥` is the empty set and the constructor adds the empty word. Regular
-trees are the sets with finitely many residuals.
+trees are the sets with finitely many residuals, and finite trees the finite sets.
 
 ## Main declarations
 
 - `PrefixSet`: prefix-closed sets of constructor positions, ordered by inclusion.
 - `PrefixSet.bot`, `PrefixSet.node`, `PrefixSet.residual`: the tree `⊥`, the constructor and
   residuals.
-- `IsRegularTree`: regular trees.
-- `isRegularTree_bot`, `isRegularTree_node`: regular trees are closed under the constructors.
+- `PrefixSet.univ`, `PrefixSet.complete`: the tree all of whose paths are constructor
+  positions, and the complete tree of depth `d`.
+- `IsRegularTree`, `IsFiniteTree`: regular and finite trees.
+- `isRegularTree_bot`, `isRegularTree_node`, `isFiniteTree_bot`, `isFiniteTree_node`: both
+  classes are closed under the constructors.
+- `exists_le_complete`: finitely many finite trees lie below a common complete tree.
 -/
 
 namespace DeciSigma1.Semantics
@@ -90,6 +95,20 @@ theorem le_univ (P : PrefixSet n) : P ≤ univ := Set.subset_univ _
 
 @[simp] theorem mem_univ (w : List (Fin n)) : w ∈ (univ : PrefixSet n).carrier := trivial
 
+/-- The complete tree of depth `d`: the paths of length less than `d` are constructor
+positions, and the paths of length `d` are `⊥` leaves. -/
+def complete (d : ℕ) : PrefixSet n where
+  carrier := {w | w.length < d}
+  prefix_closed u v h := lt_of_le_of_lt (by simp) (show (u ++ v).length < d from h)
+
+/-- The complete tree of depth `d` lies below `f` applied to copies of itself, which is the
+complete tree of depth `d + 1`. -/
+theorem complete_le_node (d : ℕ) : complete d ≤ node fun _ => (complete d : PrefixSet n) := by
+  intro w hw
+  cases w with
+  | nil => trivial
+  | cons i w => exact lt_trans (Nat.lt_succ_self _) hw
+
 end PrefixSet
 
 /-- A regular tree: finitely many residuals. -/
@@ -116,5 +135,32 @@ theorem isRegularTree_univ : IsRegularTree (PrefixSet.univ : PrefixSet n) := by
   apply (Set.finite_singleton (Set.univ : Set (List (Fin n)))).subset
   rintro _ ⟨w, rfl⟩
   simp [PrefixSet.residual, PrefixSet.univ]
+
+/-- A finite tree: finitely many constructor positions. -/
+def IsFiniteTree (t : PrefixSet n) : Prop := t.carrier.Finite
+
+/-- The tree `⊥` is finite. -/
+theorem isFiniteTree_bot : IsFiniteTree (PrefixSet.bot : PrefixSet n) := Set.finite_empty
+
+/-- A constructor applied to finite trees gives a finite tree. -/
+theorem isFiniteTree_node (a : Fin n → PrefixSet n) (ha : ∀ i, IsFiniteTree (a i)) :
+    IsFiniteTree (PrefixSet.node a) := by
+  apply ((Set.finite_singleton []).union
+    (Set.finite_iUnion fun i => (ha i).image (List.cons i))).subset
+  intro w hw
+  cases w with
+  | nil => exact Or.inl rfl
+  | cons i w => exact Or.inr (Set.mem_iUnion.mpr ⟨i, w, hw, rfl⟩)
+
+/-- The complete tree of depth `d` is finite. -/
+theorem isFiniteTree_complete (d : ℕ) : IsFiniteTree (PrefixSet.complete d : PrefixSet n) :=
+  List.finite_length_lt (Fin n) d
+
+/-- Finitely many finite trees lie below a common complete tree. -/
+theorem exists_le_complete {ι : Type*} [Finite ι] {t : ι → PrefixSet n}
+    (ht : ∀ i, IsFiniteTree (t i)) : ∃ d, ∀ i, t i ≤ PrefixSet.complete d := by
+  obtain ⟨d, hd⟩ := ((Set.finite_iUnion ht).image List.length).bddAbove
+  exact ⟨d + 1, fun i w hw =>
+    Nat.lt_succ_of_le (hd ⟨w, Set.mem_iUnion.mpr ⟨i, hw⟩, rfl⟩)⟩
 
 end DeciSigma1.Semantics
