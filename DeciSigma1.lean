@@ -16,6 +16,7 @@ import DeciSigma1.Entailment.Decide
 import DeciSigma1.Entailment.Embedding
 import DeciSigma1.Entailment.Guard
 import DeciSigma1.Entailment.Logic
+import DeciSigma1.Examples.Comparability
 import DeciSigma1.Examples.Entailment
 import DeciSigma1.Examples.Readers
 import DeciSigma1.Examples.Satisfiability
