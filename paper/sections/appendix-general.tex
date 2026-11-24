@@ -1,0 +1,169 @@
+\section{Other Arities, Variances, and the Signature Without Top}
+\label{app:general}
+
+The word argument works over any finite alphabet. We describe the
+changes to the tree semantics, satisfiability tests, and reader
+compilation. They give the following decision theorem.
+
+\begin{theorem}\label{thm:general}
+For one constructor of any arity and variance, the $\Sigma_1$ theory
+over $\BFT$ is decidable over arbitrary, regular, and finite trees.
+For $\BF$ the same holds with a covariant constructor of any arity.
+For each of these signatures, the arbitrary and regular theories agree.
+The compiled small-hole bound in \cref{thm:short} holds for every
+arity and variance over $\BFT$.
+\end{theorem}
+
+\subsection{Arity and variance}
+
+For arity $n\ge0$, paths use the $n$ argument positions. With variance,
+compare labels in reverse order at a common position if its path
+has passed through an odd number of contravariant arguments.
+Call this parity the polarity of the path. Flipping $\Bot$ and
+$\Top$ at odd paths is an involution $\eta$ on trees that sends
+the subtype order to the covariant order. This follows at every
+common position, since the flip reverses the label order. The map
+preserves finiteness and regularity. A subtree in the image is
+the image of an original subtree or its leaf-label dual,
+according to the polarity of the path to it.
+
+Use the leaf cones of $\eta(t)$. At a child position $i$, cone
+membership exchanges signs exactly when argument $i$ is
+contravariant. Thus the constructor rows in \cref{sec:readers}
+only change the sign of the child variable on contravariant
+arguments. The moves still satisfy sign reversal, and a pop
+still starts at a signed variable whose root is forbidden.
+The proofs of root saturation, realization, and compilation
+therefore apply. The same two components over signed variables
+give the same action and depth counts. The proof for regular trees
+uses residuals of the two cones, exchanging them at odd positions.
+Flattening and term evaluation work with any arity, including
+zero, as all tree classes are closed under the constructor.
+
+For satisfiability with variance, use a covariant constraint
+on two signed copies of each variable. In the first copy of a
+literal take the positive variable for every root. In a
+constructor literal use the negative child variable on
+contravariant arguments and the positive child variable
+elsewhere. Form the second copy by exchanging signs, reversing
+the inequalities, and exchanging $\Bot$ and $\Top$ in constant
+equalities. For example, a lower constructor literal gives
+\[
+  f(x_1^{s_1},\dots,x_n^{s_n})\le y^+,\qquad
+  y^-\le f(x_1^{\bar s_1},\dots,x_n^{\bar s_n}),
+\]
+where $s_i=-$ on contravariant arguments. Write $\Gamma^\pm$
+for the translated constraint. Given a solution $\rho$,
+assign $\eta(\rho(x))$ to $x^+$ and its dual to $x^-$.
+The ground dual exchanges all leaf labels and reverses the
+covariant order. The signed literals hold, because at child $i$
+normalization takes the image under $\eta$ and further applies
+the dual exactly for a contravariant argument. Conversely,
+a solution of $\Gamma^\pm$ with the two signed values dual to
+each other decodes by applying $\eta$ to the positive values.
+
+To construct such a solution, let $B$ be the least-shape solution
+of the covariant system from \cref{app:shape}. Let $B^\#$ exchange
+signed variables and dualize their trees. The translation is
+closed under the corresponding operation on literals, so
+$B^\#$ also solves it. The two trees $B(p)$ and $B^\#(p)$
+have the same constructor positions. Indeed, flipping the
+signs in a derivation of a variable inequality and reversing
+its endpoints preserves the rules, including decomposition.
+Induction on paths then exchanges the lower and upper bounds.
+It exchanges the two constructor supports in the label rule
+for the least-shape assignment, so the constructor labels
+and the domains of the two trees agree.
+
+At every path of a signed variable, select the label from
+$B$ when its sign bit plus the path polarity is even, and
+from $B^\#$ when it is odd. Here the positive sign has bit
+zero. The common shape makes this a tree, and the opposite
+sign uses the opposite choice, giving dual trees. The
+selection preserves every literal. A variable inequality
+uses the same sign on both sides and hence the same choice
+at each path. In a constructor literal the choice at a path
+$iw$ of the root agrees with the choice at $w$ of the signed
+child, since their sign bits differ by the variance at $i$.
+Comparison at the root uses the fixed label $f$ on the
+constructor side. Constant equalities hold because both
+assignments already satisfy them. This gives a solution
+with dual signed values, and the domain is unchanged from
+$B$. Consequently the label and cycle tests of
+\cref{app:classes} decide arbitrary and finite
+satisfiability after translation.
+
+For finite transfer with variance, the observations are still bounds
+by finite trees, by applying the covariant observation construction
+to $\eta(t)$ and then undoing $\eta$. In the signed system impose
+each bound on the positive variable after normalization and impose
+its dual on the negative variable. For example $g\le x$ imposes
+$\eta(g)\le x^+$ and $x^-\le\eta(g)^*$. The signed system has a
+finite solution with dual values by assumption, and it has an
+arbitrary solution meeting all signed bounds. The covariant
+pinning proof gives a finite solution $A$ meeting the signed
+bounds. Its sign dual $A^\#$ also meets them. Let $I$ be
+any finite solution with dual values supplied by the original
+finite solution.
+
+Take the componentwise median of $A,A^\#,I$. To define the
+median of three covariant trees, put a word in a given cone
+when it belongs to that cone in at least two trees. These
+cones are extension closed and disjoint, and thus define a
+tree. The median is monotone by the cone inclusions and
+commutes with constructor application, because child cones
+are selected independently. It commutes with duality and
+returns $t$ when two inputs equal $t$. If the trees are
+finite, any path beyond their maximum depth has reached a
+leaf in each tree and hence a majority cone, so the result
+is finite. It follows that the componentwise median of
+the three solutions solves the signed literals. Any ground
+bound satisfied by two inputs is preserved by monotonicity
+and the repeated-input identity. The median is fixed by
+sign duality, which interchanges $A$ and $A^\#$ and fixes
+$I$. Decoding gives a finite solution of the original
+constraint with all the observations. This proves the
+finite transfer for arbitrary variance.
+
+\subsection{Removing top}
+
+With no $\Top$ and with covariance, a tree is determined by its
+prefix-closed set of constructor positions. The empty set gives
+$\Bot$. Inclusion rules out a comparison of a constructor
+with a $\Bot$-leaf at the same position. If a constructor position
+in the first set is absent from the second, its shortest absent
+prefix is a common position labeled $f$ on the left and $\Bot$ on
+the right. Thus the order is inclusion. The same set
+embeds in the full signature as the very same tree. This embedding
+preserves and reflects the order and the constructor. A tree
+then has finitely many positions exactly when its constructor
+set is finite, because each constructor has finitely many
+children. It is regular exactly when the set has finitely many
+residuals by paths. Residuals at constructor positions describe
+the subtrees there, and all other residuals are empty.
+
+To exclude $\Top$ inside the full signature, add a fresh
+variable $g$ and the literals
+\[
+         g\le f(g,\dots,g),\qquad x\le g\quad(x\in V).
+\]
+Any positive cone word of the value of $g$ must be nonempty,
+because $g$ is below a constructor. The first inequality sends
+each such word, with its first letter removed, into the same
+positive cone. Iterating would put the empty word there.
+Thus $g$ has empty positive cone, and so does every value below
+it. Every solution of the guarded constraint therefore restricts
+to a solution without top, preserving the query values.
+
+Conversely, for arbitrary or regular trees use the complete
+tree with $f$ at every path as the guard. It is regular and
+contains every constructor position. In the finite class take
+a complete finite tree with $\Bot$ at its frontier, deep enough
+to contain the constructor positions of every variable. Its
+constructor set is included in that of one more complete level,
+so it satisfies the guard inequality. These choices also apply
+at arity zero, where the complete constructor tree is $f()$.
+This proves the equivalence for entailment in all three classes.
+Flattening in the restricted language uses just its constants
+and constructor. The guarded reduction, the full-signature
+deciders, and Boolean evaluation now prove \cref{thm:general}.

@@ -1,59 +1,33 @@
-%% ray -- a ray of a coordinate, and a constraint between two rays.
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[font=\scriptsize, >={Stealth[length=1.8mm]}]
-\def\h{0.34}
-%% (a) a ray
-\begin{scope}
-  \draw (0,0) rectangle (3.0,\h);
-  \node at (1.0,0.5*\h) {head};
-  \draw (2.0,0) -- (2.0,\h);
-  \foreach \x in {3.0,4.0,5.0,6.0} {
-    \draw[fill=black!15] (\x,0) rectangle (\x+1.0,\h);
-    \node at (\x+0.5,0.5*\h) {$\tau$};
+\begin{tikzpicture}[x=9mm,y=6.7mm,>=Stealth,
+  leg/.style={font=\footnotesize}, seg/.style={draw,fill=black!10},
+  buff/.style={draw,fill=black!28}, kept/.style={draw,fill=black!65},
+  bmark/.style={fill=black!85,text=white,font=\footnotesize,inner sep=1.4pt},
+  brace/.style={decorate,decoration={brace,amplitude=3pt}}]
+  \node[leg,anchor=east] at (-.25,0) {old ray};
+  \node[leg,anchor=east] at (1.35,-1.55) {shortened ray};
+  \draw[seg] (0,-.18) rectangle (3.65,.18);
+  \draw[kept] (3.65,-.18) rectangle (4.1,.18);
+  \draw[buff] (4.1,-.18) rectangle (7.25,.18);
+  \draw[seg] (1.6,-1.73) rectangle (3.65,-1.37);
+  \draw[kept] (3.65,-1.73) rectangle (4.1,-1.37);
+  \draw[buff] (4.1,-1.73) rectangle (7.25,-1.37);
+  \foreach \y in {0,-1.55}{
+    \draw[->] (7.25,\y)--(10.7,\y);
+    \foreach \x in {5.15,6.2,7.25,8.30,9.35,10.4}
+      \draw[black!70] (\x,\y-.18)--(\x,\y+.18);
+    \draw[densely dotted] (7.25,\y+.18)--(7.25,\y+.37);
+    \node[bmark,anchor=south] at (7.25,\y+.37) {$\#$};
   }
-  \node at (7.35,0.5*\h) {$\cdots$};
-  \draw (2.0,-0.08) -- (2.0,-0.3) node[below] {$J_i$};
-  \draw (3.0,-0.08) -- (3.0,-0.3) node[below] {$c_i$};
-  \draw (4.0,-0.08) -- (4.0,-0.3) node[below] {$c_i'$};
-  \draw[decorate, decoration={brace, amplitude=4pt}] (0,\h+0.08) -- (4.0,\h+0.08)
-    node[midway, above=4pt] {the word $w_i$ up to $c_i'$};
-  \draw (6.5,-0.08) -- (6.5,-0.3) node[below] {$L_i$};
-  \draw[densely dashed] (6.5,-0.05) -- (6.5,\h+0.05);
-  \node[left] at (0,0.5*\h) {$\Omega_i$};
-  \node at (3.6,-1.05) {(a) the ray $\Omega_i=\wpre{w_i}{c_i}\,\tau^\omega$ of a factor
-    $\tau=\wsub{w_i}{c_i}{c_i'}$ and its prefix of length $L_i$};
-\end{scope}
-%% (b) a constraint between two rays
-\begin{scope}[yshift=-3.0cm]
-  % host ray
-  \draw (0,0) rectangle (7.2,\h);
-  \fill[black!15] (1.4,0) rectangle (7.2,\h);
-  \draw (1.4,0) -- (1.4,\h);
-  \node[left] at (0,0.5*\h) {$\Omega_i$};
-  \draw (1.4,\h+0.08) -- (1.4,\h+0.3) node[above] {$a$};
-  \draw[densely dashed] (5.3,-0.05) -- (5.3,\h+0.05);
-  \draw (5.3,\h+0.08) -- (5.3,\h+0.3) node[above] {$L_i$};
-  % target ray
-  \draw (1.0,-1.1) rectangle (7.2,-1.1+\h);
-  \fill[black!15] (1.4,-1.1) rectangle (7.2,-1.1+\h);
-  \draw (1.4,-1.1) -- (1.4,-1.1+\h);
-  \node[left] at (1.0,-1.1+0.5*\h) {$\Omega_j$};
-  \draw (1.4,-1.18) -- (1.4,-1.4) node[below] {$b\le J_j$};
-  \draw[densely dashed] (6.2,-1.15) -- (6.2,-1.1+\h+0.05);
-  \draw (6.2,-1.18) -- (6.2,-1.4) node[below] {$L_j$};
-  \node at (4.3,-0.38) {$\wsuf{\Omega_i}{a}=\wsuf{\Omega_j}{b}$};
-  \node at (7.45,0.5*\h) {$\cdots$};
-  \node at (7.45,-1.1+0.5*\h) {$\cdots$};
-  \node at (3.6,-2.15) {(b) an admitted pair at $(a,b)$ with equal infinite rests is harmless
-    if $L_j-b>L_i-a$};
-\end{scope}
+  \draw[brace] (0,.32)--node[leg,above=2pt]{stem}(4.1,.32);
+  \draw[brace] (4.1,.32)--node[leg,above=2pt]{buffer}(7.25,.32);
+  \node[leg,above] at (4.1,-1.31) {onset};
+  \draw[very thick] (9.85,-1.89)--(9.85,-1.18);
+  \node[leg,below] at (9.85,-1.92) {truncation};
 \end{tikzpicture}
-\caption{(a) A ray continues a word periodically after its first rejected
-cut. (b) If the states at the cuts $a$ and $b$ are admitted and the rays
-agree forever from these cuts, the prefixes of lengths $L_i$ and $L_j$ carry
-this pair on the channel from $i$ to $j$ unless the rest of the target is
-longer than the rest of the host. This gives the difference constraint
-$L_j\ge L_i+(b-a+1)$.}
+\caption{The shortening sees finite prefixes ending at the marker $\#$.
+It keeps the last stem letter (dark) and the buffer. The rays continue
+with the original periodic text when truncation lengths are chosen.}
 \label{fig:ray}
 \end{figure}

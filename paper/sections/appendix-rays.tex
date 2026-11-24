@@ -1,0 +1,186 @@
+\section{Joint Extension, Depth, and Rays}
+\label{app:rays}
+
+Joint extension isolates the obstructions from words that remain
+fixed. The next two arguments use those obstructions to bound the
+nesting of fixed suffixes and then the periods of the moving words.
+
+\subsection{Joint extension and stopping}
+
+To prove \cref{lem:joint}, suppose the new letters keep the chosen
+coordinates alive. The new endpoints are rejected by the reader
+property. A comparison with an extended target at its new endpoint
+is harmless, because a live successor of a rejected state cannot
+be an admitted target. At any other cut of an extended target the
+new rest is an old rest followed by a letter. If it matches the
+host rest, the old target rest still fits after removing at most one
+letter from the end of the host. Its starting cut in the host is an
+old cut, because the new target rest is nonempty. Both cut states
+are unchanged. Thus this comparison would have been admitted in
+the original hole if it were admitted now.
+
+With a fixed target and an extended host, a comparison is old unless
+its two rests have equal lengths. In the strict case the host cut
+was already present and removing the new last letter still leaves
+room for the target rest. In the equality case the two rests agree
+and an admitted pair would block the letter. Comparisons of
+two fixed words were already present. This proves sufficiency.
+For necessity, a hole must have live runs. A blocked letter against
+a fixed target yields an admitted comparison in the new tuple by
+the definition of blocking.
+
+For \cref{lem:stopping}, among all hole extensions choose one with
+a stopped set $F$ of maximum cardinality. Such a cardinality exists,
+because the original hole has the empty stopped set and there are
+only $k$ coordinates. In that extension, and in every further hole
+extension that keeps the words of $F$ fixed, their stopping order
+still works. If an outside coordinate had no live letter unblocked
+by $F$, it could be placed last in this order, contradicting maximality.
+Append one live unblocked letter to every outside coordinate. By
+\cref{lem:joint} this gives a hole with the same fixed words. Iterating
+gives the asserted synchronous extension.
+
+We will also use a converse observation about this iteration.
+Suppose the initial tuple is a hole, and a proposed continuation grows
+each moving word exactly one letter per step. If the extended runs
+stay alive and every stage is safe against the fixed targets,
+\cref{lem:joint} inductively gives a hole at every stage. Indeed,
+a block would itself be an admitted comparison with a fixed target
+at that stage.
+
+\subsection{Charging the depth}
+\label{app:charging}
+
+For the depth proof, a label carried by a state can stand for one
+reason why a word cannot continue. Use a finite label set of size $J$.
+Assume that if reading a word from a live state kills the run, there
+is a label of that state with the same effect on every state carrying
+it. If the word instead leads to a host state admitted with a fixed
+target state, require a label with the same effect unless the new
+run dies. A state itself is such a label, by determinism. We show
+that the depth is at most $(J+1)|F|$.
+
+Fix a test word $x$. For each label remember the largest length
+at which a prefix of $x$ matches a suffix of any coordinate of
+the hole and the state at the start of that match carries the label.
+Use length zero if the label never occurs. We charge a positive
+length $d$ in $\RestLen(W,F,x)$ starting with a stopped word whose
+suffix is $\wpre xd$. The charge can end at $\len x$ if $d=\len x$.
+Otherwise let $c=x[d]$, the next letter after the match. The stopping
+certificate says that $c$ kills this coordinate or is blocked by
+an earlier coordinate.
+
+If $c$ kills the coordinate, reading $\wpre{x}{d+1}$ kills the run
+from the state at the start of the match. Take a label witnessing
+that effect. A longer match carrying the same label would read this
+longer prefix inside the hole and die, which is impossible. So $d$
+is the remembered length of this label.
+
+In the blocking case, the blocking rest is an entire suffix of the
+extended host and of the fixed target. If its start in the host is
+at or before the beginning of the match, $\wpre{x}{d+1}$ is a suffix
+of that blocking rest. Transfer the charge at length $d+1$ to the
+earlier stopped coordinate. If the start is later, let $z$ be the
+word from the beginning of the match to this start. Reading $z$ from
+the starting state leads to the admitted host state. Take a label
+witnessing admission against the blocking target state. A longer
+match carrying that label reads $z$ inside a live run. At its end it
+has an admitted host state followed by the blocking rest, which
+would give an admitted comparison in the original hole. Thus in
+this case too, $d$ is the remembered length of the label.
+
+Each transfer moves earlier in the stopping order and increases the
+length by one. After fewer than $|F|$ transfers the length is either
+$\len x$ or one of the $J$ remembered lengths. Thus every charged
+length is one of at most $J+1$ lengths minus an integer in
+$[0,|F|-1]$. If $F$ is empty there are no lengths to charge.
+This proves the general depth bound. Taking states for labels gives
+\cref{lem:depth} for structural readers. \Cref{app:counting} checks
+the label hypotheses for compiled readers.
+
+\subsection{Finding a free loop}
+
+For a function $g$ on positive lengths, let $\theta_0=1$ and
+$\theta_{j+1}=g(\theta_j)+\theta_j+1$. Suppose a host has room for
+$\theta_{C+1}$ letters after cut $a$. If there is no free window at a scale
+$\theta_j$ with $0\le j\le C$ after $a$, every region of length
+$\theta_{j+1}$ starting there contains a factor of length $\theta_j$ that is
+a suffix of a stopped word. Indeed, among its first $g(\theta_j)+1$
+starting cuts, at least one begins such a factor. That factor ends strictly
+before the end of the region, because of the extra letter in
+$\theta_{j+1}$.
+
+Use this statement inside the first large region, then inside
+the occurrence found there, and continue to scale $\theta_0$. The
+$C+1$ occurrences are nested and their right ends strictly decrease.
+At the start of the innermost one, trim all the other occurrences
+by removing their initial segments up to that cut. The trimmed
+words are still nonempty suffixes of stopped words, have distinct
+lengths, and are prefixes of one rest of the host. This contradicts
+depth at most $C$.
+
+For $g(\theta)=N(1+k(\theta+1))$, a free window gives a repeated state and
+right context. There are at most $1+k(\theta+1)$ short suffixes including
+the empty word, by counting one suffix per word and length. This
+overcounts the empty word, which is harmless for an upper bound.
+Those that match a rest are determined by the longest one.
+The $g(\theta)+1$ cuts therefore include two with the same pair.
+Both lie after $a$, their positive distance is at most $g(\theta)$,
+and no suffix of length $\theta$ starts between them, including
+the first cut and excluding the last. For $\theta\ge 1$, the next
+scale is bounded by
+\[
+   g(\theta)+\theta+1
+   \ \le\ (N(1+2k)+2)\theta
+   \ \le\ 2(k+2)(N+2)\theta.
+\]
+So $\theta_{C+1}\le D$, and the distance between the cuts is at most
+$\theta_{C+1}$. This proves \eqref{eq:period-bound}.
+
+\subsection{Repeating the loop and obtaining offsets}
+
+Let $h=s\ell\tau$ be the host with the free loop $\ell$. The short suffixes
+used in the right context are closed under taking suffixes.
+If two words agree on which short suffixes are prefixes, prepending
+a common word preserves agreement. Indeed, a prefix test either
+ends in the common word or reduces to a test of a suffix of the tested
+word. Hence $\ell\tau$ and $\tau$ having equal contexts implies inductively
+that $\ell^n\tau$ and $\tau$ have equal contexts for every $n$.
+
+At a cut of $s\ell^n$, compare its rest after appending $\tau$ with
+the rest in $h$ at the same cut in $s$, or at its phase in
+the loop. At the end of all the copies use the start of the loop.
+The right contexts agree by the preceding argument, prepending
+the remaining part of $s$ or of the loop when needed. The states
+agree because reading $\ell$ returns to its entry state.
+If $h$ is live, every $s\ell^n$ is live.
+
+Consider a target rest matching in $s\ell^n$. If its length is at most
+$\theta$, its match transfers directly by the context at the corresponding
+cut. If its length exceeds $\theta$, its last $\theta$ letters form a short
+suffix of length $\theta$. This suffix also matches at the corresponding
+cut in $h$. Its start cannot be in the repeated portion, since the
+corresponding cut would be in the free loop. Thus it starts in
+$s$. The earlier letters of the target rest already match in
+$s$, and its last $\theta$ letters match by the transferred
+context at the same position. The whole comparison therefore has
+the same pair of states in $h$. If $h$ was safe against the stopped
+target, so is $s\ell^n$. Every finite prefix of the ray is a prefix
+of some $s\ell^n$ and inherits this safety.
+
+In the synchronous extension, take a stage with at least $D$ new letters
+per moving coordinate and find a loop after each starting word.
+Each ray starts with that word and stays live. Its starting endpoint
+is rejected, so its later endpoints remain rejected. Retaining the
+stopped targets, the converse observation about joint extension
+proves \cref{lem:periodic}.
+
+Finally, for host cut $a$ and target cut $b$ of two rays with
+equal infinite rests, take a common increment $e$ large enough to
+reach both cuts. With the original word lengths as offsets,
+if $o_i+b-a+1>o_j$, then
+$o_j+e-b\le o_i+e-a$. The target rest is then a
+prefix of the host rest in that hole, so the pair cannot be admitted.
+This proves \eqref{eq:offset}, including the case of cuts in the
+same coordinate. The other periodic-tuple conditions follow from
+liveness, rejection, and safety at all common truncations.

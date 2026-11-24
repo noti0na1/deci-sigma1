@@ -1,0 +1,87 @@
+\section{Counting the Length Bound}
+\label{app:counting}
+
+The same length formula applies to arbitrary and compiled readers.
+The difference lies in how the number of word actions and the stopped
+depth are bounded.
+
+\subsection{Actions and obstructions of a compiled reader}
+
+A live state has an upper and a lower subset of the $2v$ signed
+variables. There are $2^{4v}$ such pairs in the table and one dead
+state. Even pairs never reached from the starts can be used as inputs
+of an action. Join live states by componentwise union and let
+$\dead$ absorb joins. Both relational images commute with unions.
+A joined image passes the guard exactly when both images pass it,
+because a union is disjoint from the facts exactly when both
+parts are. This gives preservation of joins for each letter,
+and then for each word. Both $\dead$ and the pair of empty sets
+are fixed under all word actions.
+
+Each pair is a join of the singleton states of its two components.
+There are $4v$ singleton states, and the action is determined by
+its images on them. The number of actions is at most
+\[
+  (2^{4v}+1)^{4v}\ \le\ 2^{(4v+1)4v}.
+\]
+Also, a joined image is dead exactly when some component image is
+dead. If all images are live, admission with a fixed target is
+tested by an intersection with the union of lower and flipped
+upper sets. So this admission is witnessed by one singleton's
+image. More generally, death or admission with the fixed target
+holds after a word exactly when it holds for one of the singleton
+states carried by the starting pair. A word read from any starting
+pair carrying that singleton then has the same obstruction, up to
+death in the admission case. These are the label hypotheses of
+\cref{app:charging}. Taking $J=4v$ there proves the compiled part
+of \cref{lem:depth}.
+
+\subsection{Combining the bounds}
+
+Given a hole, \cref{lem:stopping} supplies an extension with stopped
+depth bounded by $C$. By \cref{lem:periodic} and \eqref{eq:offset}, its
+moving coordinates give rays of period at most $D$ and offsets.
+The resulting periodic tuple can be shortened as in
+\cref{lem:buffered}. Its onsets and stopped lengths are bounded by
+$S$ and its periods by $D$. Then \cref{lem:truncation} gives a hole
+of length at most $\LBound(k,N,K,C)$.
+
+To estimate the formula, suppose $k,C\le a$ and $N,K\le 2^a$.
+Write $t=a+16$. In the following estimates we use $k\le 2^a$,
+$C+2\le t$, and $t\ge16$. The quantities $k+2$, $N+2$,
+$C+N+3$, $K+1$, and $2k+3$ are all at most $2^t$, since each
+is at most $2^{a+1}+3\le 2^{a+3}$. Thus
+\begin{align*}
+ D &\le 2^{(2t+1)t} \le 2^{3t^2},\\
+ B+2 &\le 2^t D + 6 \le 2^{3t^2+t+1}\le 2^{4t^2},\\
+ M &\le 1+2^{8t^2+t} \le 2^{9t^2}.
+\end{align*}
+For the finite bound used for $S$, its state and action arguments
+are both bounded by $2^{10t^2}$. Its budget
+$R=(MN+M(K+1)+1)(2k+3)^{3(C+1)}$ is at most
+$2^{13t^2+2}\le 2^{14t^2}$. Hence
+$Q=2R+k+2\le 2^{14t^2+2}\le 2^{15t^2}$.
+Substituting in the finite bound gives
+\[
+       S\le 2^{15t^4+t},
+       \qquad H=S+ND+1\le 2^{15t^4+t+2}.
+\]
+Each summand inside the parentheses of \eqref{eq:length-bound}
+is at most $2^{15t^4+2t+2}$, including $kH$ and $2D$.
+There are five summands. Multiplying by $k\le 2^t$ gives
+\[
+      \LBound(k,N,K,C) \le 2^{15t^4+3t+5}\le 2^{t^5}.
+\]
+The last inequality follows from $3t+5\le t^4$ and $t\ge16$.
+
+For arbitrary readers, choose $K=N^N$ by counting all state maps
+and $C=(N+1)k$ by \cref{lem:depth}. These choices meet the preceding
+hypotheses with $a=(k+N+2)^2$: the depth and $k$ are at most $a$,
+and $N^N\le 2^{N^2}$ since $N\le 2^N$. For compiled readers use
+$N=2^{4v}+1$, $K=2^{(4v+1)4v}$, and $C=(4v+1)k$.
+Take $a=(4v+k+2)^2$. The depth and $k$ are again at most $a$,
+and the exponents $4v+1$ and $(4v+1)4v$ are bounded by $a$.
+In both cases $(s+2)^2+16\le(s+16)^2$, with $s=k+N$ or
+$s=4v+k$. Raising to the fifth power proves the two estimates
+in \cref{thm:short}. All these counts use states, actions, and
+depth, independently of the alphabet size.

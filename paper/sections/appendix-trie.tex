@@ -1,0 +1,295 @@
+\section{The Simultaneous Trie Descent}
+\label{app:trie}
+
+The descent keeps comparisons by recording their entering transitions.
+Those labels record which block was read and the state from which it
+was read, so that a test on blocks can refer back to a cut inside a
+block.
+
+\subsection{Transition labels and linked expansions}
+
+A transition reader uses a deterministic table with designated starts.
+The label of the first cut is its coordinate start symbol. At a later
+cut, the label is the pair of the previous state and the letter just
+read. A label determines the state of the cut. The reader tests the
+last label of each coordinate for eligibility. For comparisons it has
+two admission relations on labels for each ordered pair of coordinates.
+One is used when the target rest is nonempty and the other is used
+when it is empty. A hole meets the endpoint tests and has no admitted
+comparison.
+
+At a given level, classify exactly the last letters of the nonempty
+words as markers. The other letters are ordinary. Splitting after every
+marker yields a uniquely linked block list for each coordinate, including
+the empty list for an empty word. Write a block as $(\mu,x,\nu)$ with front
+marker $\mu$, content $x$, and closing marker $\nu$. The front marker is
+either a letter from the marker set or a distinct coordinate start
+symbol. The expansion writes $x\nu$ for each block. Lists linked from
+the same front marker have expansions in the prefix relation exactly
+when the lists are in the prefix relation. To see the reverse
+implication, scan the expansions to the first marker. The matching
+initial pieces give the same content and closing marker, and the
+fronts agreed. Repeat for every block of the shorter expansion.
+
+The block transition starts with the front marker. If it is a letter,
+read it from the current state. If it is a coordinate start, reset
+to the associated start state. Then read the content. On a linked
+list, the state after a block is the original state just before the
+closing marker. That marker is the next block's front, so induction
+over the list proves the claimed state correspondence. A noninitial
+label of the block list consists of the state before a block and
+the block itself. From it one can reconstruct the original label
+after any prefix of the content, including the one at the front.
+One can also compute the label of the closing transition. For an
+initial label use the start symbol as its closing label, and give
+it no interior cuts.
+
+A proper cut of an expansion belongs to the first block whose closing
+marker lies at or after the cut. Its rest is the rest of the content,
+then the closing marker, then the expansion of the remaining blocks.
+For two such cuts, the prefix test holds exactly when the content
+rests and the closing markers agree and the following block lists
+satisfy the block prefix test. Indeed, the first marker in each rest
+must be at the same position, and the lists after it are linked from
+the same front marker. The final cut of an expansion has the closing
+label of the final block-list cut.
+
+These correspondences give the derived reader. Its endpoint acceptance
+tests the closing label. At a comparison of block cuts with nonempty
+target rest it admits if there are cuts inside the two indicated
+blocks with equal content rests and closing markers whose original
+labels are admitted. At a comparison with the final block cut of the
+target it admits by the same test, or if the closing label of the
+target is admitted as a final target with some label represented
+by the host cut. The labels represented by a host cut are the interior
+labels of its block and its closing label. The initial cut of a
+block list also represents the original start via its closing label.
+Each of these represented labels occurs in the expansion at a cut
+of that host. Conversely each cut of the expansion has a label
+represented by some block cut. Thus every comparison admitted in an
+expansion has a derived test detecting it. Each derived test that
+admits when the block rests match also supplies an admitted
+comparison in the expansion. This proves the equivalence of holes
+of the derived reader on linked lists and holes on their expansions.
+
+The junction monitor has a state for each coordinate start and each
+marker, and an absorbing failure state. A block step tests its front
+against this state and outputs its closing marker on success. With
+the start state of its coordinate, a run avoids failure exactly
+when its blocks are linked, by induction on the list. Take the product
+with the derived reader. In tests on labels forget the monitor state,
+and require at endpoints that it has avoided failure. Its holes are
+exactly the linked holes of the derived reader.
+
+\subsection{Depth and word actions at one level}
+
+A chain of nonempty rests consists of words each of which is a proper
+prefix of the next. Any such chain is counted by the depth test on
+its longest word. Conversely the prefixes in any depth test are a
+chain of rests when sorted by length. For a chain of at least two
+block rests, the first block is the same in each rest. Its front
+cannot be a coordinate start, since that would place the first
+block at the start of one specific coordinate in every rest. So the
+front is a marker $\mu$. Prepend $\mu$ to the expansion of each rest.
+These are rests of the expanded tuple and remain a strict chain
+by the prefix equivalence for linked lists. The one-letter rest
+$\mu$ occurs at the end of some coordinate by choice of the markers.
+Adding it extends the chain by one. Thus if the original depth
+is $d\ge 2$, the block depth is at most $d-1$. If the original
+depth is one, each list has at most one block. A second block
+and the following blocks would form a rest with ordinary front
+marker $\mu$, giving the rest $\mu$ followed by that expansion
+and the shorter rest $\mu$.
+
+For a list of blocks, the induced state map of the derived reader is
+either a word action of the old table or a constant map. A list
+with no reset reads one fixed concatenation of fronts and contents.
+A reset erases dependence on the input state, so every action with
+a reset is constant. If there are $N$ states and at most $K$ actions,
+the derived reader has at most $K+N$ actions. For $m$ marker letters,
+the junction monitor has $k+m+1$ states and at most $(k+m)m+2$
+actions. An empty list gives the identity. A nonempty list with a
+failed internal junction gives constant failure. Otherwise the
+action tests for one front and sends it to one closing marker,
+failing elsewhere. This accounts for all maps on the monitor.
+
+Each word action of the product is a pair of actions. Its number
+of states $N'$ and bound $K'$ on actions therefore satisfy
+\[
+ N'=N(k+m+1),\qquad K'\le (K+N)\bigl((k+m)m+2\bigr).
+\]
+Since $m\le k$, the sum $K'+N'+1$ is at most
+$(K+N+1)(2k^2+2k+4)$. This uses $N'\le N(2k+1)$ and
+$(k+m)m+2\le 2k^2+2$. The factor $2k^2+2k+4$ is at most
+$F(k)=(2k+3)^3$, by expanding the cube. This also bounds
+the growth if a transition table is transported along a
+letter bijection, which leaves the word actions unchanged.
+
+\subsection{A dictionary on a reverse trie}
+
+A word can be shortened while preserving its action from every state.
+At each step, let $F$ be the map on states of the prefix already
+read. Find the longest prefix of what remains that leaves $F$
+unchanged and does not consume the last letter. Erase this gap and
+retain the next letter. Continue to the end. Each gap is a loop
+from every state in the image of its preceding prefix. Hence the
+pairs of gap and retained letter give a decomposition with the
+same states before each retained letter as in the original run.
+
+The actions of the original prefixes at the beginnings of
+different steps are distinct. If a later prefix there had the
+same action, the earlier gap could have extended at least as far
+as that later prefix, which still excludes the last letter. This
+contradicts the choice of the longest gap. There are at most $K$
+steps. The last letter is retained, and the argument applies to
+any nonempty word. The empty word needs no steps.
+
+Apply this construction on the reverse trie of a finite dictionary
+of contents. Mark the root, each dictionary endpoint, and every
+vertex with multiple children. Use the paths between consecutive
+marks as segments. Every such segment is a word when read toward
+the root. Compress it once, valid from every state, and keep its
+last letter as in the preceding argument. As read away from the
+root, this is the first letter of the shortened segment. Distinct
+branches still differ on this first letter. Equality of two
+suffixes spelled by retained letters therefore identifies exactly
+the same path and the same retained cuts as read from the root.
+This means the lists of gaps and retained letters of the two
+suffixes coincide. More explicitly, whenever their reverse
+paths leave a common marked vertex, different segments have
+different first letters. Inside a segment the two paths follow
+the same shortened text with the same gap list. Induction along
+these paths gives equality of the gap lists up to their shared end
+at the retained cut. Thus equal retained suffixes lift to equal
+original suffixes at the corresponding cuts.
+
+There are at most $2|\mathcal D|$ segments for a dictionary
+$\mathcal D$. If the dictionary is nonempty, each leaf is a
+dictionary endpoint, and the number of branching vertices is at
+most the number of leaves minus one. The latter follows by summing
+outdegrees minus one over the nonleaves of a rooted tree. The root
+and the marked endpoints and branch vertices give at most
+$1+|\mathcal D|+(|\mathcal D|-1)$ vertices and at most one fewer
+segments. An empty dictionary has none. Each compressed segment
+has length at most $K$. The retained words have a reverse trie
+with at most $2|\mathcal D|K$ edges, since they are read on this
+shortened tree. Their lengths are at most this many, and the
+ordinary letters in them number at most this many, because each
+such letter labels some edge.
+
+Renaming a block by its retained content keeps both markers. This
+map is injective on the blocks used, because equality of complete
+retained contents lifts to equality of the originals. By validity
+of the gaps, the runs before and after retained transitions agree
+with their old states. In particular the block action stays the
+same, and the closing label agrees. Inside two renamed blocks,
+every alignment used by the derived reader lifts within the two
+old blocks. Indeed, equality of the content rests identifies
+the original gaps, and the label at each matching cut is the
+original label at the start or after the preceding retained letter.
+If a comparison in the renamed block lists has a nonempty target
+rest, injectivity makes the old block rests a comparison as well.
+For a final target, the closing label is unchanged, and the host
+label again lifts into its block or to its closing label. Consequently
+the renaming preserves holes of the derived reader and preserves
+linking. It gives expanded words that are subsequences of the
+expansions before renaming.
+
+\subsection{The induction for short refinements}
+
+We first shorten holes of arbitrary transition readers. For a depth
+bound $d$ reserve
+\[
+ R\ \ge\ (K+N+1)F(k)^d,\qquad Q=2R+k+2 .
+\]
+We prove that the shortened words use at most $Q^{d+1}$ distinct
+letters in total, and each word has length at most $Q^{(d+1)^2}$.
+If every word has length at most one, keep the tuple, which uses
+at most $k$ letters. This handles depth zero, where any nonempty
+word would itself be a positive rest.
+
+At positive depth, pass to block lists on the product reader.
+Their depth is at most $d-1$ if $d\ge 2$. When $d=1$, use the
+length-at-most-one case on the block lists. The action and state
+bounds allow the same budget $R$ at depth $d-1$ because
+$(K'+N'+1)F(k)^{d-1}\le R$. After induction the block lists are
+again linked. Shorten the dictionary of contents of their retained
+blocks. Its cardinality is at most $Q^d$, because it is the
+image of their letter set under taking contents. The transitions
+on ordinary letters have at most $K$ actions. On expansion
+the support grows to at most $2Q^d K+k\le Q^{d+1}$, and each
+block contributes at most $2Q^d K+1\le Q^{d+1}$ letters. These
+inequalities use $K\le R$. The lists had length at most
+$Q^{d^2}$, so the new words have length at most
+$Q^{d^2+d+1}\le Q^{(d+1)^2}$. The block lists were subsequences and
+their contents were shortened by deletion. Thus each final word
+is a subsequence of its original, and the equivalence on linked
+expansions ensures it is in a hole at this level.
+
+To obtain a refinement on a given table, construct a transition
+reader from the original tuple. Accept exactly its original
+endpoint labels. With a nonempty target rest, admit a pair of labels
+if no comparison of that kind in the original tuple between those
+coordinates carries them. For a final target, admit any host label
+absent from the original host coordinate. The original tuple is a
+hole. The new hole keeps the endpoint labels and all its proper
+comparisons lift. Every host label must occur in its original
+coordinate because it can be compared with a final target, for
+example its own. Project labels to states to obtain a refinement.
+Summing the length bound and taking $R=(K+N+1)F(k)^d$ proves
+\cref{lem:refinement}.
+
+\subsection{The suffix monitor and marked buffers}
+\label{app:suffix-monitor}
+
+To keep the terminal windows of a tuple, the suffixes of length at most
+$B+2$, let $\mathcal W$ consist of the empty word and the factors of the
+terminal windows. This set of window factors is closed under taking
+factors. Each window of length $r$ has at most $r^2$ nonempty factors,
+by choosing their first and last positions. Thus $|\mathcal W|\le M$,
+where $M=1+k(B+2)^2$.
+
+A monitor state is a word $z$ in $\mathcal W$ and a table state
+$q$ before $z$. After a letter, the next recorded word is the
+longest suffix in $\mathcal W$ of $z$ followed by that letter. This
+computes the longest suffix in $\mathcal W$ of the entire input so
+far. Indeed, deleting the last letter of any candidate suffix
+leaves a suffix in $\mathcal W$ of the previous input, and hence a
+suffix of $z$. Advance $q$ by the part of the old recorded word
+and new letter before the new suffix. Induction shows that the
+record gives the true state before that suffix. It then gives
+both the endpoint and the states before all suffixes in $\mathcal W$
+at the end of the input.
+
+There are at most $MN$ monitor states. If a word $w$ is in
+$\mathcal W$ it contributes at most one action. Otherwise, from any
+record $(z,q)$, a suffix in $\mathcal W$ of $zw$ cannot extend left of
+$w$, because it would contain $w$ as a factor. So the final recorded
+word is the longest suffix in $\mathcal W$ of $w$ alone. The new state
+before it is reached by reading $z$ and then the prefix of $w$
+before this suffix. The action is determined by one suffix in
+$\mathcal W$ and one base action, giving at most $M(K+1)$ actions.
+The reasoning applies to every monitor state by regarding $z$
+as a word just read from $q$.
+
+In the marked tuple, the fresh terminal marker acts as the identity,
+so it does not increase $K$. For every test word the unmarked
+stopped suffixes contribute at most $C$ lengths. This follows
+by taking the prefix before its first terminal marker, or the
+whole test word in the absence of one. Nonempty marked suffixes
+contribute at most the one length through the first marker.
+The depth is therefore at most $C+1$.
+
+Run the refinement of \cref{lem:refinement} on the suffix monitor
+for this marked tuple. Then project its states to those of the
+original table by reading the recorded suffix from its stored
+state. Equal monitor endpoints keep every original terminal
+suffix of length at most $B+2$, with its entry state. For moving
+words this keeps the buffer and marker, the last stem letter
+when there is one, and the state at the stem's end. If a stem
+was empty the entire marked word survives, by the subsequence
+condition. Each suffix of length at most $B$ of a shortened
+stopped word is also an original suffix, because the original suffix
+of that length survives and the length determines it. The total
+length bound for the marked refinement bounds each shorter
+stopped word and stem by $S$ from \cref{lem:buffered}.

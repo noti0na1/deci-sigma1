@@ -1,0 +1,201 @@
+\section{One Trie Descent for All Words}
+\label{sec:trie}
+
+A finite word can be shortened by deleting some of its letters. We need
+a stronger conclusion than keeping its end state. Every comparison
+created by the deletion has to be accounted for, including those with
+other words of the tuple. \Cref{sec:refinement,sec:parsing,sec:contents}
+prove a general shortening lemma for tuples of bounded depth
+(\cref{lem:refinement}), by induction on the depth. \Cref{sec:buffers}
+applies it to the stopped words and the stems of the rays.
+
+\subsection{What a shortening preserves}
+\label{sec:refinement}
+
+We say a tuple \emph{refines} another tuple on a transition table if
+it keeps each endpoint state and each of its cut states occurs in the
+original coordinate. In addition, every comparison with nonempty target
+rest must lift to such a comparison of the original words with the same
+coordinates and pair of states. A comparison with empty target rest
+lifts using the endpoint and cut-state conditions. Refinement therefore
+preserves eligibility and safety.
+
+To bound a refinement, we need to count the effects of a word read from
+different states. Its \emph{word action} is the map sending each possible
+entry state to the state after reading the word. When the input has
+bounded depth, the following shortening depends on the number of these
+maps.
+
+\begin{lemma}[Short refinements]\label{lem:refinement}
+Let a transition table have $k$ starts, $N$ states, and at most $K$
+word actions. A tuple of depth at most $d$, with all coordinates
+included in the depth test, has a refinement by coordinatewise
+subsequences of total length at most
+\[
+ \FBound(k,N,K,d)
+   = k\bigl(2(K+N+1)(2k+3)^{3d}+k+2\bigr)^{(d+1)^2}.
+\]
+\end{lemma}
+
+The proof is an induction on the depth $d$. One \emph{level} of the
+descent cuts all words of the tuple into blocks (\cref{sec:parsing}). The
+lists of blocks are words over a new alphabet whose letters are blocks,
+and they have smaller depth, so the induction shortens them. On the return,
+the contents of the remaining blocks are shortened together
+(\cref{sec:contents}). Three auxiliary readers carry the tests from one
+level to the next. The \emph{transition reader} records at each cut the
+transition that entered it, so that a test on blocks can refer to a cut
+inside a block. The \emph{derived reader} reads a block list, one block per
+letter, and has the same holes as the original reader on the expanded
+words. The \emph{junction monitor} checks that a shortened block list still
+expands to a word. \Cref{sec:buffers} adds a fourth one, the \emph{suffix
+monitor}, which makes the shortening keep a prescribed end of each word.
+
+\subsection{Parsing at markers}
+\label{sec:parsing}
+
+The last letter of any nonempty word is already one of the rests that
+comparisons can see. We use the last letters of all words as
+\emph{markers}, and cut every word after each occurrence of a marker.
+A \emph{block} has a front marker, a content without markers, and a
+closing marker. The first front marker of a word is a start symbol of its
+coordinate. Every later front marker repeats the previous closing marker.
+We call such lists \emph{linked}. Expanding a list writes each content
+followed by its closing marker, so a repeated marker is written once.
+\Cref{fig:trie} parses two words. Its letters belong to the alphabet of
+some level, so at deeper levels they are blocks themselves.
+
+\input{figures/trie}
+
+Two nonempty rests of expanded words can form a comparison only if
+the portions up to and including their next markers agree. The following
+block lists must then be in the prefix relation. This reduces tests at
+old cuts to tests on pairs of block occurrences.
+
+The state after reading a block by itself would hide the states at
+its interior cuts. We therefore use a transition reader. Its label at a
+cut is the entering transition, the previous state and the letter just
+read, and at the first cut it is the coordinate start. The derived reader
+reads blocks as letters. It processes a block from its front marker
+through its content. Its label at the cut after a block is the pair of the
+state before the block and the block itself. From this pair one can
+recompute the original label at every cut inside the block and at the cut
+after its closing marker. The derived reader tests aligned cuts inside the
+blocks and handles empty target rests separately. A last cut of the block
+list may represent a proper cut of the original word, so both tests are
+needed there.
+
+A shortened list of blocks must still be linked. The junction monitor
+remembers the previous closing marker and checks that it agrees with
+the next front marker. It checks the first front marker against the
+coordinate start. The product of the derived reader and this monitor
+gives the reader for the next level.
+
+Parsing lowers the depth. In a chain of two or more distinct nonempty
+block rests, the first block is the same throughout the chain. Its
+front marker is a marker of this level. A front marker that named a
+coordinate start would force the rests to be the same whole list.
+Prepending that front marker to each expanded rest recovers a chain
+of rests of the original words. The marker by itself is another rest,
+strictly shorter than all the others. At depth one this also implies
+that each word parses into at most one block.
+
+\subsection{Shortening the contents}
+\label{sec:contents}
+
+After the recursive step, we have fewer blocks to expand. They may still
+have long contents. Deleting loops separately could make two different
+contents end in the same sequence of retained letters, creating a new
+comparison. We shorten the finite set of contents, the \emph{dictionary},
+on one reverse trie. Its paths from the root spell the reversals of
+contents.
+
+Mark the root, the content endpoints, and the vertices where paths
+branch. In each segment between marked vertices, read in the original
+direction and delete loops of the word actions. The last letter of a
+segment is retained. It distinguishes the outgoing branches in the
+reverse trie. A shared segment is shortened once. Thus equal retained
+suffixes have the same deleted gaps, and the state at each cut after a
+retained letter is the same as at its original cut. This also keeps
+the transitions into those cuts.
+
+To finish the level, rename each surviving block by its shortened
+content and keep its markers. The renaming is injective on the blocks
+used. Every internal alignment lifts to an old alignment, so the
+renamed block lists still pass all the tests. They expand to a valid
+tuple at this level.
+
+To obtain a refinement of a given tuple $W$, we run the descent on a
+transition reader built from $W$. It accepts exactly the endpoint labels
+of $W$. For each ordered pair of coordinates, it admits a pair of labels at
+a comparison with nonempty target rest if no such comparison of $W$
+between the same coordinates carries them. It admits a host label against
+an endpoint target if the label does not occur in the host coordinate of
+$W$. Then $W$ is a hole of this reader. In every hole of it, the endpoint
+labels, the cut labels, and the comparisons with nonempty target rest
+occur in the same coordinates of $W$. The short hole of this reader is
+therefore the required refinement. \Cref{app:trie} proves the transfer at
+each level and counts the support and length on expansion.
+
+\subsection{Keeping the buffers}
+\label{sec:buffers}
+
+Cutting off each ray at its stem would discard comparisons using its
+periodic part. The \emph{onset} of a ray is the least cut from which it
+is periodic, and its \emph{stem} is the prefix before the onset. We
+attach a finite part of the periodic text to the stem, its \emph{buffer}
+of the next $B=(C+N+3)D+4$ letters. We show below that the buffer is long
+enough to contain every comparison with a stopped target. A new terminal
+marker follows the buffer. It has the identity action in the reader.
+
+The tuple for shortening consists of these marked words and the stopped
+words. Its depth is at most $C+1$. Any nonempty rest of a marked word
+ends at its marker, so among the prefixes of a test word these rests
+contribute only the length up to the first terminal marker. The stopped
+words contribute at most $C$ lengths.
+
+We keep the \emph{terminal window} of each word, its last $B+2$ letters
+or the whole word if shorter, and the states at the cuts of this window.
+This keeps the stem's last letter when it exists, the buffer, and the
+terminal marker. It also keeps the state reached at each onset. To impose
+this requirement we run the reader with a suffix monitor. Its states
+record the longest current suffix that is a factor of a terminal window,
+together with the reader state before that suffix, in the style of the
+automaton of Aho and Corasick \cite{AhoCorasick75}. A step updates the
+record. The final record gives the prescribed suffixes and their states.
+The proof in \cref{app:trie} bounds the word actions of this monitor
+and applies one refinement to the marked tuple.
+
+\input{figures/ray}
+
+Two properties transfer to the new rays. First, comparisons with a
+stopped target fit inside the buffered prefix. After the onset, the state
+at a cut and its \emph{phase}, the distance from the onset modulo the
+period, determine all later states and letters. So the host cut can be
+moved back to the first cut with the same state and phase. A match from
+there that extended beyond the buffer would give a stopped word a periodic
+suffix that is too long for its depth. Second, matches through the new
+stems cannot create admitted equal infinite rests that violate the
+offsets. If equal infinite rests start before the onsets, they have the
+same distance to their onsets. Their finite rests through the terminal
+markers lift together. If the cuts are in the periodic parts, the states
+and rests come from the old rays directly. The onsets themselves are
+kept. Since the onset is the least cut from which the ray is periodic,
+the last stem letter differs from the letter one period later. Keeping it
+makes the shortened ray become periodic exactly at its onset.
+
+\begin{lemma}[Shortening a periodic tuple]\label{lem:buffered}
+For a periodic tuple whose stopped words have depth at most $C$ and whose
+periods are at most $D$ from \eqref{eq:period-bound}, let
+\begin{align*}
+  B&=(C+N+3)D+4, & M&=1+k(B+2)^2,\\
+  S&=\FBound\bigl(k,MN,M(K+1),C+1\bigr).
+\end{align*}
+One trie descent gives a periodic tuple with each stopped word and each
+stem of length at most $S$, and with periods at most $D$.
+Here $K$ bounds the word actions of the original reader.
+\end{lemma}
+
+The buffer safety and offset proofs are in \cref{app:truncation}.
+The finite parts of the periodic tuple are now bounded.
+We still have to find finite truncations of the new rays.

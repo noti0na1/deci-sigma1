@@ -1,323 +1,187 @@
-\section{Proofs for Section~\ref{sec:readers}: The Reduction to Holes}
+\section{Closure and the Reduction to Holes}
 \label{app:reduction}
 
-\subsection{Leaf Cones}\label{app:reduction-cones}
+The reduction uses two kinds of reachability. Root-to-root reachability
+is finite. Reachability between arbitrary paths factors at a common
+suffix, which is what comparisons detect.
 
-We use the following property of trees: for a tree $t$ and a path $w$, at
-most one prefix of $w$ is a leaf of $t$, and if none is, then $w$ is a
-position of $t$ labeled $f$. Indeed, by induction on its prefixes, a prefix
-of $w$ is a position as long as no shorter prefix is a leaf, since a
-position that is not a leaf has all its children, and a leaf has none.
+\subsection{Cones and moves}
 
-\begin{proof}[Proof of \cref{thm:cones}]
-\eqref{it:cones-pair} The cones are extension closed by definition, and
-disjoint because a path has at most one prefix that is a leaf. Conversely,
-let $L^{\sgp},L^{\sgm}$ be disjoint extension-closed sets of paths. Let $D$
-be the set of paths none of whose proper prefixes lies in $L^{\sgp}\cup
-L^{\sgm}$, and define $t$ on $D$ as follows: $t(w)=f$ if $w\notin
-L^{\sgp}\cup L^{\sgm}$; if $w\in L^s$, then $t(w)$ is the label of a leaf of
-sign $s$ at polarity $\pol(w)$, that is, $\Top$ if $s=\sgp$ and $\pol(w)=0$
-or $s=\sgm$ and $\pol(w)=1$, and $\Bot$ otherwise. The set $D$ contains
-$\eps$ and is closed under prefixes; a position labeled $f$ has all its
-children in $D$, and a position in $L^{\sgp}\cup L^{\sgm}$ has none. So $t$
-is a tree, and its leaves of sign $s$ are the elements of $L^s$ without a
-proper prefix in $L^{\sgp}\cup L^{\sgm}$. A path $w$ lies in $L^s$ exactly
-when its shortest prefix in $L^{\sgp}\cup L^{\sgm}$ exists and lies in
-$L^s$, because both sets are extension closed and they are disjoint; hence
-$\Cone st=L^s$. A tree is determined by its cones: its leaves are the
-minimal elements of the union of the cones, their labels are determined by
-their signs and polarities, and its other positions are the paths without a
-prefix in the union.
+For a path $w$, the first leaf along $w$, if there is one, determines
+its extended label. Otherwise $w$ is a position and has extended label
+$f$. There is at most one leaf prefix, since leaves have no children.
+Conversely, given disjoint extension-closed cones, use the words with no
+proper prefix in either cone as the domain. Label the minimal words in
+each cone with its leaf label and the other positions with $f$.
+Extension closure and disjointness show that the resulting cones are
+exactly the two given ones.
 
-\eqref{it:cones-order} Let $t\le u$ and $w\in\Cone{\sgp}t$, with a prefix
-$v$ of $w$ that is a leaf of $t$ of sign $\sgp$. Let $v'$ be the longest
-prefix of $v$ that is a position of $u$; it is a position of both trees. If
-$v'=v$ and $\pol(v)=0$, then $t(v)=\Top\le u(v)$, so $u(v)=\Top$; if
-$\pol(v)=1$, then $u(v)\le t(v)=\Bot$. In both cases $v$ is a leaf of $u$ of
-sign $\sgp$. If $v'$ is a proper prefix of $v$, then $u(v')$ is a leaf and
-$t(v')=f$; for $\pol(v')=0$ we get $f\le u(v')$, so $u(v')=\Top$, and for
-$\pol(v')=1$ we get $u(v')\le f$, so $u(v')=\Bot$. Again $v'$ is a leaf of
-$u$ of sign $\sgp$, and a prefix of $w$. Hence
-$\Cone{\sgp}t\subseteq\Cone{\sgp}u$, and the inclusion
-$\Cone{\sgm}u\subseteq\Cone{\sgm}t$ follows in the same way with the roles
-of the trees and of the labels exchanged.
+Comparison of the extended labels at all words is equivalent to
+comparison at common positions. For the forward direction, each label
+at a common position is its own extended label. For the reverse,
+follow a word to the last common position. If both trees still have
+positions along the word, use the comparison at its end. If both
+have leaves at the last common position, use the comparison there.
+If only the smaller tree has a leaf there, its label must be $\Bot$.
+If only the larger tree has a leaf there, its label must be $\Top$.
+Comparison therefore holds on the entire word. The extended-label
+order is equivalent to the two cone inclusions. A positive
+membership on the smaller side forces one on the larger side, and
+a negative membership on the larger side forces one on the smaller.
+Together these exclude every label inequality in the wrong direction.
+The extended labels determine both cones and hence the tree, so the
+order is reflexive, transitive, and antisymmetric.
 
-Conversely, assume both inclusions and let $\pi$ be a position of both
-trees with $\pol(\pi)=0$; we show $t(\pi)\le u(\pi)$. If $t(\pi)=\Top$, then
-$\pi\in\Cone{\sgp}t\subseteq\Cone{\sgp}u$, so a prefix of $\pi$ is a leaf of
-$u$ of sign $\sgp$; since $\pi$ is a position of $u$ this prefix is $\pi$,
-and $u(\pi)=\Top$. If $t(\pi)=f$ and $u(\pi)=\Bot$, then
-$\pi\in\Cone{\sgm}u\subseteq\Cone{\sgm}t$, so a prefix of $\pi$ is a leaf of
-$t$, contradicting $t(\pi)=f$. If $t(\pi)=\Bot$ there is nothing to show.
-The case $\pol(\pi)=1$ is symmetric.
+For a constructor tree, the root belongs to neither cone, and membership
+at $iw$ is membership at $w$ in the $i$th child of the same sign.
+This proves the constructor rows of the table in \cref{sec:readers}.
+For example, $f(x_0,x_1)\le y$ requires that each positive membership
+of $x_i$ gives one of $y$ with $i$ prefixed. It also requires that a
+negative membership of $y$ with $i$ prefixed gives one of $x_i$, and
+that $y$ has no negative root membership. The other constructor row
+uses the opposite inclusions. The variable row is the two cone
+inclusions, and a constant equality fixes the leaf at the root.
+Thus the moves, root requirements, extension, and disjointness
+characterize solutions.
+Every failed query gives one of the two modes by the cone inclusions,
+and any realization of a seed and its exclusion gives that failure.
 
-\eqref{it:cones-node} The only prefix of $\eps$ is $\eps$, which has
-polarity $0$. For $t=f(t_1,\dots,t_n)$, the leaves of $t$ are the paths
-$iv$ with $v$ a leaf of $t_i$, with the same label and with
-$\pol(iv)=c(i)+\pol(v)$; so the sign of $iv$ in $t$ is the sign of $v$ in
-$t_i$ if $i$ is covariant and the opposite sign if $i$ is contravariant.
-\end{proof}
+\subsection{Computing the runs}
 
-\begin{proof}[Proof of \cref{lem:clause-form}]
-By \cref{thm:cones}\eqref{it:cones-pair}, $\rho\mapsto S_\rho$ is a
-bijection from the assignments onto the consistent sets of atoms that are
-closed under extensions. It remains to show that $\rho$ satisfies a literal
-if and only if $S_\rho$ is closed under its moves, contains its facts and
-contains none of its forbidden atoms. For $x\le y$ this is
-\cref{thm:cones}\eqref{it:cones-order}, and for $x=\Bot$ and $x=\Top$ it is
-the first statement of \eqref{it:cones-node}. Consider $f(x_1,\dots,x_n)\le
-y$ and let $t=f(\rho(x_1),\dots,\rho(x_n))$. By \eqref{it:cones-node},
-$\eps$ lies in no cone of $t$, and $iw\in\Cone{\sgp}t$ if and only if
-$(x_i^{[i]},w)\in S_\rho$, and $iw\in\Cone{\sgm}t$ if and only if
-$(\flip{x_i^{[i]}},w)\in S_\rho$. So $\Cone{\sgp}t\subseteq
-\Cone{\sgp}{\rho(y)}$ says that $S_\rho$ is closed under the moves
-$(x_i^{[i]},w)\to(y^{\sgp},iw)$, and $\Cone{\sgm}{\rho(y)}\subseteq
-\Cone{\sgm}t$ says that $(y^{\sgm},\eps)\notin S_\rho$ and that $S_\rho$ is
-closed under the moves $(y^{\sgm},iw)\to(\flip{x_i^{[i]}},w)$. The literal
-$y\le f(x_1,\dots,x_n)$ is symmetric.
-\end{proof}
-
-\subsection{Derivations}\label{app:reduction-derivations}
-
-A move changes the signed variable of an atom and replaces a prefix of
-length at most one of its path by a prefix of length at most one; the set of
-moves does not depend on the rest of the path. We record this as two
-\emph{stack properties}, for all atoms and all paths $\sigma$:
-\begin{enumerate}[label=\textup{(M\arabic*)}]
-\item\label{it:M1} if $(p,w)\mv(q,w')$, then $(p,w\sigma)\mv(q,w'\sigma)$;
-\item\label{it:M2} if $(p,w\sigma)\mv(q,w'\sigma)$ by a derivation in which
-  every atom has a path of the form $z\sigma$, where the displayed
-  occurrence of $\sigma$ is never popped, then $(p,w)\mv(q,w')$.
-\end{enumerate}
-In a derivation by moves, let $\ell$ be the path of an atom of minimal
-length. Then every path of the derivation has the form $z\ell$ with this
-occurrence of $\ell$ never popped, because a letter of the path can change
-only when all letters above it have been popped. We call $\ell$ a
-\emph{lowest point} of the derivation.
-
-\begin{proof}[Proof of \cref{lem:duality}]
-\eqref{it:dual} is read off \cref{tab:clauses}: the two moves of a literal
-$x\le y$ are dual to each other, and so are the two moves of each
-constructor literal, for every $i$ and $w$. For \eqref{it:ext-first}, the
-implication from right to left holds because $(p,u)\der(p,u\sigma)$ by
-extensions. For the other implication we show, by induction on the length of
-a derivation of $(q,v)$ from $(p,u)$, that $(p,u\sigma)\mv(q,v)$ where
-$\sigma$ consists of the letters of its extension steps in order. If the
-last step is a move, this follows from the induction hypothesis. If it is an
-extension $(q,v')\to(q,v'i)$, the induction hypothesis gives
-$(p,u\sigma')\mv(q,v')$, and \ref{it:M1} gives $(p,u\sigma'i)\mv(q,v'i)$.
-\end{proof}
-
-\begin{proof}[Proof of \cref{lem:witness}]
-By \cref{thm:cones}\eqref{it:cones-order}, $\rho(x)\not\le\rho(y)$ if and
-only if some path lies in $\Cone{\sgp}{\rho(x)}\setminus\Cone{\sgp}{\rho(y)}$
-or in $\Cone{\sgm}{\rho(y)}\setminus\Cone{\sgm}{\rho(x)}$.
-\end{proof}
-
-\subparagraph*{Runs.}
-For a set $P$ of signed variables let $\operatorname{cl}^{\uparrow}(P)$ be
-the set of $r$ with $(p,\eps)\mv(r,\eps)$ for some $p\in P$, and
-$\operatorname{cl}^{\downarrow}(P)$ the set of $r$ with $(r,\eps)\mv(p,\eps)$
-for some $p\in P$. Define
-\begin{align*}
-  \stepU(P,i)&=\operatorname{cl}^{\uparrow}\bigl(\{\,r'\mid(r,i)\to(r',\eps)
-     \text{ is a move for some }r\in P\,\}\bigr),\\
-  \stepD(P,i)&=\operatorname{cl}^{\downarrow}\bigl(\{\,r'\mid(r',\eps)\to(r,i)
-     \text{ is a move for some }r\in P\,\}\bigr).
-\end{align*}
-The relation $(p,\eps)\mv(r,\eps)$ between signed variables is computable:
-it is the least reflexive and transitive relation $R$ that contains the
-moves between atoms with empty paths and satisfies: if $(p,\eps)\to(p',i)$
-and $(r',i)\to(r,\eps)$ are moves and $p'\mathrel Rr'$, then $p\mathrel Rr$.
-This follows by induction on the length of a derivation from $(p,\eps)$ to
-$(r,\eps)$: either some intermediate atom has an empty path, and the
-derivation splits, or it has one step, or its first step pushes a letter $i$
-that its last step pops, and \ref{it:M2} applies to the part in between.
-
-\begin{proof}[Proof of \cref{lem:runs-det}]
-Let $r\in\Up(p,w)$ and let $(r,i)\to(r',\eps)$ be a move and
-$(r',\eps)\mv(r'',\eps)$. By \ref{it:M1}, $(p,wi)\mv(r,i)\to(r',\eps)\mv
-(r'',\eps)$, so $r''\in\Up(p,wi)$. Conversely, consider a derivation of
-$(r'',\eps)$ from $(p,wi)$ and the first atom with an empty path in it. The
-atom before it is $(r,j)$ for a letter $j$ and a move $(r,j)\to(r',\eps)$.
-All earlier atoms have nonempty paths, so their last letter is never popped
-and is $i$; hence $j=i$, and $(p,w)\mv(r,\eps)$ by \ref{it:M2}. The rest of
-the derivation shows $r''\in\operatorname{cl}^{\uparrow}(\{r'\})$. This
-proves $\Up(p,wi)=\stepU(\Up(p,w),i)$, and $\Up(p,\eps)=
-\operatorname{cl}^{\uparrow}(\{p\})$. The statement for $\Dn$ follows in the
-same way from the last atom with an empty path in a derivation of $(p,wi)$
-from $(r'',\eps)$, or from the first statement by duality. Finally, by
-\cref{tab:clauses} a move $(r,i)\to(r',\eps)$ exists only for $r=y^{\sgp}$
-with a literal $y\le f(\dots)$ or $r=y^{\sgm}$ with a literal $f(\dots)\le
-y$, and then $r\in\NegV$.
-\end{proof}
-
-Note that $\stepU(\varnothing,i)=\varnothing$, so $\Up(p,u)=\varnothing$
-implies $\Up(p,uz)=\varnothing$ for every $z$. By
-\cref{lem:duality}\eqref{it:dual},
-\begin{equation}\label{eq:run-dual}
-  \Dn(p,w)=\{\,\flip r\mid r\in\Up(\flip p,w)\,\}.
-\end{equation}
-
-\begin{proof}[Proof of \cref{lem:cuts}]
-Let $a,b$ be cuts as in the statement, $r\in\Up(p,\wpre ua)\cap
-\Dn(q,\wpre vb)$ and $\wsuf vb=\wsuf ua\,\sigma$. Then, by \ref{it:M1},
+The moves preserve any common trailing word. They also allow that
+word to be removed from a derivation if it was never popped. Both
+properties hold for each step of the table. Consequently a derivation
+with path extensions can be written
 \[
-  (p,u)\der(p,u\sigma)=(p,\wpre ua\,\wsuf vb)\mv(r,\wsuf vb)\mv
-  (q,\wpre vb\,\wsuf vb)=(q,v).
+       (p,u)\der(q,v)
+       \quad\Longleftrightarrow\quad
+       (p,u\sigma)\mv(q,v)\quad\text{for some }\sigma .
 \]
-Conversely, let $(p,u)\der(q,v)$. By \cref{lem:duality}\eqref{it:ext-first},
-$(p,u\sigma)\mv(q,v)$ for some $\sigma$. Let $\ell$ be a lowest point of
-this derivation, reached at an atom $(r,\ell)$, and write $u\sigma=u'\ell$
-and $v=v'\ell$. By \ref{it:M2}, $r\in\Up(p,u')\cap\Dn(q,v')$. If
-$\len{u'}>\len u$, then $u'=ujz$ for a letter $j$ and a path $z$, and
-$\Up(p,u')\ne\varnothing$ implies $\Up(p,uj)\ne\varnothing$, hence
-$\Up(p,u)\cap\NegV\ne\varnothing$ by \cref{lem:runs-det}, contrary to the
-hypothesis. So $\len{u'}\le\len u$, and $a=\len{u'}$, $b=\len{v'}$ are cuts
-with $\wsuf ua\,\sigma=\ell=\wsuf vb$.
+Indeed, moving an extension past a move towards the beginning appends
+one letter to both paths of that move. Repeating this puts all
+extensions first. The converse uses those extensions before the moves.
+Also, reversing the moves and flipping all signs exchanges their
+endpoints. In particular the lower run from $\flip p$ is the sign
+flip of the upper run from $p$.
 
-For the last statement, if $r\in\Up(p,u)\cap\NegV$ then $(p,u)\mv(r,\eps)$,
-a forbidden atom. Conversely, if $(p,u\sigma)\mv(r,\eps)$ with $r\in\NegV$,
-then either $\sigma=\eps$ and $r\in\Up(p,u)$, or $\Up(p,u\sigma)\ne
-\varnothing$ with $\sigma\ne\eps$, which implies
-$\Up(p,u)\cap\NegV\ne\varnothing$ as above.
-\end{proof}
+The root reachability relation $R$ on signed variables is the least
+reflexive transitive relation containing the moves on empty paths and
+closed under the following rule. If the first move pushes $i$, the last
+move pops $i$, and their internal endpoints are related by $R$ after
+deleting $i$, add the pair of outer endpoints. The rule is sound by
+preservation of a trailing letter. For completeness, split a
+root-to-root derivation at an intermediate empty path if there is one.
+If there is none, a derivation of more than one move pushes a first
+letter and pops that same letter in its final move. The intermediate
+moves leave the letter alone. Induction on the number of moves now
+proves that the endpoints are related by $R$. Saturation needs at
+most $|\SV|^2$ pair insertions. Each scan of the rules is polynomial
+in the number of signed variables and the size of the table of moves.
 
-\subsection{The Least Closure and Satisfiability}\label{app:reduction-lc}
+For a set $P$ of signed variables write $R(P)$ for its forward image,
+and $R^{-1}(P)$ for its backward image. The upper run starts at
+$R(\{p\})$. To append $i$ to the path, update it by
+\[
+ P\longmapsto R(\{r':(r,i)\to(r',\eps)\text{ is a move for some }r\in P\}).
+\]
+If an upper derivation from $(p,ui)$ first reaches an empty path, its
+preceding step pops the final $i$. Removing this unchanged trailing
+letter from the earlier steps gives $(p,u)\mv(r,\eps)$. The remaining
+steps give $R$ after the pop. Conversely these three pieces concatenate
+to give a derivation. The lower run starts at $R^{-1}(\{p\})$ and has
+the dual update. These are relational images, and both updates
+preserve the empty set and unions. All pop moves start at a signed
+variable in $\NegV$. It follows that the upper run of $(p,u)$ is
+disjoint from $\NegV$ exactly when $(p,u)$ derives no forbidden root.
+One direction uses the root reached by a move derivation. In the other,
+if such a root is reached only after appending a nonempty word, the
+first additional letter requires a pop from the upper set at $u$.
+In particular, for a seed that derives no forbidden root, the upper
+set is empty at every strict extension of its path.
 
-Let $R_F$ be the set of signed variables $r$ with $r\in\Up(p,\sigma)$ for a
-fact $(p,\eps)$ and a path $\sigma$. By \cref{lem:runs-det} it is the least
-set that contains $\Up(p,\eps)$ for every fact $(p,\eps)$ and is closed
-under the maps $\stepU(\cdot,i)$ applied to its singletons; so it is
-computable.
+\subsection{Fact reachability and cut tests}
 
-\begin{lemma}[Least closure]\label{lem:lc}
-An atom $(q,v)$ lies in $\LC$ if and only if $\Dn(q,\wpre vb)\cap R_F\ne
-\varnothing$ for some cut $b$ of $v$. If $\Gamma$ is satisfiable, then
-$R_F=\FctV$.
-\end{lemma}
+In a move derivation, choose a path $\lambda$ of minimum length.
+Every path in the derivation has $\lambda$ as a suffix, and that
+occurrence is never popped. Otherwise a step would have reached a
+shorter path before changing it. At a state $(r,\lambda)$ of minimum
+length, delete this suffix from the two halves of the derivation.
+For endpoints $(p,u\sigma)$ and $(q,v)$ this gives
+\[
+ u\sigma=u'\lambda,\qquad v=v'\lambda,\qquad
+ r\in\Up(p,u')\cap\Dn(q,v').
+\]
+With a seed that derives no forbidden root, the upper run cannot be
+nonempty at a proper extension of $u$. Thus $u'$ is a prefix of $u$.
+The rest of $u$ after that prefix is a prefix of $\lambda$, the rest
+of $v$ after $v'$. This gives \eqref{eq:cut-derivation}. Conversely,
+write the host rest there as the target rest of the seed followed by
+$\sigma$. Append $\sigma$ to the seed path and concatenate the two
+move derivations, restoring the common trailing word. This gives the
+claimed reachability.
 
-\begin{proof}
-$(q,v)\in\LC$ if and only if $(p,\sigma)\mv(q,v)$ for a fact $(p,\eps)$ and
-a path $\sigma$, by \cref{lem:duality}\eqref{it:ext-first}. A lowest point
-$\ell$ of such a derivation gives $\sigma=\sigma_1\ell$, $v=v'\ell$ and a
-signed variable in $\Up(p,\sigma_1)\cap\Dn(q,v')$, as in the proof of
-\cref{lem:cuts}; conversely such a variable gives a derivation with
-$\sigma=\sigma_1\wsuf vb$, by \ref{it:M1}. If $\Gamma$ is satisfiable, $\LC$
-contains no forbidden atom, so $\Up(p,\eps)\cap\NegV=\varnothing$ for every
-fact, and $\Up(p,\sigma_1)=\varnothing$ for $\sigma_1\ne\eps$ by
-\cref{lem:runs-det}; hence $R_F$ is the union of the sets $\Up(p,\eps)$ over
-the facts, which is $\FctV$.
-\end{proof}
+The same factorization from a fact $(p,\eps)$ to $(q,v)$ uses a starting
+path $\sigma$, since a fact can be extended. The first half shows that
+$(r,\eps)$ is in $\LC$, and the second shows that
+$r\in\Dn(q,v')$ for a prefix $v'$ of $v$. Conversely, such an $r$ supplies
+a derivation of $(q,v)$: extend its root membership by the rest after
+$v'$ and apply the second half with that rest restored. This proves
+the test for membership in $\LC$. To compute $\FctV$, take the root
+upper sets of all facts and add all images under upper steps until
+the union stabilizes. Every added element is reachable from a fact
+by extension followed by moves. The form of an upper update shows
+that every root derived from a fact is in this union. When the system
+is satisfiable, the initial union already suffices, because the facts
+cannot derive any forbidden root.
 
-\begin{proof}[Proof of \cref{lem:sat-decidable}]
-By \cref{sec:readers-atoms}, $\Gamma$ is satisfiable if and only if $\LC$
-contains no forbidden atom and no atom together with its opposite. By
-\cref{lem:lc}, a forbidden atom $(r,\eps)$ lies in $\LC$ if and only if
-$\Dn(r,\eps)$ meets $R_F$. And $\LC$ contains $(x^{\sgp},v)$ and
-$(x^{\sgm},v)$ for some $v$ if and only if the product of the two automata
-that compute $\Dn(x^{\sgp},\cdot)$ and $\Dn(x^{\sgm},\cdot)$
-(\cref{lem:runs-det}), with one bit for each component that records whether
-its state has met $R_F$, can reach a state with both bits set. Both
-conditions are decidable.
-\end{proof}
+\subsection{Realizing witnesses and compiling the reader}
 
-\subsection{Realization}\label{app:reduction-realization}
+To prove \cref{lem:realization}, we first show how an inconsistent
+pair in a hull would force a contradiction at one of the seeds.
+Suppose a seed $(p,u)$ derives $(q,v)$ and derives no forbidden root.
+Use the cuts from \eqref{eq:cut-derivation}, and write
+$\wsuf vb=\wsuf ua\,\sigma$. Reversing the move pieces and flipping signs
+gives
+\[
+         (\flip q,v)\mv(\flip p,u\sigma).
+\]
+If $(\flip q,v)$ is in $\LC$, then $(\flip p,u\sigma)$ is in $\LC$.
+Its lower run can meet $\FctV$ only at a cut at or before $\len u$,
+since after that cut it is the flip of an empty upper run. Thus
+$(\flip p,u)$ belongs to $\LC$.
 
-\begin{lemma}[Return]\label{lem:return}
-Let $\Gamma$ be satisfiable, let $a=(p,u)$ be an atom that derives no
-forbidden atom, and let $a\der b$.
-\begin{enumerate}
-\item\label{it:return-lc} If $\flip b\in\LC$, then $\flip a\in\LC$.
-\item\label{it:return-seed} If $a'$ is an atom that derives no forbidden
-  atom and $a'\der\flip b$, then $a'\der\flip a$ or $a\der\flip{a'}$.
-\end{enumerate}
-\end{lemma}
+If another seed $(p',u')$ derives $(\flip q,v)$, it also derives
+$(\flip p,u\sigma)$. Use \eqref{eq:cut-derivation} for this
+derivation, with cuts $a'$ in $u'$ and $c$ in $u\sigma$. The intersecting
+lower run for $(\flip p,u\sigma)$ is nonempty, so $c\le\len u$ by
+the duality just used. The two words $\wsuf{u'}{a'}$ and $\wsuf uc$
+are prefixes of $\wsuf uc\,\sigma$. If the first is shorter or equal,
+the same intersecting runs prove that $(p',u')$ derives $(\flip p,u)$.
+If the second is shorter, interchange the two run sets and flip
+signs. The cuts then prove that $(p,u)$ derives $(\flip{p'},u')$.
+This reasoning allows the two seeds to coincide.
 
-\begin{proof}
-Let $b=(q,v)$. By \cref{lem:cuts}, whose hypothesis holds by its last
-statement, there are cuts $\alpha$ of $u$ and $\beta$ of $v$, a path
-$\sigma$ with $\wsuf v\beta=\wsuf u\alpha\,\sigma$, and $r\in
-\Up(p,\wpre u\alpha)\cap\Dn(q,\wpre v\beta)$. By \eqref{eq:run-dual},
-$\flip r\in\Up(\flip q,\wpre v\beta)\cap\Dn(\flip p,\wpre u\alpha)$, so by
-\ref{it:M1}
-\begin{equation}\label{eq:return}
-  \flip b=(\flip q,\wpre v\beta\,\wsuf v\beta)\mv(\flip r,\wsuf u\alpha\,
-  \sigma)\mv(\flip p,u\sigma).
-\end{equation}
-We use twice that $\Dn(\flip p,z)=\varnothing$ for every path $z$ of which
-$u$ is a proper prefix: otherwise $\Up(p,z)\ne\varnothing$ by
-\eqref{eq:run-dual}, and then $\Up(p,u)\cap\NegV\ne\varnothing$ as in the
-proof of \cref{lem:cuts}.
+Any solution realizing the witnesses contains the hull, giving
+conditions (\ref{it:seed-root})--(\ref{it:seed-interaction}) of
+\cref{lem:realization}. Conversely, the hull is the union of $\LC$ and
+the sets reachable from individual seeds. The rules have at most one
+premise. Hence this union is closed and contains the facts. It avoids
+forbidden roots and exclusions by the three conditions and
+satisfiability. If it contained opposite memberships, they could not
+both be in $\LC$. With one in $\LC$ and one derived from a seed, the
+first return argument would violate (\ref{it:background}). With both
+derived from seeds, the second return argument would violate
+(\ref{it:seed-interaction}). The hull therefore describes one solution.
 
-\eqref{it:return-lc} Since $\LC$ is closed, \eqref{eq:return} gives
-$(\flip p,u\sigma)\in\LC$. By \cref{lem:lc} some prefix $z$ of $u\sigma$ has
-$\Dn(\flip p,z)\cap\FctV\ne\varnothing$. By the remark, $z$ is a prefix of
-$u$, so $(\flip p,u)\in\LC$ by \cref{lem:lc}.
-
-\eqref{it:return-seed} Let $a'=(p',u')$. By \eqref{eq:return},
-$a'\der(\flip p,u\sigma)$, so by \cref{lem:cuts} there are cuts $\alpha'$ of
-$u'$ and $\gamma$ of $u\sigma$ with $\wsuf{u'}{\alpha'}\pre
-\wsuf{(u\sigma)}\gamma$ and $r'\in\Up(p',\wpre{u'}{\alpha'})\cap
-\Dn(\flip p,\wpre{(u\sigma)}\gamma)$. By the remark, $\gamma\le\len u$. The
-words $\wsuf{u'}{\alpha'}$ and $\wsuf u\gamma$ are both prefixes of
-$\wsuf u\gamma\,\sigma$, so they are comparable. If
-$\wsuf{u'}{\alpha'}\pre\wsuf u\gamma$, then $a'\der(\flip p,u)$ by
-\cref{lem:cuts}. Otherwise $\wsuf u\gamma\pre\wsuf{u'}{\alpha'}$ and, by
-\eqref{eq:run-dual}, $\flip{r'}\in\Up(p,\wpre u\gamma)\cap
-\Dn(\flip{p'},\wpre{u'}{\alpha'})$, so $a\der(\flip{p'},u')$ by
-\cref{lem:cuts}.
-\end{proof}
-
-\begin{proof}[Proof of \cref{thm:realization}]
-Let $S$ be a solution set that contains every $A_i$ and no $B_i$. It is
-closed and contains the facts, so it contains the hull. Hence no $A_i$
-derives a forbidden atom, no $B_i$ lies in $\LC$ or is derived from a seed,
-and since $S$ is consistent the same holds for the atoms $\flip{A_i}$. This
-proves \ref{it:R1}--\ref{it:R3} and that every such solution set contains
-the hull.
-
-Conversely, assume \ref{it:R1}--\ref{it:R3}, and let $H$ be the hull. It is
-closed, as a union of closed sets, and contains the facts. It contains no
-forbidden atom, by \ref{it:R1} and because $\Gamma$ is satisfiable, and no
-$B_i$, by \ref{it:R2} and \ref{it:R3}. Suppose $b,\flip b\in H$. They are
-not both in $\LC$, which is consistent. If $A_j\der b$ and $\flip b\in\LC$,
-then $\flip{A_j}\in\LC$ by \cref{lem:return}\eqref{it:return-lc},
-contradicting \ref{it:R2}. If $A_j\der b$ and $A_i\der\flip b$, then
-$A_i\der\flip{A_j}$ or $A_j\der\flip{A_i}$ by
-\cref{lem:return}\eqref{it:return-seed}, contradicting \ref{it:R3}. So $H$
-is consistent, and it is a solution set.
-\end{proof}
-
-\subsection{The Reduction}\label{app:reduction-reduction}
-
-\begin{proof}[Proof of \cref{thm:reduction}]
-There are $2^{2\len V}$ sets of signed variables, hence at most
-$2^{4\len V}+1$ states. The dead state is absorbing by definition. Let
-$(P,Q)$ be rejected, that is, $P\cap\NegV=\varnothing$, and let its
-successor on a letter be a state $(P',Q')$. By \cref{lem:runs-det},
-$P'=\varnothing$. So $(P',Q')$ is rejected, which is \ref{it:S1}, and it is
-the target of no admitted pair, which is \ref{it:S2}. The functions
-$\stepU,\stepD$ and the sets $\NegV$, $\FctV$ are computable, so the reader
-is.
-
-Let $W$ be a tuple of paths, with seeds $A_i=(p_i,w_i)$ and exclusions
-$B_i=(p'_i,w_i)$. By \cref{lem:runs-det} and induction on $a$, the state of
-coordinate $i$ at a cut $a$ is
-$(\Up(p_i,\wpre{w_i}a),\Dn(p'_i,\wpre{w_i}a))$ if the pairs at all cuts up to
-$a$ are states, and $\dead$ otherwise. By \eqref{eq:run-dual} and
-\cref{lem:lc}, the run of coordinate $i$ never reaches $\dead$ if and only
-if $B_i\notin\LC$ and $\flip{A_i}\notin\LC$. Its endpoint is rejected if and
-only if $\Up(p_i,w_i)\cap\NegV=\varnothing$, that is, by \cref{lem:cuts}, if
-and only if $A_i$ derives no forbidden atom. So all coordinates are
-eligible exactly when \ref{it:R1} and \ref{it:R2} hold. Assume this. A pair
-of $\Chan_{ij}(W)$ at cuts $a$ of $w_i$ and $b$ of $w_j$, with
-$\wsuf{w_j}b\pre\wsuf{w_i}a$, is admitted if and only if
-$\Up(p_j,\wpre{w_j}b)$ meets $\Dn(p'_i,\wpre{w_i}a)$ or
-$\Dn(\flip{p_i},\wpre{w_i}a)$. By \cref{lem:cuts}, applied to the seed
-$A_j$, such cuts exist if and only if $A_j\der B_i$ or
-$A_j\der\flip{A_i}$. So no channel contains an admitted pair exactly when
-\ref{it:R3} holds. By \cref{thm:realization}, $W$ is a hole if and only if
-some solution set contains the seeds and none of the exclusions. The last
-statement of the theorem follows with \cref{lem:clause-form,lem:witness}.
-\end{proof}
+For \cref{thm:reduction}, compute the two sets of each run by the
+updates above and apply the guard at every cut, including cut zero.
+The facts test and duality show that liveness is exactly
+(\ref{it:background}). For rejection, use disjointness of the upper
+set from the root predecessors of $\NegV$ under $R$. The upper
+sets of the runs are already closed under $R$, so this is equivalent
+to disjointness from $\NegV$, and gives (\ref{it:seed-root}). It also
+ensures that the upper set at the next live cut is empty. By the
+cut test, \eqref{eq:admission} at some comparison detects exactly
+a seed interaction from the target to the host in
+(\ref{it:seed-interaction}). Thus the conditions for a hole and
+those for realization agree.

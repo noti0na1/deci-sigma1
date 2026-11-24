@@ -1,0 +1,164 @@
+\section{Buffers, Offsets, and Truncation}
+\label{app:truncation}
+
+The finite refinement keeps the buffer and the state at its start.
+We prove that this is enough to replace the stems, then show how
+to take a finite hole from the resulting periodic tuple.
+
+\subsection{Safety after a buffer}
+
+Along a ray with onset $a$ and period $p$, a cut at or after
+$a$ is described by its reader state and its phase modulo $p$.
+The next pair is determined by the current one. There are $Np$
+possible pairs. Thus every pair in the tail occurs among the first
+$Np$ cuts of the tail, by following the deterministic sequence
+up to its first repetition. Every cut has a representative
+strictly below $a+Np$ with the same state and infinite rest.
+Cuts before the onset represent themselves.
+
+A word of the original stopped tuple cannot have a suffix of
+length $(C+1)p$ with period $p$. The suffixes of that suffix of
+lengths $p,2p,\dots,(C+1)p$ would all be prefixes of the suffix
+itself, contradicting depth at most $C$. Each of these lengths is
+positive. Since $B\ge (N+C+1)p$ for every period $p\le D$, any
+such suffix of a shortened stopped word would have survived from
+the original. So no shortened stopped word has that periodic suffix.
+
+A comparison of a shortened stopped target with a shortened stopped
+host or buffered ray prefix lifts by the refinement. For a proper
+target cut, the matching word contains no terminal marker and so
+the lifted comparison occurs in the decoded words. For a final
+target cut, use equality of endpoints and the visit property of
+the refinement. If the lifted host cut is after its terminal
+marker, the state is the same just before it. The empty rest of
+the target fits there. Thus safety against stopped targets holds
+on the shortened finite words and buffered prefixes. The stopped
+words remain eligible, because endpoints and cut states lift.
+
+Consider a match of any stopped target rest in a new ray. Move
+the host cut back to its representative below the new onset
+plus $Np$. If the match reaches beyond the buffer, its last
+$(C+1)p$ letters lie in the periodic part. Indeed the host cut
+is before the onset plus $Np$ and the buffer has at least
+$Np+(C+1)p$ letters. So there are more than $(C+1)p$ letters in
+the match, and those final letters start at or after the onset.
+They form the excluded periodic suffix of the stopped word.
+Every match at the representative thus fits in the buffered
+prefix, with the same target and pair of states. This proves safety
+of every prefix of the new rays against the stopped targets.
+
+\subsection{Replacing the stems}
+
+For any periodic tail, a period that works from a later cut
+also works from its onset. To verify this, suppose the ray is
+periodic with period $q>0$ from the onset and period $p>0$ from
+a later cut. Shift two positions whose difference is $p$ forward
+by the same multiple of $q$ until both are beyond that later cut.
+Their letters agree there by period $p$, and shifting back
+preserves them by period $q$. Thus we may use the loop bound
+of \cref{lem:periodic} at the least onset. If the onset is positive,
+the preceding letter differs from its copy one period later.
+Otherwise that period would already hold one cut earlier.
+
+For coordinate $i$ let $A_i$ be the old onset and $A_i'$ the
+length of the new stem. It is followed by the same periodic text
+as after $A_i$ of the old ray. If the original stem is empty,
+so is the new one. If it is nonempty, its retained last letter
+still breaks the period one position before the end of the new
+stem. The period-extension argument therefore excludes every
+earlier onset. Thus the onset of the new ray is $A_i'$.
+The kept state at the end of the stem gives the same run in
+the periodic text. Every cut before that state lifts by
+refinement to a live cut in the old buffered word. The new
+ray is live everywhere and eventually rejected, because the old
+ray is rejected from some cut onward.
+
+With old offsets $o_i$, use new offsets $o_i'=o_i+A_i'-A_i$.
+Suppose a host cut $a$ of new ray $i$ and a target cut $b$ of
+new ray $j$ have equal infinite rests and their states are admitted.
+Either both cuts are in the periodic parts, or both lie before
+the onsets at the same distance. This is because the first cut
+from which a rest is purely periodic is a property of the
+infinite rest itself. In the first case, take the old cuts
+$a'=a-A_i'+A_i$ and $b'=b-A_j'+A_j$. They have the same rests
+and states.
+
+In the second case, the two new finite rests through the terminal
+markers agree, since the buffers have the same length.
+They form a comparison with nonempty target rest. Lift it to old cuts
+$a',b'$ of the marked words. Since the terminal marker occurs
+only as the last letter, the lifted rests agree and both have that
+marker at the same distance. The distances to the markers
+may differ from the distances in the new words. The original
+rays after their buffers agree, since their new rays have equal
+infinite rests and agree past their onsets with the old tails.
+Hence the lifted cuts have equal infinite rests on the old
+rays, with the same admitted states. Equality of distances
+before the old markers implies $b'-a'=A_j-A_i$.
+Equality of distances before the new onsets implies
+$b-a=A_j'-A_i'$. In either case
+\[
+   b'-a' = b-a + (A_i'-A_i)-(A_j'-A_j).
+\]
+The old inequality $o_i+b'-a'+1\le o_j$ therefore gives
+$o_i'+b-a+1\le o_j'$. This reasoning applies with $i=j$ and
+also when $a=b$. Together with safety and eligibility it proves
+that the replacements form a periodic tuple, completing
+\cref{lem:buffered}.
+
+\subsection{A bounded solution of the strict constraints}
+
+Suppose the onsets are bounded by $A$, the periods by $D$, and
+the stopped word lengths by $J$. Write $H=A+ND+1$.
+Each ray reaches rejection below $H$, by taking a representative
+of any rejected cut. In particular the state at $H-1$ is
+rejected. At any cut $b\ge H$, the state is a live successor
+of a rejected state. Hence any admitted target cut of a ray
+has $b<H$.
+
+Use all ordered pairs of coordinates to form a graph with edge
+weight $\min(H,o_j-o_i)$ from $i$ to $j$, extending the offsets
+arbitrarily to stopped coordinates. The old offsets dominate
+every edge difference, so each directed cycle has total weight
+at most zero by telescoping. Let $u_j$ be the maximum weight of
+a directed walk ending at $j$, allowing the empty walk at $j$.
+Deleting a closed part never decreases weight, and preserves the
+endpoints, so the maximum is attained on a simple path. Its
+weight lies in $[0,kH]$, since there are at most $k$ vertices
+and each step has weight at most $H$. Appending the edge $i\to j$
+gives $u_j-u_i\ge\min(H,o_j-o_i)$. For every equal-rest
+admission between moving cuts, $b-a+1\le H$ by the target bound,
+and $b-a+1\le o_j-o_i$ by \eqref{eq:offset}. So this entire
+system of strict inequalities is satisfied by the $u_i$.
+In particular it includes self-comparisons and identical cuts.
+At an identical cut an admission would contradict
+\eqref{eq:offset} itself.
+
+Take the truncation lengths
+\[
+                T_i=u_i+H+A+2D+J
+\]
+for the moving coordinates. Adding the common constant preserves
+the required differences. Each truncated ray is live and its
+endpoint is rejected. The stopped words are eligible and
+admissions against stopped targets are excluded by the model.
+If a ray is a target in an admitted comparison, its target cut
+is before $H$. Its rest has length greater than $J$, so a
+stopped host cannot contain it.
+
+For two rays, a match of this target rest gives more than
+$A+2D$ letters of agreement. We verify that this forces agreement
+of their infinite rests. Beyond their common initial portion up
+to the later onset as measured from the two cuts, both rests are
+purely periodic, with periods $p,q\le D$. This initial portion
+has length at most $A$. The periodic words agree for at least
+$p+q$ letters. On the first $q$ positions of the second word,
+shifting by $p$ gives equal letters, by agreement with the
+first word. Period $q$ extends those equalities to all positions
+of the second word. Both words now have period $p$ and their first
+$p$ letters agree. This proves equality of the infinite rests.
+The constraint for this pair makes $T_i-a<T_j-b$, contradicting
+the prefix relation. Hence all comparisons are safe, and the
+tuple is a hole. The moving lengths are at most $kH+H+A+2D+J$,
+and this bound includes each stopped word length. Summing proves
+\cref{lem:truncation}.

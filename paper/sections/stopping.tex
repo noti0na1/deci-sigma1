@@ -1,0 +1,126 @@
+\section{Stopping and Depth}
+\label{sec:stopping}
+
+To shorten a hole, we first bring it into a normal form: some words are
+stopped, and the others continue periodically (\cref{sec:rays}). Both parts
+can then be shortened (\cref{sec:trie,sec:truncation}). This section shows
+how the words of a hole can grow. Once a run is rejected, a letter either
+kills it or keeps it rejected, so as long as the run stays alive the tests
+at single cuts stay satisfied. The comparison tests are more sensitive: a
+new letter can complete a match with a word that stays fixed.
+
+\subsection{Joint extension}
+
+Suppose we append a letter $c$ to $w_i$ in a hole and keep $w_j$ fixed.
+The fixed target $j$ \emph{blocks} $c$ if some rest of $w_j$ equals some
+rest of $w_ic$ and the pair of states at the cuts where these rests start,
+the host state on $w_ic$ and the target state on $w_j$, is admitted.
+Equality puts the end of the match at the new host endpoint. This includes
+an empty match at the new endpoint. A word is never blocked by itself,
+since the blocking word stays fixed while the blocked word grows.
+
+\begin{lemma}[Joint extension]\label{lem:joint}
+Append one letter to each coordinate in any chosen set, and keep the
+other coordinates fixed. The new tuple is a hole exactly when every new
+letter keeps its run alive and no fixed target blocks it.
+\end{lemma}
+
+\begin{proof}[Proof idea]
+A comparison at the new end of an extended target has a live successor
+of a rejected state as its target state. At every earlier cut of that
+target, deleting the last letter of its rest gives an old comparison.
+The host loses at most one letter and both starting states stay the same.
+With a fixed target, a new comparison can only use the new host endpoint.
+Those are precisely the blocked letters. \Cref{app:rays} gives the
+details.
+\end{proof}
+
+\input{figures/stopping}
+
+\Cref{fig:stopping} shows the reader of \cref{ex:comparable-reader} on the
+hole $(0,1)$. Keep the second word fixed. Appending $1$ to $0$ makes the
+rest at cut $1$ equal to the whole word $1$, and the pair
+$(\alpha_1,\beta_0)$ is admitted, so the letter $1$ is blocked. Appending
+$0$ keeps the hole, and so does every further $0$. The state $\alpha_1$
+hosts the blocking comparison although rejection began at cut $0$. For one
+word this cannot happen (\cref{sec:comparison}). The second word stops
+because either letter takes it to the dead state.
+
+The lemma lets us choose which words to keep fixed. A coordinate
+\emph{stops} relative to a set if every letter kills its run or is
+blocked by a target in that set. A set of \emph{stopped coordinates}
+has an order in which each stops relative to its predecessors. We call
+this order its \emph{certificate}. The other coordinates are
+\emph{moving}.
+
+\begin{lemma}[Stopping]\label{lem:stopping}
+Every hole has a coordinatewise extension that is a hole with a set
+of stopped coordinates. From that extension all moving coordinates
+can grow together by one letter at every step, with a hole at each
+step and the stopped words fixed.
+\end{lemma}
+
+The proof chooses a hole extension with as many stopped coordinates as
+possible. If a moving word had no live letter unblocked by the stopped
+words, it could be appended to their stopping order. Joint extension
+therefore permits all moving words to grow. The certificate for the
+stopped words only uses those words, so it persists. In
+\cref{fig:stopping} the second coordinate stops and the first one can
+grow along $0^\omega$.
+
+\subsection{Charging the depth}
+
+The suffixes of the stopped words are the possible rests of fixed targets.
+We need to know how many of them can fit along one host rest at the same
+cut. This number, the depth, will bound how far along a host we must look
+for a region free of stopped suffixes (\cref{sec:rays}), and it is the
+measure of the induction in \cref{sec:trie}. For a \emph{test word} $x$ and a set of coordinates
+$F$, define
+\[
+ \RestLen(W,F,x)=
+ \{d:0<d\le\len x,\ \wpre xd\text{ is a suffix of some }w_i,\ i\in F\}.
+\]
+The largest cardinality of these sets over all test words is the
+\emph{depth} of the words in $F$. This counts lengths, so multiple
+occurrences of a suffix count only once.
+
+The bound charges each length to an obstruction that can be recognized
+at the start of its match. In a general reader the whole state identifies
+the obstruction. In a compiled reader a single component and signed
+variable will suffice.
+
+\begin{lemma}[Depth of stopped words]\label{lem:depth}
+For a hole of a reader with $N$ states and a stopped set $F$, the depth is
+at most $(N+1)|F|$. For a compiled reader of a system with $v$ variables,
+it is at most $(4v+1)|F|$.
+\end{lemma}
+
+\input{figures/charging}
+
+To see the charge (\cref{fig:charging}), fix a test word $x$. A
+\emph{match} of length $d$ is an
+occurrence of $\wpre xd$ as a suffix of a word of the hole. It starts at a
+cut of that word, in some state $\gamma$. Let $d<\len x$ be in
+$\RestLen(W,F,x)$, with a match on a stopped word $w_i$. The next letter
+$x[d]$ cannot extend $w_i$, and the certificate says why. If $x[d]$ kills
+$w_i$, then reading $\wpre x{d+1}$ from $\gamma$ dies. No longer match can
+start in the state $\gamma$, since it would read $\wpre x{d+1}$ from
+$\gamma$ inside the hole. So $d$ is the longest match that starts in
+$\gamma$. Otherwise $x[d]$ is blocked by an earlier stopped word $w_j$: a
+rest of $w_j$ equals a rest of $w_i\,x[d]$, and the pair at their starts
+is admitted. If this rest starts after the beginning of the match, the same
+argument with admission in place of death shows that $d$ is the longest
+match that starts in $\gamma$: a longer one would contain the blocking
+comparison. If it starts at or before the beginning of the match, then
+$\wpre x{d+1}$ is a suffix of $w_j$, and we pass the charge to the length
+$d+1$ on $w_j$.
+
+The passes go strictly earlier in the certificate. After fewer than $|F|$
+passes the charge reaches $\len x$ or a length that is the longest match
+starting in some state. Each length in $\RestLen(W,F,x)$ is therefore one
+of these at most $N+1$ lengths minus a number of passes below $|F|$. For a
+compiled reader, the state $\gamma$ can be replaced by one signed variable
+in one of its two sets, a \emph{singleton}, because death and admission are
+witnessed by a singleton (\cref{sec:decision}). There are $4v$ singletons.
+\Cref{app:rays,app:counting} give the proofs. The same depth bound now
+controls how far we must look for periodic continuations.

@@ -1,0 +1,30 @@
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[x=11mm,y=6.4mm,>=Stealth,
+  nd/.style={draw,circle,inner sep=1.1pt,font=\small,fill=white,minimum size=6.2mm},
+  rej/.style={nd,double}, letter/.style={font=\footnotesize},
+  txt/.style={font=\footnotesize,anchor=east}, cut/.style={circle,fill,inner sep=1.25pt}]
+  \node[txt] at (-.42,0) {host $0$};
+  \node[rej] (p0) at (0,0) {$\alpha_0$};
+  \node[rej] (p1) at (1.2,0) {$\alpha_1$};
+  \draw[->] (p0)--node[letter,above]{$0$}(p1);
+  \draw[->] (p1) edge[loop above,looseness=6] node[letter,above]{$0,1$} (p1);
+  \draw[->,dashed] (p1)--node[letter,above]{$1$}(2.4,0);
+  \node[cut] at (2.4,0) {};
+  \node[letter,anchor=west] at (2.52,0) {proposed extension};
+  \node[txt] at (-.42,-1.8) {fixed target $1$};
+  \node[rej] (q0) at (1.2,-1.8) {$\beta_0$};
+  \node[rej] (q1) at (2.4,-1.8) {$\beta_1$};
+  \node[nd] (dd) at (3.6,-1.8) {$\dead$};
+  \draw[->] (q0)--node[letter,below]{$1$}(q1);
+  \draw[->] (q1)--node[letter,below]{$0,1$}(dd);
+  \draw[densely dotted,thick] (p1)--(q0)
+    node[letter,pos=.5,anchor=east,xshift=-1mm]{admitted pair};
+\end{tikzpicture}
+\caption{The reader of \cref{ex:comparable-reader} on the hole $(0,1)$.
+Double circles mark rejected states; all four states of the hole are
+rejected. The pair $(\alpha_1,\beta_0)$ is admitted, so appending $1$ to the
+host would create an admitted comparison with the fixed target. Every letter
+leads from $\beta_1$ to the dead state, so the target stops.}
+\label{fig:stopping}
+\end{figure}

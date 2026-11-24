@@ -1,0 +1,63 @@
+\section{Truncating the Rays}
+\label{sec:truncation}
+
+The offsets of a periodic tuple can be large. We use their differences
+to find bounded truncations. The cut of a target ray can occur only early
+in any admitted comparison. Once its run has rejected, every later
+state is a live successor of a rejected state and cannot be the target
+of an admitted pair. The host cut can be arbitrarily far
+along its ray.
+
+Suppose the onsets are at most $A$ and periods at most $D$. To bound the
+target cuts, we use the \emph{horizon} of a ray with onset $a$ and period
+$p$, the cut $a+Np$.
+Every cut has a representative below this horizon with the same state
+and infinite rest. After the onset, the state and the phase determine
+all future states and letters. A repetition of a state and phase lets
+us move back. Every ray is rejected from some cut on. The representative
+of such a cut shows that the first rejected cut lies below
+$H=A+ND+1$. An admitted target cut lies at or before the first rejected
+cut, so it has index $b<H$.
+
+Let the host cut be $a$ on ray $i$ and the target cut $b$ on ray $j$, with
+equal infinite rests. Truncation lengths $T_i$ and $T_j$ avoid this
+comparison exactly when the target rest is strictly longer. This is
+\eqref{eq:offset} with truncation lengths in place of offsets:
+\begin{equation}
+   T_i-a < T_j-b .
+   \label{eq:strict}
+\end{equation}
+We impose these difference constraints for every pair of cuts
+with equal infinite rests and an admitted pair. This includes $i=j$,
+and it includes $a=b$ in that coordinate. For $i=j$ and $a=b$,
+\eqref{eq:strict} reads $T_i-a<T_i-a$, which cannot hold. This costs
+nothing, because \eqref{eq:offset} already excludes an admitted pair at an
+identical cut.
+
+For every needed constraint the lower bound $b-a+1$ on $T_j-T_i$
+is at most $H$. The offsets $o_i$ satisfy all these constraints.
+Use a directed edge $i\to j$ of weight $\min(H,o_j-o_i)$.
+These weights dominate all the required lower bounds and their sum on
+a cycle is at most zero. The largest weight of a path ending at each
+coordinate, allowing the empty path of weight zero, gives a
+nonnegative solution. It is at most $kH$, because repeated vertices
+can be removed without decreasing the weight.
+
+Adding the same constant to all these lengths preserves the
+differences. We add enough to make any admitted rest of a target ray too
+long for a stopped host. If a ray is the host, the matched rest is long
+enough that agreement on its letters implies equality of the infinite
+rests. Then \eqref{eq:strict} excludes the comparison.
+
+\begin{lemma}[Bounded truncation]\label{lem:truncation}
+In a periodic tuple with onsets at most $A$, periods at most $D$,
+and stopped word lengths at most $J$, there is a hole of total length at
+most
+\[
+     k(kH+H+A+2D+J),\qquad H=A+ND+1.
+\]
+\end{lemma}
+
+The proof in \cref{app:truncation} gives the lengths explicitly and
+checks every type of comparison. Applying the lemma after the trie
+descent gives a bound in the reader parameters.

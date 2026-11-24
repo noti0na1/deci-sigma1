@@ -1,16 +1,11 @@
-%% The Sigma_1 theory of non-structural subtyping is decidable.
-%% LIPIcs format; build with `make` (latexmk -pdf main.tex). Sections live in sections/,
-%% figures in figures/. Add the class option `anonymous' for a double-blind copy.
 \documentclass[a4paper,USenglish,cleveref,thm-restate,numberwithinsect]{lipics-v2021}
 \input{macros}
 \hideLIPIcs
 \nolinenumbers
-
 \bibliographystyle{plainurl}
 
-\title{The \texorpdfstring{$\Sigma_1$}{Sigma-1} Theory of Non-Structural Subtyping Is Decidable}
-\titlerunning{The \texorpdfstring{$\Sigma_1$}{Sigma-1} Theory of Non-Structural Subtyping Is Decidable}
-
+\title{Disjunctive Entailment and the \texorpdfstring{$\Sigma_1$}{Sigma-1} Theory of Non-Structural Subtyping}
+\titlerunning{Disjunctive Entailment and the \texorpdfstring{$\Sigma_1$}{Sigma-1} Theory of Non-Structural Subtyping}
 \author{Yaoyu Zhao}{EPFL, Switzerland}{yaoyu.zhao@epfl.ch}{}{}
 \authorrunning{Y. Zhao}
 \Copyright{Yaoyu Zhao}
@@ -18,33 +13,27 @@
 \ccsdesc[500]{Theory of computation~Type theory}
 \ccsdesc[500]{Theory of computation~Logic and verification}
 \ccsdesc[300]{Theory of computation~Formal languages and automata theory}
-
-\keywords{subtyping, subtype constraints, entailment, first-order theory, decidability,
-combinatorics on words, automata, mechanized proof}
-
-\supplement{The Lean development: \url{https://github.com/noti0na1/deci-sigma1}}
+\keywords{subtyping, subtype constraints, disjunctive entailment, first-order theory, decidability, combinatorics on words}
 
 \begin{document}
 \maketitle
-
 \begin{abstract}
 \input{sections/abstract}
 \end{abstract}
 
 \input{sections/intro}
 \input{sections/prelim}
-\input{sections/sentences}
 \input{sections/readers}
-\input{sections/overview}
-\input{sections/fresh}
-\input{sections/tails}
+\input{sections/stopping}
+\input{sections/rays}
+\input{sections/trie}
+\input{sections/truncation}
+\input{sections/comparison}
 \input{sections/decision}
-\input{sections/complexity}
 \input{sections/mechanization}
 \input{sections/related}
-\input{sections/future}
 \input{sections/conclusion}
-\input{sections/disclaimer}
+\input{sections/llm}
 
 \bibliography{refs}
 
@@ -52,11 +41,11 @@ combinatorics on words, automata, mechanized proof}
 \crefalias{section}{appendix}
 \crefalias{subsection}{appendix}
 \input{sections/appendix-reduction}
-\input{sections/appendix-fresh}
-\input{sections/appendix-tails}
-\input{sections/appendix-compression}
 \input{sections/appendix-classes}
-\input{sections/appendix-complexity}
+\input{sections/appendix-rays}
+\input{sections/appendix-trie}
+\input{sections/appendix-truncation}
+\input{sections/appendix-counting}
+\input{sections/appendix-general}
 \input{sections/appendix-lean}
-\input{sections/appendix-notation}
 \end{document}

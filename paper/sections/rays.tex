@@ -1,0 +1,129 @@
+\section{Rays of Bounded Period}
+\label{sec:rays}
+
+After stopping, each moving coordinate can continue indefinitely. We need
+continuations that fit a finite description. We let the moving words grow
+far beyond their ends (\cref{lem:stopping}), find a short loop in this
+extension beyond the end of each moving word, and repeat the loop forever.
+Repetition must preserve safety against the stopped targets. A host is
+\emph{safe against} a target if no comparison between them carries an
+admitted pair.
+
+\subsection{Free windows and free loops}
+
+A loop can change the words to the right of its cuts. To control those
+changes, fix a length $\theta>0$ and look at the suffixes of stopped words
+of length at most $\theta$, the \emph{short suffixes}. The \emph{right
+context} of a cut is the set of short suffixes and the empty word that are
+prefixes of the rest at the cut. All members are prefixes of a longest
+member, which therefore determines the context. Counting one candidate per
+word and length, there are at most $1+k(\theta+1)$ candidates for that
+longest member.
+
+A long match against a stopped word ends with one of its suffixes of
+length $\theta$. We look for a region where none of these suffixes starts.
+Which length works is not known in advance, so we try lengths of
+increasing scale, and the depth bound limits how many scales can fail.
+For a function $g$, a \emph{free window} at scale $\theta$ consists of
+$g(\theta)+1$ consecutive cuts of the host with no such start. The scales
+begin at $1$, and the next scale after $\theta$ is $g(\theta)+\theta+1$.
+Suppose that scale $\theta$ offers no free window in a region of the host
+whose length is the next scale. Then one of the first $g(\theta)+1$ cuts
+of the region starts an occurrence of a stopped suffix of length $\theta$.
+This occurrence ends strictly before the end of the region, because of the
+extra letter in the next scale. Start with a region at the largest scale,
+and repeat this step inside each occurrence found, down to scale $1$. If no
+scale offers a free window, this gives nested occurrences of stopped
+suffixes, one per scale, whose right ends strictly decrease. Trimming them
+all to the start of the innermost one gives suffixes of stopped words of
+distinct lengths that are prefixes of one rest of the host. A depth bound
+of $C$ therefore guarantees a free window within the first $C+1$ scales,
+provided the host has room for the next scale.
+
+In a free window, two cuts can repeat both the reader state and the
+right context. We call these cuts a \emph{free loop}. The choice
+$g(\theta)=N(1+k(\theta+1))$ supplies more cuts than possible pairs. The
+interval between the cuts has no start of a stopped suffix of length
+$\theta$. The free-window argument and this count give a loop of length at
+most
+\begin{equation}
+ D=(2(k+2)(N+2))^{C+1}.
+ \label{eq:period-bound}
+\end{equation}
+
+\subsection{Repeating the loop}
+
+Write the extended host as $h=s\ell\tau$, where $\ell$ is the free loop
+and $\tau$ is the rest of the host after it. The loop and the word $s$
+before it give an infinite word $s\ell^\omega$, called a \emph{ray}. Every
+prefix of the ray is a prefix of some $s\ell^n$, and a comparison in a
+prefix is also a comparison in the longer word, with the same states. So
+it suffices that every $s\ell^n$ is safe against the stopped targets.
+
+The ray has no $\tau$, but $\tau$ serves as a reference for the letters
+to the right. Each cut of $s\ell^n$ corresponds to a cut of $h$: a cut in
+$s$ to itself, a cut in a copy of $\ell$ to the cut at the same place in
+the loop of $h$, and the last cut to the start of the loop. Corresponding cuts have the same state, because
+reading $\ell$ returns to its entry state. They also have the same right
+context, if the contexts in $s\ell^n$ are computed in $s\ell^n\tau$.
+Indeed, the two loop cuts have the same right context, so $\ell\tau$ and
+$\tau$ have the same context. Because short suffixes are closed under
+taking suffixes, two words with the same right context keep the same
+right context when the same word is prepended to both. By induction,
+$\ell^n\tau$ has the context of $\tau$.
+
+Now let a stopped target rest $y$ fit at a cut of $s\ell^n$. If
+$\len y\le\theta$, then $y$ is in the right context, so it fits at the
+corresponding cut of $h$. If $\len y>\theta$, its last $\theta$ letters
+form a short suffix that starts at a cut of $s\ell^n$. That cut cannot lie
+in a copy of $\ell$, since the corresponding cut of $h$ would start a
+suffix of length $\theta$ inside the free window. So it lies in $s$, where
+the earlier letters of the match are unchanged, and $y$ fits at the same
+cut of $h$. In both cases the comparison occurs in $h$ with the same pair
+of states. So the ray inherits safety from $h$, and the repeated loop keeps
+the run alive.
+
+\begin{lemma}[Periodic family]\label{lem:periodic}
+From the stopped extension of \cref{lem:stopping} with depth at most $C$,
+one can choose a ray of period at most $D$ for each moving coordinate.
+The ray starts with the word at that coordinate. For every $e\ge 0$,
+cutting all rays at the lengths of their starting words plus $e$ gives a
+hole together with the stopped words.
+\end{lemma}
+
+The proof takes a free loop after the end of each moving word, using a
+sufficiently long stage of joint extension. Rejection persists and every
+prefix is safe against the stopped targets. By \cref{lem:joint}, these
+properties allow the rays to advance together. The details of the free
+windows, the period estimate, and the repetition argument are in
+\cref{app:rays}. In \cref{fig:stopping}, the moving word $0$ gives the ray
+$0^\omega$ with period $1$.
+
+\subsection{Offsets between rays}
+\label{sec:offsets}
+
+The rays grow in step, and their common truncations must avoid admitted
+comparisons between rays. Cut every ray $i$ at $o_i+e$ for a common
+increment $e$. Suppose the infinite rests at a host cut $a$ of ray $i$ and
+a target cut $b$ of ray $j$ are equal. Once $e$ is large enough to reach
+both cuts, their finite rests are prefixes of one infinite word, of lengths
+$o_i+e-a$ and $o_j+e-b$. They form a comparison exactly when
+$o_j+e-b\le o_i+e-a$, which does not depend on $e$. If the pair of states
+is admitted, the comparison must be excluded:
+\begin{equation}
+   o_i+b-a+1\le o_j .
+   \label{eq:offset}
+\end{equation}
+We call the stopped words and moving rays a \emph{periodic tuple} if the
+stopped words are eligible, the rays are live and eventually rejected,
+and the stopped words and every ray prefix are safe against each stopped
+target. In addition it has integer \emph{offsets} $o_i$ such that every
+pair of moving cuts with equal infinite rests and an admitted pair of
+states satisfies \eqref{eq:offset}. The condition ranges over all ordered
+pairs of moving coordinates and all their cuts. By the computation above,
+the starting lengths in \cref{lem:periodic} are offsets. The offsets link
+the next two steps: the trie descent keeps them, and the truncation turns
+them into lengths.
+
+The period bound leaves the lengths of the finite parts uncontrolled.
+The next step shortens these parts without losing the periodic tuple.

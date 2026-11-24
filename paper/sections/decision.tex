@@ -1,191 +1,129 @@
-\section{The Decision Procedures}
+\section{Decision and Complexity}
 \label{sec:decision}
 
-We now assemble the decision procedures for disjunctive entailment: over
-arbitrary trees, where the previous sections apply directly; over regular
-trees, where the answers are the same; over finite trees, where they differ
-only through satisfiability; and for the signature $\BF$, which reduces to
-$\BFT$. \Cref{thm:main} then follows with \cref{prop:sentences}. Proofs
-omitted here are in \cref{app:classes}.
+Stopping bounds the depth. The depth bounds the periods and lets
+one trie descent shorten the finite words. Truncation then bounds
+the whole tuple. The two reader parameters in these steps are the
+number of states and the number of word actions. For a compiled
+reader it is important to count them separately.
 
-\subsection{Arbitrary Trees}\label{sec:decision-arbitrary}
+\subsection{The small-hole bound}
 
-\begin{theorem}[Arbitrary trees]\label{thm:decide-arbitrary}
-Disjunctive entailment between flat constraints over $\BFT$ is decidable
-over $\Trees$, uniformly in the number of queries, the arity and the
-variance.
+Let $D,B,M,S$ have the values of \cref{lem:buffered}, and put
+$H=S+ND+1$. The total length bound from \cref{lem:truncation}
+with $A=J=S$ is
+\begin{equation}
+  \LBound(k,N,K,C)=k(kH+H+S+2D+S).
+  \label{eq:length-bound}
+\end{equation}
+Here $C$ bounds the depth of stopped words in any hole of the reader.
+For an arbitrary reader, there are at most $N^N$ word actions, and
+\cref{lem:depth} gives $C=(N+1)k$.
+
+Compiled readers admit a smaller count of actions. A state has two
+sets of signed variables or is the dead state, giving $2^{4v}+1$
+states on $v$ variables. In the two components there are $4v$
+possible singleton states, with one signed variable in one component and
+the other component empty. Every word action preserves componentwise
+union, with the dead state absorbing union, because the steps take
+relational images and the guard fails as soon as any one label
+causes it to fail. The action fixes the empty pair and the dead
+state. Its values on the singletons therefore determine it. This
+gives at most $2^{(4v+1)4v}$ actions. For the same reason, if reading a
+word from a state kills the run, or reaches a host state admitted with a
+fixed target state, then the same holds from one singleton contained in
+that state, and from every state that contains this singleton, unless the
+run dies in the case of admission. The singletons therefore replace the states in
+the charging argument of \cref{sec:stopping}, which gives the compiled
+depth bound $(4v+1)|F|$ of \cref{lem:depth}.
+
+The formulas multiply and take powers of the parameters, with exponents
+bounded by polynomials in the depth. Thus \eqref{eq:length-bound}
+is singly exponential in the state and query counts for an arbitrary
+reader, and in the variable and query counts for a compiled reader.
+The estimates in \cref{app:counting} give the following bounds.
+
+\begin{theorem}[Small holes]\label{thm:short}
+If a structural reader with $k$ coordinates and $N$ states has a hole,
+it has one of total length at most $2^{(k+N+16)^{10}}$. If the reader
+is compiled from a system with $v$ variables and $k$ queries, it has
+one of total length at most $2^{(4v+k+16)^{10}}$. The estimates are
+independent of the alphabet size.
 \end{theorem}
 
-\begin{proof}
-Let $\Gamma$ be a constraint and $(x_1,y_1),\dots,(x_k,y_k)$ queries.
-\begin{enumerate}
-\item Decide whether $\Gamma$ is satisfiable over $\Trees$
-  (\cref{lem:sat-decidable}). If it is not, the entailment holds.
-\item Otherwise, for each of the $2^k$ mode vectors $\bar\mu$, compute the
-  reader $M_{\bar\mu}$ of \cref{def:compile} and test all tuples of paths of
-  total length at most $\Hole(k,N)$, where $N$ is the number of its states,
-  for being holes. The entailment fails if and only if a hole is found.
-  For $k=0$ there is one mode vector, the empty one, and $\Hole(0,N)=0$; the
-  empty tuple is a hole, and the entailment fails, as it must for a
-  satisfiable constraint.
-\end{enumerate}
-The second step is correct by \cref{thm:reduction,thm:small-hole}. Whether a tuple is a hole is checked directly from
-\cref{def:hole}.
-\end{proof}
+\subsection{Decision over the three classes}
 
-\begin{lemma}[Satisfiability]\label{lem:sat-decidable}
-It is decidable whether a flat constraint over $\BFT$ is satisfiable over
-$\Trees$.
-\end{lemma}
+The reduction to holes assumes satisfiability. The test for it uses
+a closure of the variable inequalities, which propagates constructor
+bounds to their children. A label clash is an inequality in this
+closure between variables whose literals force incompatible root
+labels. In the absence of a label clash there is a solution over
+arbitrary trees. For finite satisfiability one must also exclude a
+cycle clash, where linked lower and upper path bounds force a
+constructor path to repeat indefinitely. Both tests are polynomial
+in the size of the flat system. \Cref{app:classes} gives the tests
+and their proofs.
 
-Satisfiability is in fact decidable in polynomial time
-\cite{KozenPalsbergSchwartzbach94,PalsbergWandOKeefe97}. In our setting it
-is the question whether the least closure is consistent and contains no
-forbidden atom (\cref{sec:readers-atoms}), and for each signed variable the
-paths of its atoms in the least closure form a regular language accepted by
-the automaton of lower runs (\cref{app:reduction-lc}).
+Over arbitrary trees, first check satisfiability. If there is a
+solution, enumerate the mode vectors and search for a hole of each
+reader up to the compiled bound. The vectors are the $2^k$ choices of
+one of two modes for each query. The disjunction fails exactly when
+a hole is found. The same search decides entailment over regular
+trees, and a system has a regular solution exactly when it has one
+over arbitrary trees (\cref{prop:classes} with $k=0$). For finite trees, it suffices to replace the satisfiability
+test by the finite satisfiability test.
 
-\subsection{Regular Trees}\label{sec:decision-regular}
+\begin{proposition}[Transfer between tree classes]\label{prop:classes}
+Disjunctive entailment over regular trees agrees with disjunctive
+entailment over arbitrary trees. Over finite trees it holds exactly
+when $\Gamma$ has no finite solution or the entailment holds over
+arbitrary trees.
+\end{proposition}
 
-\begin{theorem}[Regular trees]\label{thm:decide-regular}
-For every flat constraint $\Gamma$ over $\BFT$ and all queries,
-\[
-  \Gamma\entails_{\TreesReg}x_1\le y_1\vee\dots\vee x_k\le y_k
-  \iff
-  \Gamma\entails_{\Trees}x_1\le y_1\vee\dots\vee x_k\le y_k .
-\]
-\end{theorem}
+For regular trees, the hull of a finite family of witness seeds has
+regular leaf cones. A regular language has finitely many residual
+languages, so the assignment has finitely many subtrees.
+For finite trees, each witness requirement can be expressed as a
+bound by a finite tree. One-sided constructor literals on fresh
+variables express these bounds without introducing a cycle clash.
+Hence, when $\Gamma$ has a finite solution, the finite set of
+witness requirements of a countermodel can also be realized by
+finite trees. The proofs are in \cref{app:classes}.
 
-\begin{proof}[Proof sketch]
-A regular countermodel is a countermodel, which gives the implication from
-right to left. Conversely, let $\rho$ be a countermodel over $\Trees$, with
-seeds $A_i$ and exclusions $B_i$ as in \cref{sec:readers-modes}. By
-\cref{thm:realization} the hull of the seeds is a solution set that
-contains the seeds and none of the exclusions, so the corresponding
-assignment is a countermodel. For each signed variable $x^s$, the paths $w$
-with $(x^s,w)$ in the hull form a regular language: those from the least
-closure do, and by \cref{lem:cuts} those derived from the seed $(p_i,w_i)$
-are the words $v\,\wsuf{w_i}a\,\sigma$, for a cut $a$ of $w_i$, a word $v$
-with $\Dn(x^s,v)\cap\Up(p_i,\wpre{w_i}a)\ne\varnothing$ and an arbitrary
-word $\sigma$. A tree whose two cones are regular languages has finitely
-many subtrees, because the subtree at a position is determined by the
-residuals of the two cones and the polarity of the position
-(\cref{lem:regular-cones}).
-\end{proof}
+\subsection{Complexity}
 
-So the hull of the seeds, the least countermodel with the given witnesses,
-is a regular tree in every component, and it is computable from a hole.
+For \NExp\ membership, guess the witnesses and check them directly.
+On input a flat system and its queries, first check satisfiability
+in the chosen class. A negative answer means there is no
+countermodel. Otherwise guess the modes and a tuple within the
+compiled bound. The two run sets at each cut can be updated in
+polynomial time in the system size, using the saturated root
+relation. The sets and the guard are represented on the signed
+variables. An explicit table of all reader states is unnecessary.
 
-\subsection{Finite Trees}\label{sec:decision-finite}
+Let $\tot W$ be the total length of the guessed tuple $W$. There are
+$\tot W+k$ cuts over all coordinates, and at most $(\tot W+k)^2$ ordered
+pairs of cuts.
+Enumerating these pairs, testing the prefix relation on their
+rests letter by letter, and applying \eqref{eq:admission} checks all
+channels in time polynomial in the input size and $\tot W+k$. This
+also checks repetitions and identical cuts. The total nondeterministic
+time is singly exponential. For a $\Sigma_1$ sentence, first guess
+a clause and flatten it as in \cref{lem:clauses}. Its polynomial
+size and linear counts of variables and queries give the same
+time bound in the original input length.
 
-Over finite trees a constraint can be unsatisfiable although it is
-satisfiable over $\Trees$; for a unary constructor, $x\le f(x)$, $f(x)\le x$
-is an example. This is
-the only difference.
+Hardness comes from non-entailment of a single inequality for a
+binary covariant constructor, which is \NExp-hard over each of the
+three classes \cite{NSSE26}. Given a system and query $x\le y$,
+form the existential sentence asserting $\Gamma\land\neg(x\le y)$.
+This is a polynomial-time many-one reduction. Complementing the
+matrix of a universal sentence gives the \coNExp\ upper bound,
+and complementing the reduction gives the matching lower bound.
 
-\begin{theorem}[Finite trees]\label{thm:decide-finite}
-For every flat constraint $\Gamma$ over $\BFT$ and all queries,
-$\Gamma\entails_{\TreesFin}x_1\le y_1\vee\dots\vee x_k\le y_k$ holds if and
-only if $\Gamma$ is unsatisfiable over $\TreesFin$ or
-$\Gamma\entails_{\Trees}x_1\le y_1\vee\dots\vee x_k\le y_k$. Satisfiability
-over $\TreesFin$ is decidable, and hence so is disjunctive entailment over
-$\TreesFin$.
-\end{theorem}
-
-The nontrivial direction is to turn a countermodel over $\Trees$ into a
-finite one when $\Gamma$ has some finite solution. A countermodel is
-described by finitely many \emph{observations}: the $k$ seeds belong to its
-set of atoms and the $k$ exclusions do not. Each observation is equivalent
-to a bound of a variable by a finite tree. For instance, for a covariant
-constructor, $(x^{\sgp},w)\in S_\rho$ says that $\rho(x)$ lies above the
-finite tree that has $f$ along the path $w$, $\Top$ at its end and $\Bot$
-beside it, and $(x^{\sgp},w)\notin S_\rho$ says that $\rho(x)$ lies below the
-finite tree that has $f$ along $w$ and at its end, and $\Top$ everywhere
-else (\cref{lem:observations}). The theorem then follows from a pinning
-property of finite solutions:
-
-\begin{lemma}[Pinning]\label{lem:pinning}
-Suppose that $\Gamma$ has a solution over $\TreesFin$ and that some solution
-of $\Gamma$ over $\Trees$ satisfies finitely many bounds $g\le x$ and $x\le
-g'$ of variables by finite trees. Then some solution of $\Gamma$ over
-$\TreesFin$ satisfies these bounds.
-\end{lemma}
-
-Its proof (\cref{app:classes-finite}) first treats a covariant
-constructor. It compiles the bounds into flat literals on fresh variables,
-which only hang finite trees below or above existing variables, and shows
-that they create no \emph{cycle clash}, the obstruction to finite
-satisfiability of \cite{Zhao26}. With variance, it translates the
-constraint into a covariant constraint on the signed variables and makes the
-finite solution obtained there symmetric under the exchange of the two signs,
-by a median of trees.
-
-\subsection{The Signature \texorpdfstring{$\BF$}{\{bot, f\}}}\label{sec:decision-bf}
-
-Let $f$ be covariant. The trees over $\BF$ are the trees over $\BFT$ without
-$\Top$, with the same order, so a constraint over $\BF$ can be read over
-$\BFT$; but it may then have additional solutions, in which $\Top$ occurs. A
-single \emph{guard} variable excludes them.
-
-\begin{lemma}[Guard]\label{lem:guard}
-Let $f$ be covariant. If $u\le f(u,\dots,u)$, then $\Top$ occurs neither in
-$u$ nor in any tree $t\le u$.
-\end{lemma}
-
-\begin{proof}
-Suppose $\Top$ occurs in $u$, and let $\pi$ be a position of minimal length
-with $u(\pi)=\Top$. Since $u\le f(u,\dots,u)$ and $u\ne\Top$, either
-$u=\Bot$, which is impossible, or $u=f(u_1,\dots,u_n)$ with $u_i\le u$ for
-every $i$. Then $\pi=i\pi'$ and $u_i(\pi')=\Top$. Let $v$ be the longest
-prefix of $\pi'$ that is a position of $u$. If $v=\pi'$, then $u_i\le u$
-gives $u(\pi')=\Top$; otherwise $u(v)$ is a leaf above the label $f$ of
-$u_i(v)$, so $u(v)=\Top$. In both cases $\Top$ occurs in $u$ at a position
-shorter than $\pi$. The same argument, applied to a position of $\Top$ in a
-tree $t\le u$, shows that $\Top$ occurs in $u$.
-\end{proof}
-
-For a constraint $\Gamma$ over $\BF$ with variables $V$, let $\Gamma^{g}$ be
-$\Gamma$ together with the literals $u\le f(u,\dots,u)$ and $x\le u$ for
-every $x\in V$, where $u$ is a fresh variable.
-
-\begin{theorem}[Reduction of $\BF$]\label{thm:decide-bf}
-Let $f$ be covariant and $\Cls$ one of $\Trees$, $\TreesReg$, $\TreesFin$.
-A constraint $\Gamma$ over $\BF$ entails $x_1\le y_1\vee\dots\vee x_k\le
-y_k$ over the trees of $\Cls$ without $\Top$ if and only if $\Gamma^{g}$
-entails it over $\Cls$ as a constraint over $\BFT$.
-\end{theorem}
-
-\begin{proof}
-By \cref{lem:guard}, the restriction of a solution of $\Gamma^{g}$ to $V$ is
-a solution of $\Gamma$ without $\Top$. Conversely, a solution of $\Gamma$ in
-trees of $\Cls$ without $\Top$ extends to a solution of $\Gamma^{g}$ in
-$\Cls$: over $\Trees$ and $\TreesReg$ let $u$ be the tree $\fall$ with $f$
-at every path (for $n=0$, the tree $f$), which lies above every tree without
-$\Top$ and satisfies $u=f(u,\dots,u)$; over $\TreesFin$ let $u$ be the
-complete tree of a depth $d$ that exceeds the lengths of all positions of
-the finitely many values, with $f$ at all paths shorter than $d$ and $\Bot$
-at the paths of length $d$. The queries do not involve $u$, so the two
-entailments have the same countermodels up to the value of $u$.
-\end{proof}
-
-The guard is needed: at arity $0$, the inequality $x\le f$ holds for both
-trees $\Bot$ and $f$ over $\BF$, but it fails for $x=\Top$.
-
-\subsection{Proof of the Main Theorem}\label{sec:decision-main}
-
-\begin{proof}[Proof of \cref{thm:main}]
-Disjunctive entailment between flat constraints over $\BFT$ is decidable
-over $\Trees$ by \cref{thm:decide-arbitrary}, over $\TreesReg$ by
-\cref{thm:decide-regular}, and over $\TreesFin$ by
-\cref{thm:decide-finite}. Each of the three classes contains $\Bot$ and
-$\Top$ and is closed under the constructor, so \cref{prop:sentences} decides
-the Boolean combinations of $\Sigma_1$ and $\Pi_1$ sentences over each
-class, and its second statement together with \cref{thm:decide-regular}
-shows that truth over $\TreesReg$ and over $\Trees$ agree. For $\BF$ with a
-covariant constructor, the trees without $\Top$ of each class contain $\Bot$
-and are closed under the constructor, \cref{lem:clause} holds for terms
-without $\Top$, and \cref{thm:decide-bf} decides the resulting disjunctive
-entailments; regular and arbitrary trees agree again, because they agree for
-the guarded constraints. All steps are uniform in the arity and the
-variance.
-\end{proof}
+In a Boolean combination, dualize each $\Pi_1$ subformula and
+submit the $\Sigma_1$ truth queries in parallel. Each query is
+determined by the input alone. Then evaluate the Boolean formula
+using the answers, complementing the dualized answers. This takes
+polynomial time apart from the parallel oracle queries and proves
+\cref{thm:main}.

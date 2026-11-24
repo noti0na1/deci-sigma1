@@ -1,0 +1,94 @@
+\section{Comparison with Plain Entailment}
+\label{sec:comparison}
+
+Plain entailment $\Gamma\entails x\le y$ is the case $k=1$, and its decision procedure
+\cite{NSSE26} also bounds the shortest holes of readers. The objects are the same: readers,
+holes, comparisons, word actions, and the shortening of blocks on a reverse trie. The
+argument for one word does not extend directly to several, and each step of our proof
+replaces one step of the one-word argument. \Cref{tab:comparison} summarizes the
+correspondence.
+
+\begin{table}[!htb]
+\centering\small
+\caption{The bound on shortest holes for one word \cite{NSSE26} and for a tuple of words.}
+\label{tab:comparison}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.39\textwidth}@{}}
+\toprule
+ & One word & A tuple of words (this paper)\\
+\midrule
+comparisons & within the word & within and between the words\\
+after the first rejection & no admitted comparison & a cut can still be a host
+  (\cref{fig:stopping})\\
+finite holes & end at a dead end & stopped words: every letter dies or is blocked by an
+  earlier stopped word (\cref{lem:stopping})\\
+infinite holes & an eventually periodic word & rays with bounded periods
+  (\cref{lem:periodic})\\
+depth & bounded at a dead end & bounded on the stopped words by charging
+  (\cref{lem:depth})\\
+shortening & one word, on a reverse trie & all words together, linked blocks, buffers
+  (\cref{lem:refinement,lem:buffered})\\
+cutting & a periodic word is cut directly & strict difference constraints
+  (\cref{lem:truncation})\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subparagraph*{Rejection no longer ends the comparisons.}
+For one word, the prefix test puts the host cut at or before the target cut, and a target
+cut after the first rejection carries a live successor of a rejected state, which is never
+admitted. An admitted comparison therefore has both cuts at or before the first rejection,
+and a hole either ends at a \emph{dead end} or extends through rejected states forever, and
+then periodically. A dead end is a rejected state from which every letter leads to a state
+that is not rejected. In a structural reader this means that every letter leads to the
+dead state. With several words the host and the target lie in different words. A cut far
+beyond the first rejection of one word can be the host of a comparison whose target lies
+early in another word (\cref{fig:stopping}). In \cref{ex:comparable-reader} the first word
+can neither be cut at its first rejected cut nor be extended by the letter $1$. Stopping
+(\cref{sec:stopping}) is the replacement for dead ends. A stopped word is a word whose
+every letter dies, as at a dead end, or is blocked by a word that stopped earlier. Only
+fixed words can block: when the target grows together with the host, a comparison at the
+new end of the target has a live successor of a rejected state as its target state, which
+is never admitted (\cref{lem:joint}).
+
+\subparagraph*{Depth at stopped words.}
+For one word, a hole that ends at a dead end has depth at most $2v+1$ for $v$ variables
+\cite{NSSE26}. Whichever letter follows the dead end, the constraints force a leaf, and the
+argument charges the nested recurrences of the end of the word to distinct variables. Here
+the
+suffixes of all stopped words nest along one host, and the bound charges each nesting to
+the obstruction that stops it: the dead state, or an earlier stopped word, to which the
+charge is transferred (\cref{lem:depth}). The charges give at most $4v+1$ lengths per
+stopped word for a compiled reader with $v$ variables.
+
+\subparagraph*{Periodic parts must survive the shortening.}
+For one word, a hole that extends forever through rejected states has an eventually
+periodic extension; after its beginning is replaced by a short word, a prefix of quadratic
+length is already a hole. Here a moving word can be
+the host of comparisons with the stopped words and with the other rays, at positions far
+beyond its first rejection, so its periodic part cannot simply be cut. The shortening keeps
+a periodic buffer after each stem (\cref{sec:buffers}). The buffer keeps the comparisons
+with stopped words visible in a bounded prefix, and keeps the relative offsets that
+separate admitted comparisons between rays.
+
+\subparagraph*{One trie for all words.}
+For one word, the blocks of a level are shortened together on the trie of their reversals,
+so that equal blocks stay equal and different blocks keep differing at the same place. With
+several words, deleting a block from one word can create a comparison with another. The
+markers are therefore the last letters of \emph{all} words, the blocks carry their front
+markers so that a shortened list remains a parse of a word, and one dictionary of contents
+is shortened for all coordinates at once (\cref{sec:trie}).
+
+\subparagraph*{Cutting the rays.}
+Finally, the rays have to be cut at finite lengths. For one word, no two cuts of the
+periodic word with equal infinite rests carry an admitted pair, since every long prefix is a
+hole, and a single cut a fixed distance after the first rejection suffices. Rays that grow
+in step can have such pairs of cuts, between different rays or within one ray, as long as
+the target rest stays longer than the host rest at every common increment. Two cuts with
+equal infinite rests form a comparison exactly when the rest of the target is not longer
+than the rest of the host, so the cutting lengths must satisfy strict inequalities, a
+system of difference constraints with a bounded solution (\cref{lem:truncation}).
+
+Both bounds are singly exponential. For one word, the exponent is a polynomial of smaller
+degree in the number of variables \cite{NSSE26}; here it is $(4v+k+16)^{10}$. The
+polynomial in the exponent is larger, because the depth of the stopped words grows with the
+number of queries, and the buffers and the trie descent run over all words at once.
