@@ -1,21 +1,18 @@
 import Mathlib.Data.Fin.VecNotation
 import Mathlib.Data.Fintype.Basic
 import DeciSigma1.Full.Reduction.Compile
+import DeciSigma1.Holes.Trie.Refinement
 
-/-! # Examples of readers, holes and fresh domination
+/-! # Examples of holes, stopping and finite-word shortening
 
-The small-hole bound `exists_small_hole` concerns structural readers, and its proof goes through
-fresh dominators and minimal fresh tuples. The examples below show that each of these notions
-has instances, all checked by the kernel on small tables.
+Small readers checked by evaluation: a hole with a stopped coordinate, a strict shortening that
+erases a loop, and the reader compiled from a disjunctive entailment.
 
 ## Main declarations
 
-- `mixedReader`, `mixedReader_hole`, `mixedReader_hasMixedMortality`, `mixedReader_not_hole`: a
-  structural reader with four states and two starts, a hole of it with one immortal and one
-  mortal coordinate, and a tuple that is not a hole.
-- `freshTable_has_shorter_fresh_dominator`: a one-start table where the word `01` has the
-  strictly shorter fresh dominator `1`.
-- `pairTable_isMinimalFresh`: a minimal fresh pair with an empty coordinate.
+- `mixedReader_hole`, `mixedReader_stopped` and `mixedReader_not_hole` describe a two-start
+  reader with a stopped coordinate and a live loop.
+- `loopTable_has_shorter_refinement`: erasing a loop at the start gives a shorter refinement.
 - `crossReader`, `crossReader_not_hole`, `crossReader_hole`, `cross_not_entails`: the reader
   compiled from a disjunctive entailment with two queries, an admitted pair on the channel
   between its two coordinates, and a hole, which refutes the entailment.
@@ -48,29 +45,36 @@ def mixedWords : Fin 2 → List (Fin 2) := ![[0, 0, 0], [1]]
 /-- The tuple `(000, 1)` is a hole. -/
 theorem mixedReader_hole : mixedReader.IsHole mixedWords := by decide +kernel
 
-/-- The hole has mixed mortality: an immortal and a mortal coordinate. -/
-theorem mixedReader_hasMixedMortality : mixedReader.HasMixedMortality mixedWords := by
-  decide +kernel
+/-- Coordinate one can stop immediately. Both letters take its endpoint to the dead state. -/
+theorem mixedReader_stopped : Holes.Stopped mixedReader mixedWords {1} := by
+  apply Holes.Stopped.insert (F := ∅) .empty (by simp)
+  have blocked : ∀ a, mixedReader.step (mixedReader.endState mixedWords 1) a =
+      mixedReader.dead := by
+    decide +kernel
+  exact fun a => Or.inl (blocked a)
 
 /-- The admitted pair `(2, 1)` lies on a channel: the target word `00` is a prefix of the host word
 `000` after its first letter, where the host is in state `2` and the target in state `1`. -/
 theorem mixedReader_not_hole : ¬ mixedReader.IsHole ![[0, 0, 0], [0, 0]] := by decide +kernel
 
 /-- Transitions over `{0, 1}`: `0 -0→ 0`, `0 -1→ 1`, and every other edge to `2`. -/
-def freshStep : Fin 3 → Fin 2 → Fin 3 := ![![0, 1], ![2, 2], ![2, 2]]
+def loopStep : Fin 3 → Fin 2 → Fin 3 := ![![0, 1], ![2, 2], ![2, 2]]
 
-/-- One start in state `0`. -/
-def freshTable : Table (Fin 2) (Fin 3) 1 := ⟨freshStep, ![0]⟩
+/-- The table of `loopStep` with one start, in state `0`, where the letter `0` is a loop. -/
+def loopTable : Table (Fin 2) (Fin 3) 1 := ⟨loopStep, ![0]⟩
 
-/-- The word `01` has the strictly shorter fresh dominator `1`. -/
-theorem freshTable_has_shorter_fresh_dominator : FreshDominates freshTable ![[1]] ![[0, 1]] ∧
-    totalLength ![[1]] < totalLength (![[0, 1]] : Fin 1 → List (Fin 2)) := by decide +kernel
-
-/-- Two starts in state `0`. -/
-def pairTable : Table (Fin 2) (Fin 3) 2 := ⟨freshStep, ![0, 0]⟩
-
-/-- A minimal fresh pair with an empty coordinate. -/
-theorem pairTable_isMinimalFresh : IsMinimalFresh pairTable ![[1], []] := by decide +kernel
+/-- Erasing the loop `0` at the start: the word `1` refines the word `01` and is shorter. -/
+theorem loopTable_has_shorter_refinement : Holes.Trie.Refines loopTable ![[1]] ![[0, 1]] ∧
+    totalLength ![[1]] < totalLength (![[0, 1]] : Fin 1 → List (Fin 2)) := by
+  refine ⟨⟨by decide +kernel, by decide +kernel, ?_⟩, by decide +kernel⟩
+  intro i j a b ha hb hp
+  obtain rfl : i = 0 := Subsingleton.elim _ _
+  obtain rfl : j = 0 := Subsingleton.elim _ _
+  change b < 1 at hb
+  obtain rfl : b = 0 := by omega
+  have hlen : 1 ≤ 1 - a := by simpa using hp.length_le
+  obtain rfl : a = 0 := by omega
+  exact ⟨1, by decide, 1, by decide, by decide, rfl, rfl⟩
 
 /-! ## The reader of a disjunctive entailment
 

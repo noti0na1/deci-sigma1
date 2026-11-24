@@ -1,22 +1,21 @@
 import Mathlib.Data.List.OfFn
-import DeciSigma1.Words.Periods
+import DeciSigma1.Words.Powers
 
 /-! # Infinite words and ultimately periodic infinite words
 
 Infinite words are functions `ℕ → α`, with finite prefixes `streamPrefix ξ n`, periods
 (`StreamPeriod`) and least periods (`LeastStreamPeriod`); the positive periods of an infinite
 word are the multiples of its least period. A `Ray` is an ultimately periodic infinite word
-`stem · loop^ω`, given by a finite stem and a nonempty loop. In the bound on rejected tails,
-rays describe live periodic continuations of runs of a reader, and the comparisons between
-suffixes of rays are the comparisons that a channel records.
+`stem · loop^ω`, given by a finite stem and a nonempty loop. In the small-hole theorem each
+moving coordinate of a hole follows a ray, and the comparisons between suffixes of rays
+constrain the lengths at which the rays are truncated.
 
 The onset of a ray is the least position from which it is purely periodic, and its period is
 its least period. Fine–Wilf for purely periodic infinite words (`streamEq_of_agree`) shows that
 two suffixes of rays, from positions `a` and `b`, that agree on a prefix of length
 `max(A - a, A' - b, 0) + ν + ν'` agree everywhere, where `A`, `A'` are the onsets and `ν`, `ν'`
-the periods (`stream_suffix_eq_of_prefix_eq`); so equality of suffixes is decidable. Equal
-suffixes start at the same distance before the onsets, or both at or after them
-(`suffix_eq_cases`).
+the periods (`stream_suffix_eq_of_prefix_eq`). Equal suffixes start at the same distance
+before the onsets, or both at or after them (`suffix_eq_cases`).
 
 ## Main declarations
 
@@ -29,8 +28,7 @@ suffixes start at the same distance before the onsets, or both at or after them
 - `Ray.leastStreamPeriod_shift`: every suffix from the onset on has least period `period`.
 - `Ray.stream_suffix_eq_of_prefix_eq`, `Ray.suffix_eq_cases`: comparison of suffixes of two rays.
 - `Ray.streamPrefix_stream`: the finite prefixes of a ray.
-- `Ray.prefixBeforeOnset`, `Ray.suffixBeforeOnset`: the text of a ray before its onset, and its
-  part after a cut.
+- `Ray.prefixBeforeOnset`: the text of a ray before its onset.
 -/
 
 namespace DeciSigma1.Words
@@ -214,16 +212,16 @@ theorem streamEq_of_agree {ξ η : ℕ → α} {p q : ℕ} (hξ : LeastStreamPer
   have hg := hwp.gcd hwq (by simp only [length_streamPrefix, n]; omega)
   set g := Nat.gcd p q
   have hgpos : 0 < g := Nat.gcd_pos_of_pos_left q hξ.1
-  have hper : PeriodicOn (streamPrefix ξ n) g 0 n := by
-    rw [periodicOn_iff_hasPeriod (Nat.zero_le _) (by simp)]
-    simpa using hg
   -- positions below `n` congruent modulo `g` carry equal letters
   have hmod : ∀ x y, x < n → y < n → x % g = y % g → ξ x = ξ y := by
     intro x y hx hy hxy
-    have := hper.eq_of_mod (Nat.zero_le x) (Nat.zero_le y) hx hy hxy
+    have ex := hg.getElem?_mod g x (streamPrefix ξ n) (by simpa using hx)
+    have ey := hg.getElem?_mod g y (streamPrefix ξ n) (by simpa using hy)
+    rw [hxy] at ex
+    have eq := ex.symm.trans ey
     rw [List.getElem?_eq_getElem (by simpa using hx), List.getElem?_eq_getElem (by simpa using hy),
-      Option.some_inj] at this
-    simpa [hx, hy] using this
+      Option.some_inj] at eq
+    exact (getElem_streamPrefix ξ n x hx).symm.trans (eq.trans (getElem_streamPrefix ξ n y hy))
   -- `g` is a period of `ξ`, hence `g = p`
   have hgp : g = p := by
     have hgξ : StreamPeriod ξ g := by
@@ -464,14 +462,6 @@ theorem stream_suffix_eq_of_prefix_eq (Ω Ω' : Ray α) (a b : ℕ)
   · have : Ω.stream (a + m + (t - m)) = Ω'.stream (b + m + (t - m)) := heq (t - m)
     rwa [show a + m + (t - m) = a + t by omega, show b + m + (t - m) = b + t by omega] at this
 
-/-- Equality of two suffixes of rays is decidable: by `stream_suffix_eq_of_prefix_eq` it is a
-finite check. -/
-instance decSuffixEq (Ω Ω' : Ray α) (a b : ℕ) :
-    Decidable (∀ t, Ω.stream (a + t) = Ω'.stream (b + t)) :=
-  decidable_of_iff (∀ t < max (Ω.onset - a) (max (Ω'.onset - b) 0) + Ω.period + Ω'.period,
-      Ω.stream (a + t) = Ω'.stream (b + t))
-    ⟨stream_suffix_eq_of_prefix_eq Ω Ω' a b, fun h t _ => h t⟩
-
 /-- If two suffixes of rays are equal, either both start at or after the onsets, or both start
 before them at the same distance. -/
 theorem suffix_eq_cases {Ω' : Ray α} {a b : ℕ} (h : ∀ t, Ω.stream (a + t) = Ω'.stream (b + t)) :
@@ -503,38 +493,19 @@ theorem suffix_eq_cases {Ω' : Ray α} {a b : ℕ} (h : ∀ t, Ω.stream (a + t)
   · left; exact ⟨ha, by omega⟩
   · right; exact ⟨by omega, by omega⟩
 
-/-- Rays with the same infinite word have the same onset. -/
-theorem onset_eq_of_stream_eq {Ω Ω' : Ray α} (h : ∀ t, Ω.stream t = Ω'.stream t) :
-    Ω.onset = Ω'.onset := by
-  have hf : Ω.stream = Ω'.stream := funext h
-  have key : ∀ A, Ω.onset ≤ A ↔ Ω'.onset ≤ A := by
-    intro A; rw [onset_le_iff, onset_le_iff, hf]
-  exact le_antisymm ((key _).mpr le_rfl) ((key _).mp le_rfl)
-
-/-- The period of a ray is at most any positive period of any of its suffixes. -/
+/-- The period of a ray is at most every positive period of a suffix of the ray. -/
 theorem period_le_of_periodicFrom {Ω : Ray α} {A p : ℕ} (hp : 0 < p)
     (h : PeriodicFrom Ω.stream A p) :
     Ω.period ≤ p := by
   have h1 := leastStreamPeriod_shift (Ω := Ω) (A := max A Ω.onset) (le_max_right _ _)
   exact h1.2.2 p hp (h.mono (le_max_left _ _))
 
+/-- From its onset on, a ray is periodic with its period. -/
 theorem periodicFrom_period (Ω : Ray α) : PeriodicFrom Ω.stream Ω.onset Ω.period :=
   (leastStreamPeriod_shift (Ω := Ω) le_rfl).2.1
 
 /-- The text of a ray before its onset. -/
 def prefixBeforeOnset (Ω : Ray α) : List α := streamPrefix Ω.stream Ω.onset
-
-/-- The text of a ray from the cut `J` to its onset (empty if the onset is at most `J`). -/
-def suffixBeforeOnset (Ω : Ray α) (J : ℕ) :
-    List α := streamPrefix (fun t => Ω.stream (J + t)) (Ω.onset - J)
-
-@[simp] theorem length_suffixBeforeOnset (Ω : Ray α) (J : ℕ) :
-    (Ω.suffixBeforeOnset J).length = Ω.onset - J := by simp [suffixBeforeOnset]
-
-theorem suffixBeforeOnset_suffix_prefixBeforeOnset (Ω : Ray α) (J : ℕ) :
-    Ω.suffixBeforeOnset J <:+ Ω.prefixBeforeOnset := by
-  rw [suffixBeforeOnset, prefixBeforeOnset, streamPrefix_suffix_iff]
-  exact ⟨by omega, fun t ht => by congr 1; omega⟩
 
 /-! ## Finite prefixes of rays -/
 

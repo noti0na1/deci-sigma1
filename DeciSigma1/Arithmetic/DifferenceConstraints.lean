@@ -11,16 +11,12 @@ import DeciSigma1.Automata.Basic
 
 A system of difference constraints over a finite index type `ι` is a set of inequalities
 `x i + c ≤ x j` between integer unknowns; it is the constraint graph with an edge `i → j` of
-weight `c` for each inequality. The shortening arguments choose the number of letters to
-delete from each periodic factor, and the lengths of the periodic continuations of several
-words, as solutions of such systems.
-
-A closed walk of positive weight makes a system infeasible. Conversely, if there is no
-positive cycle, the maximal weights of simple walks give a nonnegative solution bounded by
-`|ι|` times the largest edge weight (`exists_sat_nonneg_bounded`). Above given lower bounds
-there is then a least solution, and each of its values is reached from a vertex at its lower
-bound along a duplicate-free path of tight constraints (`least_above`); this is how the
-shortening bounds the size of the least solution.
+weight `c` for each inequality. A closed walk of positive weight makes a system infeasible,
+since a solution grows along every walk at least by its weight (`weight_le_local`).
+Conversely, if there is no positive cycle, the maximal weights of simple walks ending at each
+vertex form a nonnegative solution bounded by `|ι|` times the largest edge weight
+(`exists_sat_nonneg_bounded`). The small-hole theorem chooses the lengths at which rays are
+truncated as such a solution.
 
 ## Main declarations
 
@@ -28,12 +24,9 @@ shortening bounds the size of the least solution.
   solutions.
 - `DifferenceSystem.weight`, `DifferenceSystem.HasPositiveCycle`: weights of walks and positive
   cycles.
+- `DifferenceSystem.weight_le_local`: a solution grows along a walk at least by its weight.
 - `DifferenceSystem.exists_sat_nonneg_bounded`: a system without positive cycles has a bounded
   nonnegative solution.
-- `DifferenceSystem.exists_long_solution`: such a system has a natural-number solution above
-  any lower bounds.
-- `DifferenceSystem.least_above`: the least solution above lower bounds, with tight paths.
-- `DifferenceSystem.ofFinset`: the system of a finite set of constraints.
 -/
 
 namespace DeciSigma1.Arithmetic
@@ -93,13 +86,6 @@ theorem weight_snoc_snoc (s : List ι) (i j : ι) :
 theorem isWalk_cons_cons {i j : ι} {p : List ι} :
     D.IsWalk (i :: j :: p) ↔ (D.edgeWeight i j).isSome ∧ D.IsWalk (j :: p) :=
   List.isChain_cons_cons
-
-/-! ## Solutions bound walk weights -/
-
-theorem Sat.add_const {x : ι → ℤ} (h : D.Sat x) (c : ℤ) : D.Sat (fun i => x i + c) := by
-  intro i j d hd
-  have := h i j d hd
-  linarith
 
 /-! ## Weights of walks -/
 
@@ -252,129 +238,6 @@ theorem exists_sat_nonneg_bounded [Fintype ι] [DecidableEq ι] (h : ¬ D.HasPos
   obtain ⟨x, hx, hb⟩ := exists_sat_nonneg_of_no_positiveCycle h
   refine ⟨x, hx, fun i => ⟨(hb i).1, (hb i).2.trans ?_⟩⟩
   exact mul_le_mul_of_nonneg_right (by exact_mod_cast Nat.sub_le _ _) (by positivity)
-
-/-- A system without positive cycles has a natural-number solution above any lower bounds. -/
-theorem exists_long_solution [Fintype ι]
-    [DecidableEq ι] (D : DifferenceSystem ι)
-    (h : ¬ D.HasPositiveCycle) (lower : ι → ℕ) :
-    ∃ L : ι → ℕ, D.Sat (fun i => (L i : ℤ)) ∧ ∀ i, lower i ≤ L i := by
-  obtain ⟨x, hx, hb⟩ := D.exists_sat_nonneg_bounded h
-  refine ⟨fun i => (x i).toNat + Finset.univ.sup lower, ?_, fun i => ?_⟩
-  · have := hx.add_const ((Finset.univ.sup lower : ℕ) : ℤ)
-    intro i j c hc
-    have h1 := this i j c hc
-    have h2 := (hb i).1
-    have h3 := (hb j).1
-    simp only [Nat.cast_add, Int.toNat_of_nonneg h2, Int.toNat_of_nonneg h3]
-    exact h1
-  · have := Finset.le_sup (f := lower) (Finset.mem_univ i)
-    show lower i ≤ (x i).toNat + Finset.univ.sup lower
-    omega
-
-/-! ## Least solution above lower bounds -/
-
-/-- The constraint from `u` to `v` holds with equality at `x`. -/
-def IsTight (D : DifferenceSystem ι) (x : ι → ℤ) (u v : ι) :
-    Prop := ∃ c, D.edgeWeight u v = some c ∧ x u + c = x v
-
-open Classical in
-/-- Given lower bounds `floor` and one solution above them, there is a least solution above
-them, and every vertex is the end of a duplicate-free path of tight constraints that starts at
-a vertex where the least solution equals its lower bound. -/
-theorem least_above (floor x0 : ι → ℤ) (h0 : D.Sat x0) (hf : floor ≤ x0) :
-    ∃ xm, D.Sat xm ∧ floor ≤ xm ∧ (∀ x, D.Sat x → floor ≤ x → xm ≤ x) ∧
-      ∀ i, ∃ p : List ι, p.Nodup ∧ p.getLast? = some i ∧
-        (∃ j, p.head? = some j ∧ xm j = floor j) ∧ p.IsChain (D.IsTight xm) := by
-  have hex : ∀ i, ∃ n : ℕ, ∃ x, D.Sat x ∧ floor ≤ x ∧ x i = floor i + n := by
-    intro i
-    have hfi : floor i ≤ x0 i := hf i
-    exact ⟨(x0 i - floor i).toNat, x0, h0, hf, by omega⟩
-  let xm : ι → ℤ := fun i => floor i + Nat.find (hex i)
-  have hmin : ∀ x, D.Sat x → floor ≤ x → xm ≤ x := by
-    intro x hx hfx i
-    have hfi : floor i ≤ x i := hfx i
-    have := Nat.find_min' (hex i) ⟨x, hx, hfx, (by omega :
-      x i = floor i + (x i - floor i).toNat)⟩
-    simp only [xm]
-    omega
-  have hsat : D.Sat xm := by
-    intro i j c hc
-    obtain ⟨y, hy, hfy, hyj⟩ := Nat.find_spec (hex j)
-    have h1 := hmin y hy hfy i
-    have h2 := hy i j c hc
-    simp only [xm] at h1 ⊢
-    linarith
-  have hfm : floor ≤ xm := fun i => by simp only [xm]; omega
-  refine ⟨xm, hsat, hfm, hmin, fun i => ?_⟩
-  -- the vertices with a duplicate-free tight path to `i`
-  let R : ι → Prop := fun j => ∃ p : List ι, p.Nodup ∧ p.getLast? = some i ∧ p.head? = some j ∧
-    p.IsChain (D.IsTight xm)
-  have hRi : R i := ⟨[i], List.nodup_singleton i, rfl, rfl, List.isChain_singleton i⟩
-  have hRclosed : ∀ u v, D.IsTight xm u v → R v → R u := by
-    rintro u v huv ⟨p, hnd, hlast, hhead, hch⟩
-    obtain ⟨p', rfl⟩ : ∃ p', p = v :: p' := by
-      cases p with
-      | nil => simp at hhead
-      | cons a p' => simp only [List.head?_cons, Option.some_inj] at hhead; exact ⟨p', hhead ▸ rfl⟩
-    by_cases hu : u ∈ v :: p'
-    · obtain ⟨s, t, hst⟩ := List.append_of_mem hu
-      refine ⟨u :: t, ?_, ?_, rfl, ?_⟩
-      · rw [hst] at hnd; exact hnd.sublist (List.sublist_append_right _ _)
-      · rw [hst] at hlast; rw [← hlast, List.getLast?_append_cons]
-      · rw [hst] at hch; exact (List.isChain_split.mp hch).2
-    · refine ⟨u :: v :: p', List.nodup_cons.mpr ⟨hu, hnd⟩, ?_, rfl, ?_⟩
-      · rw [List.getLast?_cons_cons]; exact hlast
-      · exact List.isChain_cons_cons.mpr ⟨huv, hch⟩
-  by_contra hno
-  have hnoR : ∀ j, R j → floor j < xm j := by
-    intro j ⟨p, hnd, hlast, hhead, hch⟩
-    rcases lt_or_eq_of_le (hfm j) with h | h
-    · exact h
-    · exact absurd ⟨p, hnd, hlast, ⟨j, hhead, h.symm⟩, hch⟩ hno
-  -- lowering every vertex of `R` by one keeps a solution above the floors
-  let x' : ι → ℤ := fun v => if R v then xm v - 1 else xm v
-  have hsat' : D.Sat x' := by
-    intro u v c hc
-    have huv := hsat u v c hc
-    by_cases hv : R v
-    · by_cases hu : R u
-      · simp only [x', hu, hv, ite_true]; linarith
-      · have hnt : xm u + c ≠ xm v := fun he => hu (hRclosed u v ⟨c, hc, he⟩ hv)
-        simp only [x', hu, hv, ite_true, ite_false]; omega
-    · by_cases hu : R u
-      · simp only [x', hu, hv, ite_true, ite_false]; linarith
-      · simp only [x', hu, hv, ite_false]; exact huv
-  have hf' : floor ≤ x' := by
-    intro v
-    by_cases hv : R v
-    · simp only [x', hv, ite_true]; have := hnoR v hv; omega
-    · simp only [x', hv, ite_false]; exact hfm v
-  have := hmin x' hsat' hf' i
-  simp only [x', hRi, ite_true] at this
-  omega
-
-/-! ## Merging several constraints on one ordered pair -/
-
-/-- The system of a finite set of constraints `(i, j, c)`, each meaning `x i + c ≤ x j`; for
-each ordered pair the strongest constraint is kept. -/
-def ofFinset [DecidableEq ι] (E : Finset (ι × ι × ℤ)) : DifferenceSystem ι :=
-  ⟨fun i j => ((E.filter (fun e => e.1 = i ∧ e.2.1 = j)).image (fun e => e.2.2)).max⟩
-
-theorem sat_ofFinset_iff [DecidableEq ι] (E : Finset (ι × ι × ℤ)) (x : ι → ℤ) :
-    (ofFinset E).Sat x ↔ ∀ e ∈ E, x e.1 + e.2.2 ≤ x e.2.1 := by
-  constructor
-  · intro h e he
-    set s := (E.filter (fun e' => e'.1 = e.1 ∧ e'.2.1 = e.2.1)).image (fun e => e.2.2)
-    have hmem : e.2.2 ∈ s := Finset.mem_image.mpr ⟨e, by simp [he], rfl⟩
-    obtain ⟨m, hm⟩ := Finset.max_of_mem hmem
-    have hle : e.2.2 ≤ m := Finset.le_max_of_eq hmem hm
-    have := h e.1 e.2.1 m hm
-    linarith
-  · intro h i j c hc
-    have hmem := Finset.mem_of_max hc
-    obtain ⟨e, he, rfl⟩ := Finset.mem_image.mp hmem
-    obtain ⟨heE, rfl, rfl⟩ := by simpa using he
-    exact h e heE
 
 end DifferenceSystem
 

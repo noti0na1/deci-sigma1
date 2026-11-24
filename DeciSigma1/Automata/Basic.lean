@@ -8,16 +8,15 @@ import Mathlib.Tactic.Ring
 
 Complete deterministic automata without accepting states (`Semiautomaton`) read words over a
 finite alphabet; acceptance is expressed separately by predicates on states. This module provides
-runs, runs that stay in a set of states (`PathSafe`), shortening of such runs by the pigeonhole
-principle (`short_safe_path`), and the executable enumeration of words of bounded length
-(`wordsUpTo`).
+runs, runs that stay in a set of states (`PathSafe`), and the executable enumeration of words
+of bounded length (`wordsUpTo`).
 
 ## Main declarations
 
 - `runFrom`: the run of a transition function from a state.
 - `Semiautomaton`, `Semiautomaton.run`: automata and their runs from the start state.
-- `Semiautomaton.PathSafe`, `Semiautomaton.short_safe_path`: runs inside a set of states and their
-  shortening.
+- `Semiautomaton.PathSafe`, `Semiautomaton.pathSafe_append`: runs inside a set of states and
+  their behavior under concatenation.
 - `wordsUpTo`: the words of length at most `n`.
 -/
 
@@ -91,38 +90,6 @@ theorem pathSafe_append (M : Semiautomaton α S) (G : S → Prop) (q : S) (u v :
     change (G q ∧ M.PathSafe G (M.step q c) (u ++ v)) ↔
       (G q ∧ M.PathSafe G (M.step q c) u) ∧ M.PathSafe G (runFrom M.step (M.step q c) u) v
     rw [ih, and_assoc]
-
-/-- A run inside a set of states can be shortened, by deleting loops, to one of length less than the
-number of states with the same endpoint. -/
-theorem short_safe_path [Fintype S] (M : Semiautomaton α S) (G : S → Prop) (q : S)
-    (w : Word α) (h : M.PathSafe G q w) :
-    ∃ v, v.length < Fintype.card S ∧ M.PathSafe G q v ∧
-      runFrom M.step q v = runFrom M.step q w := by
-  induction hw : w.length using Nat.strong_induction_on generalizing w with
-  | h n ih =>
-    by_cases hn : w.length < Fintype.card S
-    · exact ⟨w, hn, h, rfl⟩
-    · let A : DFA α S := ⟨M.step, q, Set.univ⟩
-      obtain ⟨r, a, b, c, he, _, hb, ha, hloop, hc⟩ :=
-        A.evalFrom_split (s := q) (x := w) (t := runFrom M.step q w) (by omega) rfl
-      change runFrom M.step q a = r at ha
-      change runFrom M.step r b = r at hloop
-      change runFrom M.step r c = runFrom M.step q w at hc
-      have hs := h
-      rw [he, pathSafe_append, pathSafe_append] at hs
-      have hs' : M.PathSafe G q (a ++ c) := by
-        apply (pathSafe_append M G q a c).mpr
-        refine ⟨hs.1.1, ?_⟩
-        have heq : runFrom M.step q (a ++ b) = runFrom M.step q a := by
-          rw [runFrom_append, ha, hloop]
-        simpa [heq] using hs.2
-      have hlen : (a ++ c).length < n := by
-        have hbpos := List.length_pos_iff.mpr hb
-        simp only [he, List.length_append] at hw
-        simp only [List.length_append]
-        omega
-      obtain ⟨v, hv, hvs, hve⟩ := ih _ hlen (a ++ c) hs' rfl
-      exact ⟨v, hv, hvs, hve.trans (by rw [runFrom_append, ha, hc])⟩
 
 end Semiautomaton
 

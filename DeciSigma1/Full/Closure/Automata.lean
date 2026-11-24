@@ -1,3 +1,4 @@
+import DeciSigma1.Automata.VariableGraph
 import Mathlib.Data.Fintype.Powerset
 import Mathlib.Data.Fintype.Prod
 import DeciSigma1.Automata.Constraints
@@ -249,25 +250,19 @@ theorem Fact.word_nil {Γ : List (LitT n V)} {f : Config n V} (h : Fact Γ f) :
 theorem Neg.word_nil {Γ : List (LitT n V)} {n : Config n V} (h : Neg Γ n) :
     n.2.2 = [] := by cases h <;> rfl
 
-/-- A state reachable by some word is reachable by a word of length at most the number of states. -/
-theorem bounded_run_iff {S : Type*} [Fintype S] (M : Semiautomaton (Fin n) S)
-    (q : S) (H : S → Prop) :
-    (∃ w ∈ wordsUpTo (α := Fin n) (Fintype.card S), H (runFrom M.step q w)) ↔
-      ∃ w, H (runFrom M.step q w) := by
-  constructor
-  · rintro ⟨w, _, hw⟩; exact ⟨w, hw⟩
-  · rintro ⟨w, hw⟩
-    obtain ⟨v, hv, _, he⟩ := M.short_safe_path (fun _ => True) q w
-      ((M.pathSafe_iff _ _ _).mpr (by simp))
-    exact ⟨v, (mem_wordsUpTo _ _).mpr (Nat.le_of_lt hv), he ▸ hw⟩
-
 variable [Fintype V] [DecidableEq V]
 variable (c : Fin n → Bool) (Γ : List (LitT n V))
 
-/-- The signed variables reached by an upper run from a fact. -/
-def factReachableVariables : Finset (V × Bool) := Finset.univ.filter fun x =>
-  ∃ f ∈ factList Γ, ∃ β ∈ wordsUpTo (α := Fin n) (Fintype.card (Finset (V × Bool))),
-    x ∈ Automata.upperRun (signed c Γ) (f.1, f.2.1) β
+/-- The signed variables reached by an upper run from a fact. They are computed by a
+breadth-first search in the graph of signed variables, starting from the variables derivably
+above the root of a fact and following upper constructor steps at every argument. -/
+def factReachableVariables : Finset (V × Bool) :=
+  let signedΓ := signed c Γ
+  let pairs := derivedPairs signedΓ
+  let upper := upperLits signedΓ
+  let starts := Finset.univ.filter fun x => ∃ f ∈ factList Γ, ((f.1, f.2.1), x) ∈ pairs
+  let next x := Finset.univ.biUnion (VariableGraph.upperChildren pairs upper x)
+  VariableGraph.reachableWithin next starts (Fintype.card (V × Bool))
 
 /-- The signed variables derivably below the root of a negative fact. -/
 def forbiddenPredecessors : Finset (V × Bool) := Finset.univ.filter fun x =>
@@ -277,13 +272,44 @@ variable {c Γ}
 
 theorem mem_factReachableVariables {x : V × Bool} : x ∈ factReachableVariables c Γ ↔
     ∃ f β, Fact Γ f ∧ x ∈ Automata.upperRun (signed c Γ) (f.1, f.2.1) β := by
-  simp only [factReachableVariables, Finset.mem_filter, Finset.mem_univ, true_and]
+  let pairs := derivedPairs (signed c Γ)
+  let starts := Finset.univ.filter fun x => ∃ f ∈ factList Γ, ((f.1, f.2.1), x) ∈ pairs
+  let next x := Finset.univ.biUnion (VariableGraph.upperChildren pairs (upperLits (signed c Γ)) x)
+  let seen := VariableGraph.reachableWithin next starts
+  have hstart {z} : z ∈ starts ↔ ∃ f, Fact Γ f ∧ UpperAt (signed c Γ) [] (f.1, f.2.1) z := by
+    simp [starts, pairs, upperAt_nil_iff, mem_derivedPairs]
+  have hedge {p q} : q ∈ next p ↔ ∃ a, UpperAt (signed c Γ) [a] p q := by
+    simp [next, pairs, VariableGraph.mem_upperChildren]
+  change x ∈ seen (Fintype.card (V × Bool)) ↔ _
+  simp only [← upperAt_iff_run]
   constructor
-  · rintro ⟨f, hf, β, _, hβ⟩; exact ⟨f, β, mem_factList.mp hf, hβ⟩
-  · rintro ⟨f, β, hf, hβ⟩
-    refine ⟨f, mem_factList.mpr hf, ?_⟩
-    exact (bounded_run_iff (Automata.upper (signed c Γ) (f.1, f.2.1))
-      _ (fun S => x ∈ S)).mpr ⟨β, hβ⟩
+  -- every vertex found by the search is reached by an upper path from a fact
+  · suffices sound : ∀ d z, z ∈ seen d → ∃ f β, Fact Γ f ∧
+        UpperAt (signed c Γ) β (f.1, f.2.1) z from sound _ _
+    intro d
+    induction d with
+    | zero =>
+      intro z hz
+      obtain ⟨f, hf, hp⟩ := hstart.mp hz
+      exact ⟨f, [], hf, hp⟩
+    | succ d ih =>
+      intro z hz
+      change z ∈ VariableGraph.reachableWithin next starts (d + 1) at hz
+      rw [VariableGraph.reachableWithin_succ] at hz
+      rcases Finset.mem_union.mp hz with hz | hz
+      · exact ih z hz
+      · obtain ⟨p, hp, hstep⟩ := Finset.mem_biUnion.mp hz
+        obtain ⟨f, w, hf, hw⟩ := ih p hp
+        obtain ⟨a, ha⟩ := hedge.mp hstep
+        exact ⟨f, w ++ [a], hf, hw.comp ha⟩
+  -- conversely, the search is closed under successors and contains the end of every path
+  · rintro ⟨f, w, hf, hp⟩
+    induction w using List.reverseRecOn generalizing x with
+    | nil => exact VariableGraph.subset_reachableWithin next starts _ (hstart.mpr ⟨f, hf, hp⟩)
+    | append_singleton w a ih =>
+      obtain ⟨p, hw, ha⟩ := hp.factor (π := w) (π' := [a])
+      exact VariableGraph.reachableWithin_closed next starts
+        (Finset.mem_biUnion.mpr ⟨p, ih hw, hedge.mpr ⟨a, ha⟩⟩)
 
 theorem mem_forbiddenPredecessors {x : V × Bool} : x ∈ forbiddenPredecessors c Γ ↔
     ∃ n, Neg Γ n ∧ (x, (n.1, n.2.1)) ∈ Constraints.derivedPairs (signed c Γ) := by

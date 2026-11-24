@@ -1,14 +1,15 @@
-import DeciSigma1.Full.Reduction.Compile
+import DeciSigma1.Full.Reduction.CompiledBound
 import DeciSigma1.Full.Reduction.Transfer
-import DeciSigma1.Holes.Bound
 
 /-! # Deciding disjunctive entailment over `{⊥, f, ⊤}`
 
 An unsatisfiable constraint entails every disjunction. Otherwise the entailment fails exactly when,
-for one of the finitely many modes, the compiled reader has a hole, and by the small-hole theorem
-this is decided by a bounded search (`Holes.decideHole`). Over regular trees the entailment agrees
-with the arbitrary case; over finite trees the finite satisfiability test comes first. The
-procedures cover every arity, including zero.
+for one of the finitely many modes, the compiled reader has a hole. By the small-hole theorem for
+compiled readers (`Reduction.exists_short_hole_of_compiled`), it suffices to search the tuples of
+total length at most `Reduction.compiledHoleBound v k`, where `v` is the number of variables and
+`k` the number of queries. Over regular trees the entailment agrees with the arbitrary case; over
+finite trees the finite satisfiability test comes first. The procedures cover every arity,
+including zero.
 
 ## Main declarations
 
@@ -22,9 +23,12 @@ open DeciSigma1.Full.Models DeciSigma1.Constraints DeciSigma1.Readers.Table
 variable {n k : Nat} {V : Type} [Fintype V] [DecidableEq V]
 variable (c : Fin n → Bool) (Γ : List (LitT n V)) (q : Fin k → V × V)
 
-/-- Whether the reader of some mode has a hole, by enumerating the modes. -/
+/-- Whether the reader of some mode has a hole, by enumerating the modes and searching the
+tuples up to `compiledHoleBound` for each. -/
 def decideExistsModeHole : Decidable (∃ m : Fin k → Bool, ∃ W, (compile c Γ q m).IsHole W) :=
-  letI (m : Fin k → Bool) := decideHole (compile c Γ q m)
+  letI (m : Fin k → Bool) :=
+    decideHoleWithBound (compile c Γ q m) (compiledHoleBound (Fintype.card V) k)
+      (exists_short_hole_of_compiled c Γ q m)
   inferInstance
 
 /-- Disjunctive entailment over arbitrary trees is decidable: the satisfiability test, then the

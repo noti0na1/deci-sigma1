@@ -1,3 +1,4 @@
+import DeciSigma1.Automata.VariableGraph
 import Mathlib.Data.Finset.Lattice.Fold
 import Mathlib.Algebra.BigOperators.Group.List.Basic
 import Mathlib.Algebra.Group.Action.Defs
@@ -18,8 +19,7 @@ symmetric solution of `DeciSigma1.Semantics.Selector`.
 
 ## Main declarations
 
-- `lowerAtB`, `upperAtB`, `satInfB`: executable path judgments and satisfiability over arbitrary
-  trees.
+- `satInfB`: satisfiability of covariant constraints over arbitrary trees.
 - `CycleClash`, `CycleClash.no_finite_solution`: cycle clashes exclude finite solutions.
 - `satFin_iff`, `Covariant.satFinB`, `Covariant.satFinB_iff`: finite satisfiability of covariant
   constraints.
@@ -33,24 +33,6 @@ namespace DeciSigma1.Satisfiability
 open DeciSigma1.Constraints
 
 variable {n : ℕ} {V : Type*} [Fintype V] [DecidableEq V]
-
-/-! ## Executable path judgments -/
-
-/-- A Boolean test for a lower path judgment: membership in the lower run. -/
-def lowerAtB (Γ : List (LitT n V)) (π : List (Fin n)) (x y : V) : Bool :=
-  decide (x ∈ Automata.lowerRun Γ y π)
-
-/-- A Boolean test for an upper path judgment: membership in the upper run. -/
-def upperAtB (Γ : List (LitT n V)) (π : List (Fin n)) (x y : V) : Bool :=
-  decide (y ∈ Automata.upperRun Γ x π)
-
-theorem lowerAtB_iff (Γ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
-    lowerAtB Γ π x y = true ↔ LowerAt Γ π x y := by
-  simp only [lowerAtB, decide_eq_true_eq, lowerAt_iff_run]
-
-theorem upperAtB_iff (Γ : List (LitT n V)) (π : List (Fin n)) (x y : V) :
-    upperAtB Γ π x y = true ↔ UpperAt Γ π x y := by
-  simp only [upperAtB, decide_eq_true_eq, upperAt_iff_run]
 
 /-! ## Satisfiability decisions -/
 
@@ -391,24 +373,86 @@ variable {n : ℕ} {V : Type*} [Fintype V] [DecidableEq V]
 
 /-! ## Executable cycle search -/
 
-/-- A Boolean test for a cycle clash along a path of length at most the number of variable
-pairs. -/
+/-- One step of the cycle search on pairs of variables: from `(x, y)` to `(x', y')` when `x'`
+is a lower successor of `x` and `y'` an upper successor of `y` at the same constructor
+argument. -/
+private def cycleNext (pairs : Finset (V × V)) (lower : List ((Fin n → V) × V))
+    (upper : List (V × (Fin n → V))) (p : V × V) : Finset (V × V) :=
+  Finset.univ.biUnion fun i =>
+    Automata.VariableGraph.lowerChildren pairs lower p.1 i ×ˢ
+      Automata.VariableGraph.upperChildren pairs upper p.2 i
+
+/-- A Boolean test for a cycle clash: some derivable pair returns to itself along a path of
+paired lower and upper steps of length between `1` and `|V|²`. The search from a pair starts
+at its successors and runs `|V|² - 1` rounds. -/
 def cycleClashB (Γ : List (LitT n V)) : Bool :=
   let pairs := derivedPairs Γ
-  decide (∃ ρ ∈ Automata.wordsUpTo (α := Fin n) (Fintype.card V * Fintype.card V), ρ ≠ [] ∧
-    ∃ x y, lowerAtB Γ ρ x x = true ∧ (x, y) ∈ pairs ∧ upperAtB Γ ρ y y = true)
+  let next := cycleNext pairs (lowerLits Γ) (upperLits Γ)
+  decide (∃ p ∈ pairs, p ∈ Automata.VariableGraph.reachableWithin next (next p)
+    (Fintype.card V * Fintype.card V - 1))
+
+/-- The search from the successors of `p` reaches `q` within `d` rounds exactly when a path of
+paired lower and upper steps of length between `1` and `d + 1` leads from `p` to `q`. -/
+private theorem cycleReach_iff (Γ : List (LitT n V)) (p q : V × V) (d : ℕ) :
+    let next := cycleNext (derivedPairs Γ) (lowerLits Γ) (upperLits Γ)
+    q ∈ Automata.VariableGraph.reachableWithin next (next p) d ↔
+      ∃ w, 0 < w.length ∧ w.length ≤ d + 1 ∧ LowerAt Γ w q.1 p.1 ∧ UpperAt Γ w p.2 q.2 := by
+  let next := cycleNext (derivedPairs Γ) (lowerLits Γ) (upperLits Γ)
+  have edge {u v : V × V} : v ∈ next u ↔ ∃ i, LowerAt Γ [i] v.1 u.1 ∧ UpperAt Γ [i] u.2 v.2 := by
+    rcases v with ⟨x, y⟩
+    simp [next, cycleNext, Automata.VariableGraph.mem_lowerChildren,
+      Automata.VariableGraph.mem_upperChildren]
+  induction d generalizing q with
+  | zero =>
+    change q ∈ next p ↔ _
+    rw [edge]
+    constructor
+    · rintro ⟨i, hl, hu⟩
+      exact ⟨[i], by simp, by simp, hl, hu⟩
+    · rintro ⟨w, hw, hb, hl, hu⟩
+      cases w with
+      | nil => simp at hw
+      | cons a w =>
+        have he : w = [] :=
+          List.length_eq_zero_iff.mp (by simp only [List.length_cons] at hb; omega)
+        subst w
+        exact ⟨a, hl, hu⟩
+  | succ d ih =>
+    dsimp only
+    rw [Automata.VariableGraph.reachableWithin_succ]
+    rw [Finset.mem_union]
+    constructor
+    · rintro (hq | hq)
+      · obtain ⟨w, hp, hb, hl, hu⟩ := (ih q).mp hq
+        exact ⟨w, hp, by omega, hl, hu⟩
+      · obtain ⟨r, hr, hq⟩ := Finset.mem_biUnion.mp hq
+        obtain ⟨w, hp, hb, hl, hu⟩ := (ih r).mp hr
+        obtain ⟨a, hal, hau⟩ := edge.mp hq
+        exact ⟨w ++ [a], by simp, by simp; omega, hal.comp hl, hu.comp hau⟩
+    · rintro ⟨w, hp, hb, hl, hu⟩
+      by_cases short : w.length ≤ d + 1
+      · exact Or.inl ((ih q).mpr ⟨w, hp, short, hl, hu⟩)
+      · obtain rfl | ⟨v, a, rfl⟩ := List.eq_nil_or_concat w
+        · simp at hp
+        · rw [List.concat_eq_append] at *
+          obtain ⟨x, hxl, hxa⟩ := hl.factor (π := v) (π' := [a])
+          obtain ⟨y, hyl, hya⟩ := hu.factor (π := v) (π' := [a])
+          simp only [List.length_append, List.length_singleton] at hp hb short
+          exact Or.inr (Finset.mem_biUnion.mpr ⟨(x, y),
+            (ih (x, y)).mpr ⟨v, by omega, by omega, hxl, hyl⟩, edge.mpr ⟨a, hxa, hya⟩⟩)
 
 theorem cycleClashB_iff_bounded (Γ : List (LitT n V)) :
     cycleClashB Γ = true ↔ ∃ ρ x y,
       0 < ρ.length ∧ ρ.length ≤ Fintype.card V * Fintype.card V ∧
       LowerAt Γ ρ x x ∧ Derives Γ x y ∧ UpperAt Γ ρ y y := by
-  simp only [cycleClashB, decide_eq_true_eq, Automata.mem_wordsUpTo,
-    lowerAtB_iff, mem_derivedPairs, upperAtB_iff]
+  simp only [cycleClashB, decide_eq_true_eq, Prod.exists, mem_derivedPairs, cycleReach_iff]
   constructor
-  · rintro ⟨ρ, hlen, hne, x, y, hl, hd, hu⟩
-    exact ⟨ρ, x, y, List.length_pos_iff.mpr hne, hlen, hl, hd, hu⟩
-  · rintro ⟨ρ, x, y, hpos, hlen, hl, hd, hu⟩
-    exact ⟨ρ, hlen, List.length_pos_iff.mp hpos, x, y, hl, hd, hu⟩
+  · rintro ⟨x, y, hxy, w, hp, hb, hl, hu⟩
+    have hc := Fintype.card_pos_iff.mpr (Nonempty.intro x)
+    have hn := Nat.mul_pos hc hc
+    exact ⟨w, x, y, hp, by omega, hl, hxy, hu⟩
+  · rintro ⟨w, x, y, hp, hb, hl, hxy, hu⟩
+    exact ⟨x, y, hxy, w, hp, by omega, hl, hu⟩
 
 theorem cycleClashB_sound {Γ : List (LitT n V)} (h : cycleClashB Γ = true) :
     CycleClash Γ := by

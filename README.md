@@ -7,8 +7,8 @@ combination of existential and universal sentences over subtype constraints is t
 holds for a type constructor of any arity and any variance, over arbitrary, regular and finite
 trees. Satisfiability and entailment of subtype constraints are special cases. The decision
 procedures are computable Lean definitions, and their correctness theorems have no hypotheses.
-The searches behind them are bounded by an elementary function of the size of the sentence
-(proof overview, step 5).
+The searches behind them look for witnesses whose length is singly exponential in the numbers
+of variables and queries (proof overview, step 5).
 
 ## The problem
 
@@ -148,7 +148,16 @@ theorem exists_small_hole {α S : Type} [Fintype α] [DecidableEq α] [Fintype S
     ∃ W, M.IsHole W ∧
       Readers.totalLength W ≤ smallHoleBound (Fintype.card α) k (Fintype.card S)
 theorem smallHoleBound_le (σ k N : ℕ) :
-    smallHoleBound σ k N ≤ (fun x : ℕ => 2 ^ x)^[4] ((k + N + 20) ^ (2 * k + 6))
+    smallHoleBound σ k N ≤ 2 ^ ((k + N + 16) ^ 10)
+
+-- The bound searched by the deciders, for readers compiled from constraints
+theorem exists_short_hole_of_compiled {V : Type} [Fintype V] [DecidableEq V] {n k : ℕ}
+    (c : Fin n → Bool) (Γ : List (Constraints.LitT n V)) (q : Fin k → V × V) (m : Fin k → Bool)
+    (h : ∃ W, (Full.Reduction.compile c Γ q m).IsHole W) :
+    ∃ W, (Full.Reduction.compile c Γ q m).IsHole W ∧
+      Readers.totalLength W ≤ compiledHoleBound (Fintype.card V) k
+theorem compiledHoleBound_le (v k : ℕ) :
+    compiledHoleBound v k ≤ 2 ^ ((4 * v + k + 16) ^ 10)
 ```
 
 The encodings in [Encodings.lean](DeciSigma1/Encodings.lean) are stated for the flat
@@ -265,34 +274,75 @@ false over finite trees ([Examples/Sentences](DeciSigma1/Examples/Sentences.lean
    such that no channel contains an admitted pair of states. If `Γ` is satisfiable, the
    entailment fails iff the reader of some mode has a hole
    (`Full.Reduction.not_disjEntails_iff_hole`).
-4. **Small holes.** Every reader with `N` states and `k` starts over an alphabet of `σ`
-   letters that has a hole has one of total length at most `smallHoleBound σ k N`
-   (`exists_small_hole`). The bound composes two results
-   ([Holes/Bound](DeciSigma1/Holes/Bound.lean)):
-   - *rejected tails* ([Holes/Tail](DeciSigma1/Holes/Tail), with the periodic deletions of
-     [Holes/Periodic](DeciSigma1/Holes/Periodic)): every hole has a hole whose rejected tails
-     from immortal endpoints have bounded length. The proof selects compatible ultimately
-     periodic continuations and compresses long periodic pieces; the compression puts no
-     admitted pair into a channel and carries the first rejected cut along the deletion.
-     Three counts keep this bound elementary: closed factors free of target occurrences are
-     found by a pigeonhole on *suffix nodes* (the longest suffix of the text that is a factor
-     of a target suffix, with the reader state at its start), polynomially many in the
-     window; the suffix chains of the targets have a budget that does not grow from level to
-     level; and each compression pass caps a periodic piece linearly in the current length.
-   - *fresh tuples* ([Holes/Fresh](DeciSigma1/Holes/Fresh)): a tuple of words none of whose
-     endpoints is visited earlier on its run is dominated (same endpoints, fewer visited
-     states and smaller channels) by a tuple of bounded total length. The proof deletes
-     repeated blocks of a marker hierarchy simultaneously in all coordinates.
+4. **Small holes.** Every reader with `N` states and `k` starts that has a hole has one of
+   total length at most `smallHoleBound σ k N ≤ 2^((k + N + 16)^10)`, whatever the size `σ` of
+   the alphabet (`exists_small_hole`). The proof
+   ([Holes/Shortening](DeciSigma1/Holes/Shortening.lean)) has five steps.
+   - *Stopping* ([Holes/JointExtension](DeciSigma1/Holes/JointExtension.lean),
+     [Holes/Stopping](DeciSigma1/Holes/Stopping.lean)). Extending some coordinates of a hole
+     by one letter each gives a hole exactly when every new letter keeps its run alive and is
+     not *blocked* by a coordinate `j` that was not extended: the letter must not complete, at
+     the end of its word, a suffix of the word of `j` whose occurrence starts at an admitted
+     pair of states (`joint_extension_iff`). A coordinate *stops* when every letter kills its
+     run or is blocked by a coordinate that stopped earlier. A hole extends to one with a
+     largest set of stopped coordinates. The other coordinates, the *moving* ones, then grow
+     together forever, one letter at a time, and every stage is a hole
+     (`exists_stopped_extension`).
+   - *Depth* ([Holes/StoppedDepth](DeciSigma1/Holes/StoppedDepth.lean)). The *depth* of the
+     stopped words is the largest number of distinct lengths of prefixes of one word that are
+     suffixes of stopped words. Each such length is charged to the obstruction that kills or
+     blocks a letter, so the depth is at most `N + 1` per stopped coordinate
+     (`card_restLengths_le`).
+   - *Rays* ([Holes/PeriodicFamily](DeciSigma1/Holes/PeriodicFamily.lean)). A moving word has a
+     window free of suffixes of stopped words at one of a few scales, and in that window a
+     state and the matching right context repeat. Repeating this loop gives each moving
+     coordinate an ultimately periodic continuation, a *ray*, with a period bounded in `k`, `N`
+     and the depth, and truncating all rays at the same increment gives a hole
+     (`exists_periodic_family`).
+   - *Shortening* ([Holes/Trie](DeciSigma1/Holes/Trie),
+     [Holes/BufferedWords](DeciSigma1/Holes/BufferedWords.lean)). The finite words, namely
+     the stopped words and the stems of the rays, are shortened together. They are cut at the
+     occurrences of the last letters of all words into *blocks* (front marker, content,
+     closing marker), the contents are shortened together on one shared reverse trie, and the
+     descent repeats over the levels of the marker hierarchy, whose height is bounded by the
+     depth. The shortened tuple has the same end states, and each of its comparisons lifts to a
+     comparison of the original tuple with the same pair of states (`Trie.exists_refines`). Each
+     stem carries a periodic buffer with a terminal marker that the shortening keeps, so the
+     comparisons of a ray with the stopped words remain visible in a bounded prefix
+     ([Holes/BufferedSafety](DeciSigma1/Holes/BufferedSafety.lean)).
+   - *Truncation* ([Holes/Truncation](DeciSigma1/Holes/Truncation.lean)). When two cuts in
+     rays have equal infinite rests and an admitted pair of states, the truncated rest of the
+     target must be longer than that of the host. These strict inequalities between truncation
+     lengths form a system of difference constraints with a bounded solution
+     (`PeriodicModel.exists_truncation`).
 
-   Both deletions use one library for deleting positions from words and following cuts and
-   runs through the deletion ([Words/Deletion](DeciSigma1/Words/Deletion.lean)).
-5. **Decision.** The decider tests satisfiability and then searches the finitely many tuples
-   of total length at most the bound, for each mode vector. The bound is elementary:
-   `smallHoleBound_le` bounds it by four iterated exponentials of `(k + N + 20)^(2k + 6)`,
-   whatever the alphabet. A reader built from a constraint has at most exponentially many
-   states in the number of variables, so the search is bounded by five iterated exponentials of
-   a polynomial in the size of the sentence. This is far from practical: the deciders establish
-   decidability and an elementary upper bound, they are not practical algorithms.
+   The bound depends on the reader only through `N`, `k` and the number of its word actions,
+   at most `N^N` ([Holes/ExponentialBound](DeciSigma1/Holes/ExponentialBound.lean)); the size
+   of the alphabet does not enter.
+5. **Decision.** The decider tests satisfiability and then, for each of the `2^k` mode
+   vectors, searches the finitely many tuples of total length at most
+   `compiledHoleBound v k`, where `v` is the number of variables of the constraint
+   (`Full.decideExistsModeHole`). A compiled reader has `2^(4v) + 1` states, but a word
+   action is determined by the images of `4v` labels, the signed variables of the upper and
+   the lower component, and each obstruction on a stopped coordinate is charged to a label
+   ([Full/Reduction/LabelActions](DeciSigma1/Full/Reduction/LabelActions.lean)). With these
+   counts the general bound gives `compiledHoleBound v k ≤ 2^((4v + k + 16)^10)` for every
+   arity and variance (`exists_short_hole_of_compiled`, `compiledHoleBound_le`), whereas
+   `smallHoleBound` would be doubly exponential in `v`.
+
+   Lean proves the bound on the length of witnesses and the correctness of the bounded
+   search. The deciders enumerate all tuples within the bound; they establish decidability
+   and are not practical algorithms. The bound also gives the complexity by the usual
+   argument, whose running time is not formalized: after the satisfiability test, guess a
+   mode vector and a tuple within the bound, and check its runs and comparisons in time
+   polynomial in the size of the constraint and the length of the tuple. So non-entailment
+   is in NEXPTIME, and so is the truth of a Σ₁ sentence, after guessing a clause of its
+   disjunctive normal form. A Boolean combination is decided in polynomial time with
+   parallel queries to an NEXPTIME oracle, one for each Σ₁ part. Plain entailment is
+   coNEXPTIME-hard for every arity `n ≥ 2` and every variance, by a reduction from a tiling
+   problem in [deci-nsse](https://github.com/noti0na1/deci-nsse) whose hardness is cited
+   there. So for `n ≥ 2` the truth of Σ₁ sentences over `{⊥, f, ⊤}` is NEXPTIME-complete and
+   that of Π₁ sentences coNEXPTIME-complete.
 6. **The signature `{⊥, f}`.** A set of constructor positions is the tree with these
    positions labeled `f` and `⊥` below them (`Semantics.PrefixSet.toTree`). This embedding
    preserves the order and the constructor, and its image consists of the trees without `⊤`.
@@ -348,30 +398,36 @@ comparisons include pairs of cuts in different words. Each query can fail in two
 decider builds a reader for each of the `2^k` mode vectors, where plain entailment needs one
 reader for each of the two sides.
 
-**Rejected tails.** With one word, every admitted comparison ends at or before the first rejected
-cut, so a hole can be chosen with at most `4N − 2` letters after that cut. With several words, a cut
-after the first rejection of one word can still be the host of an admitted comparison with
-another word. If the run of the word can be continued forever, its tail may have to be long to
-avoid the other words, and its length must be bounded independently of their lengths. This is
-the largest part of the proof ([Holes/Tail](DeciSigma1/Holes/Tail) and
-[Holes/Periodic](DeciSigma1/Holes/Periodic)): such tails are replaced by compatible ultimately
-periodic continuations, the constraints between these continuations are solved as difference
-constraints, and long periodic runs are compressed without creating admitted comparisons.
+**After the first rejection.** With one word, every admitted comparison ends at or before the
+first rejected cut, so a hole can be chosen with at most `4N − 2` letters after that cut. With
+several words, a cut after the first rejection of one word can still be the host of an admitted
+comparison with another word, and a word whose run can be continued forever may have to be long
+to avoid the other words. Here all words are extended together. A word stops once each of its
+letters is dead or blocked by a word that stopped earlier, and the other words continue as
+ultimately periodic rays with short periods
+([Holes/Stopping](DeciSigma1/Holes/Stopping.lean),
+[Holes/PeriodicFamily](DeciSigma1/Holes/PeriodicFamily.lean)). The comparisons between rays
+become strict difference constraints on their truncation lengths
+([Holes/Truncation](DeciSigma1/Holes/Truncation.lean)).
 
-**Shortening all words together.** The proof for one word shortens a hole along its canonical
-hierarchy after merging isolated letters. In a tuple, deleting a block from one word can create a
-comparison with another word. The deletions here therefore follow one marker hierarchy for the
-whole tuple and remove repeated blocks in all coordinates at the same time
-([Holes/Fresh](DeciSigma1/Holes/Fresh)).
+**Shortening all words together.** The proof for one word shortens it along its canonical
+hierarchy, which cuts the word at the occurrences of its last letter, erasing loops of the
+reader on a reverse trie of block contents. In a tuple,
+deleting a block from one word can create a comparison with another word. Here the words are
+parsed together at the last letters of all words, and equal contents, in any of the words,
+are shortened together on one shared trie, so every comparison of the shortened tuple lifts
+to a comparison of the original one ([Holes/Trie](DeciSigma1/Holes/Trie)). The stems of the
+rays are shortened with the other words, each with a periodic buffer at its end that keeps
+the strict inequalities between the rays.
 
 | | Plain entailment (deci-nsse) | Disjunctive entailment (this repository) |
 | --- | --- | --- |
 | witness of a countermodel | one path | one path per query, all realized by one solution |
 | readers | one per failure side, with one start | one per mode vector, `2^k` in all, with `k` starts |
 | comparisons | within one word | within and between the words of a tuple |
-| after the first rejection | no admitted comparison; tails of at most `4N − 2` letters | tails can still be hosts; bounded by periodic continuations and compression |
-| shortening | canonical hierarchy of one word | one marker hierarchy, deleting the same blocks in all words |
-| hole bound | elementary | elementary (`smallHoleBound_le`), with more iterated exponentials |
+| after the first rejection | no admitted comparison; tails of at most `4N − 2` letters | words can still be hosts; stopped words and rays with short periods |
+| shortening | one word, on a reverse trie | all words together, on one shared trie, with buffers at the ends of the ray stems |
+| witness length for `v` variables | `2^(512·(v+1)^4)` (`Shortening.sideBound`) | `2^((4v + k + 16)^10)` for `k` queries (`compiledHoleBound_le`) |
 
 ## Building and checking
 
@@ -405,6 +461,8 @@ import DeciSigma1
 #print axioms DeciSigma1.decideBooleanSentenceTopFree_correct
 #print axioms DeciSigma1.exists_small_hole
 #print axioms DeciSigma1.smallHoleBound_le
+#print axioms DeciSigma1.exists_short_hole_of_compiled
+#print axioms DeciSigma1.compiledHoleBound_le
 #print axioms DeciSigma1.Full.Logic.holdsIn_entailmentSentence_iff
 #print axioms DeciSigma1.Entailment.Logic.holdsIn_entailmentSentence_iff
 ```
@@ -418,11 +476,11 @@ import DeciSigma1
 | [Semantics](DeciSigma1/Semantics) | trees over `{⊥, f, ⊤}` and over `{⊥, f}`, the order with variance, finite and regular trees, medians |
 | [Constraints](DeciSigma1/Constraints) | flat literals in both signatures, closure, the signed translation, compiled ground bounds, ranked extensions |
 | [Satisfiability](DeciSigma1/Satisfiability) | least shapes, label and cycle clashes, decision of satisfiability and finite satisfiability |
-| [Automata](DeciSigma1/Automata) | runs of transition functions, word automata, the run automata of constraints |
-| [Words](DeciSigma1/Words) | periods, primitive words, conjugacy, infinite and ultimately periodic words, deletion of positions, suffix chains |
-| [Arithmetic](DeciSigma1/Arithmetic) | difference constraints, simple paths, periodic runs and iterated exponentials |
-| [Readers](DeciSigma1/Readers) | tables with several starts, structural readers, holes, domination |
-| [Holes](DeciSigma1/Holes) | the small-hole theorem: fresh tuples, periodic deletion, rejected tails, and the elementary closed form of the bound |
+| [Automata](DeciSigma1/Automata) | runs of transition functions, word automata, the run automata of constraints, reachability on variables and pairs of variables |
+| [Words](DeciSigma1/Words) | infinite and ultimately periodic words, powers of words |
+| [Arithmetic](DeciSigma1/Arithmetic) | difference constraints and exponential bounds |
+| [Readers](DeciSigma1/Readers) | tables with several starts, structural readers, comparisons, channels and holes |
+| [Holes](DeciSigma1/Holes) | the small-hole theorem: stopping, depth, rays, the trie descent ([Holes/Trie](DeciSigma1/Holes/Trie)), buffers, truncation, and the bounds |
 | [Entailment](DeciSigma1/Entailment) | the signature `{⊥, f}`: the guard reduction to `{⊥, f, ⊤}` over the three classes, its deciders and its sentences |
 | [Full](DeciSigma1/Full) | the reduction to holes over `{⊥, f, ⊤}` with variance, regular and finite countermodels, deciders and sentences |
 | [Logic](DeciSigma1/Logic) | Boolean sentences generic in the term language, normal forms, the decision procedure |

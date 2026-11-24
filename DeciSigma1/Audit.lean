@@ -5,7 +5,7 @@ import DeciSigma1.Main
 Compiling this module checks the public interface of `DeciSigma1.Main` and the encodings of
 `DeciSigma1.Encodings`: the main theorems and decision procedures exist with these names,
 depend only on the axioms `propext`, `Classical.choice` and `Quot.sound`, and the decision
-procedures and the small-hole bound are computable definitions with compiled code. It prints
+procedures and both witness bounds are computable definitions with compiled code. It prints
 nothing on success and fails with an error otherwise.
 -/
 
@@ -13,6 +13,8 @@ open Lean in
 run_cmd do
   let env ← getEnv
   let theorems := [``DeciSigma1.smallHoleBound_le, ``DeciSigma1.exists_small_hole,
+    ``DeciSigma1.compiledHoleBound_le, ``DeciSigma1.compiledHoleBound_le_product,
+    ``DeciSigma1.exists_short_hole_of_compiled,
     ``DeciSigma1.disjEntailsTopFreeReg_iff,
     ``DeciSigma1.booleanSentence_regular_iff, ``DeciSigma1.booleanSentenceTopFree_regular_iff,
     ``DeciSigma1.decideDisjEntails_correct, ``DeciSigma1.decideDisjEntailsReg_correct,
@@ -25,7 +27,8 @@ run_cmd do
     ``DeciSigma1.Full.Logic.holdsIn_entailmentSentence_iff,
     ``DeciSigma1.Entailment.Logic.holdsIn_satisfiabilitySentence_iff,
     ``DeciSigma1.Entailment.Logic.holdsIn_entailmentSentence_iff]
-  let definitions := [``DeciSigma1.smallHoleBound, ``DeciSigma1.decideDisjEntails,
+  let definitions := [``DeciSigma1.smallHoleBound, ``DeciSigma1.compiledHoleBound,
+    ``DeciSigma1.Full.decideExistsModeHole, ``DeciSigma1.decideDisjEntails,
     ``DeciSigma1.decideDisjEntailsReg, ``DeciSigma1.decideDisjEntailsFin,
     ``DeciSigma1.decideDisjEntailsTopFree, ``DeciSigma1.decideDisjEntailsTopFreeReg,
     ``DeciSigma1.decideDisjEntailsTopFreeFin,

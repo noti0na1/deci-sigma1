@@ -1,6 +1,4 @@
 import DeciSigma1.Encodings
-import DeciSigma1.Holes.Fresh.ElementaryBound
-import DeciSigma1.Holes.Tail.ClosedForm
 
 /-! # Decidability of the Σ₁ theory of subtype constraints
 
@@ -32,9 +30,12 @@ solution exactly when the Σ₁ sentence `∃x̄. ⋀Γ` holds, and it entails
 holds, plain entailment being the case `k = 1` (`DeciSigma1.Encodings`).
 
 The deciders are computable definitions with no hypotheses beyond a finite type of variables
-with decidable equality. Over `{⊥, f, ⊤}` each runs a satisfiability test and then a bounded
-search for a hole of a structural reader compiled from the constraints; the search is complete
-by the small-hole theorem `exists_small_hole`, with the computable bound `smallHoleBound`.
+with decidable equality. Over `{⊥, f, ⊤}` each runs a satisfiability test and then, for each
+mode, a bounded search for a hole of a structural reader compiled from the constraints. The
+search is complete by the small-hole theorem for compiled readers,
+`exists_short_hole_of_compiled`, with the computable bound `compiledHoleBound`, singly
+exponential in the numbers of variables and queries. The small-hole theorem
+`exists_small_hole` gives the bound `smallHoleBound` for every structural reader.
 
 The signature `{⊥, f}` with `f` covariant reduces to `{⊥, f, ⊤}`: the same procedures are
 applied to a constraint with a guard that excludes `⊤`. Its Σ₁ theory is decided over the same
@@ -78,14 +79,28 @@ classes by `decideBooleanSentenceTopFree`, and truth agrees over regular and arb
    (`Full.Reduction.hole_iff_terminalRootConditions`), so on a satisfiable constraint the
    entailment fails exactly when the reader of some mode has a hole
    (`Full.Reduction.not_disjEntails_iff_hole`).
-6. The small-hole theorem. `Holes.exists_small_hole` composes a rejected-tail bound,
-   `Holes.Tail.exists_hole_rejectedTailLength_le` (periodic continuations and compression),
-   with a fresh-tuple bound, `Holes.Fresh.exists_freshDominates_totalLength_le` (deletion of
-   repeated blocks), applied to the cover of a hole (`Holes.cover`); `Holes.decideHole`
-   searches the bounded tuples.
+6. The small-hole theorem. Extending a hole by one letter in some coordinates gives a hole
+   exactly when no new letter dies or is blocked by a coordinate that is not extended
+   (`Holes.joint_extension_iff`). A coordinate stops when every letter dies or is blocked by
+   an earlier stopped word; the other coordinates then grow together forever
+   (`Holes.exists_stopped_extension`). The depth of the stopped words is at most `N + 1` per
+   stopped coordinate (`Holes.card_restLengths_le`), and it bounds the periods of the rays
+   that continue the moving coordinates (`Holes.exists_periodic_family`). One simultaneous
+   trie descent shortens the stopped words and the buffered stems of the rays
+   (`Holes.Trie.exists_refines`, `Holes.BufferedWords.nonempty_shortened`). Equal infinite
+   rests of rays impose strict difference constraints on the truncation lengths
+   (`Holes.PeriodicModel.exists_truncation`). Together these give `Holes.exists_short_hole`,
+   with the bound `Holes.lengthBound` in the number of states, the number of word actions and
+   the depth. A reader with `N` states has at most `N ^ N` word actions
+   (`Holes.Trie.actionBound_card`), which gives `Holes.exists_small_hole`. A compiled reader has `2 ^ (4 v) + 1` states, but at most
+   `2 ^ ((4 v + 1) * 4 v)` word actions and depth at most `4 v + 1` per stopped coordinate
+   for `v` variables (`Full.Reduction.compiled_actionBound`,
+   `Full.Reduction.compiled_card_restLengths_le`), which gives
+   `Full.Reduction.exists_short_hole_of_compiled`.
 7. Deciders over arbitrary trees. `Full.decideDisjEntails` combines the satisfiability test
    with the bounded search for each of the finitely many modes
-   (`Full.decideExistsModeHole`). This is the only reduction to holes:
+   (`Full.decideExistsModeHole`). The search uses `Full.Reduction.compiledHoleBound`, computed
+   from the variable and query counts. This is the only reduction to holes:
    `Entailment.decideDisjEntails` applies the same procedure to the guarded constraint.
 8. Regular trees. Over `{⊥, f, ⊤}` the hull of the seeds of a countermodel is again a
    countermodel, and each of its leaf cones is a finite union of regular languages; a tree with
@@ -138,7 +153,9 @@ classes by `decideBooleanSentenceTopFree`, and truth agrees over regular and arb
 - `decideBooleanSentence_correct` and the other `_correct` theorems: each decision procedure
   returns `true` exactly when its proposition holds.
 - `smallHoleBound`, `exists_small_hole`: every structural reader with a hole has a short one.
-- `smallHoleBound_le`: a fixed-height elementary bound independent of the alphabet size.
+- `smallHoleBound_le`: a singly exponential bound independent of the alphabet size.
+- `compiledHoleBound`, `compiledHoleBound_le`, `exists_short_hole_of_compiled`: the bound searched
+  by the compiled deciders, singly exponential in the number of variables and queries.
 -/
 
 namespace DeciSigma1
@@ -320,62 +337,11 @@ end TopFree
 states. -/
 def smallHoleBound (σ k N : ℕ) : ℕ := Holes.smallHoleBound σ k N
 
-open Arithmetic in
-/-- The small-hole bound is at most four iterated exponentials, independently of the alphabet
-size. Its innermost argument is polynomial in `N` for each fixed `k`. -/
+/-- The logarithm of the general bound is polynomial in the number of coordinates and states,
+independently of the alphabet. -/
 theorem smallHoleBound_le (σ k N : ℕ) :
-    smallHoleBound σ k N ≤ (fun x : ℕ => 2 ^ x)^[4]
-      ((k + N + 20) ^ (2 * k + 6)) := by
-  let p := (k + N + 20) ^ (2 * k + 5)
-  let L := Holes.Tail.tailLengthBound σ k N
-  have ht : L ≤ exp2^[2] p := Holes.Tail.tailLengthBound_le_double_exp2 σ k N
-  have h₁ : N + L + 1 ≤ exp2^[2] (N + p + 2) := by
-    calc
-      N + L + 1 ≤ exp2^[2] (N + p + 1) + exp2^[2] 0 :=
-        Nat.add_le_add ((Nat.add_le_add (le_iterate_exp2 2 N) ht).trans
-          (iterate_exp2_add_le 2 N p (by omega))) (by decide)
-      _ ≤ exp2^[2] (N + p + 2) := by
-        simpa using iterate_exp2_add_le 2 (N + p + 1) 0 (by omega)
-  have h₂ : k * (N + L + 1) ≤ exp2^[2] (k + (N + p + 2) + 1) :=
-    (Nat.mul_le_mul (le_iterate_exp2 2 k) h₁).trans
-      (iterate_exp2_mul_le 2 k (N + p + 2) (by omega))
-  have h₃ : k + (k * (N + L + 1) + 1) + 16 ≤
-      exp2^[2] (2 * k + N + p + 21) := by
-    calc
-      _ = (k + k * (N + L + 1)) + 17 := by omega
-      _ ≤ exp2^[2] (k + (k + (N + p + 2) + 1) + 1) + exp2^[2] 16 :=
-        Nat.add_le_add ((Nat.add_le_add (le_iterate_exp2 2 k) h₂).trans
-          (iterate_exp2_add_le 2 k _ (by omega)))
-          ((succ_le_exp2 16).trans (le_exp2 _))
-      _ ≤ exp2^[2] (2 * k + N + p + 21) := by
-        convert iterate_exp2_add_le 2 (k + (k + (N + p + 2) + 1) + 1) 16 (by omega)
-          using 1
-        congr 1
-        omega
-  have harg : 2 * k + N + p + 25 ≤ (k + N + 20) ^ (2 * k + 6) := by
-    let R := k + N + 20
-    have hR : 20 ≤ R := by dsimp [R]; omega
-    have hp : R ≤ p := by
-      have h : R ^ 1 ≤ R ^ (2 * k + 5) :=
-        Nat.pow_le_pow_right (by omega) (by omega)
-      simpa only [pow_one] using h
-    have hlin : 2 * k + N + 25 ≤ 2 * R := by dsimp [R]; omega
-    calc
-      _ ≤ 3 * p := by omega
-      _ ≤ R * p := Nat.mul_le_mul_right _ (by omega)
-      _ = _ := by
-        dsimp [R, p]
-        rw [show 2 * k + 6 = (2 * k + 5) + 1 by omega, pow_succ]
-        ring
-  calc
-    smallHoleBound σ k N = Holes.Fresh.freshTupleBound k (k * (N + L + 1) + 1) := rfl
-    _ ≤ exp2 (exp2 ((k + (k * (N + L + 1) + 1) + 16) ^ 4)) :=
-      Holes.Fresh.freshTupleBound_le_double_exp2 _ _
-    _ ≤ exp2 (exp2 ((exp2^[2] (2 * k + N + p + 21)) ^ 4)) :=
-      exp2_mono (exp2_mono (Nat.pow_le_pow_left h₃ 4))
-    _ ≤ exp2^[4] (2 * k + N + p + 25) :=
-      exp2_mono (exp2_mono (double_exp2_pow_le _ 4))
-    _ ≤ _ := iterate_exp2_mono 4 harg
+    smallHoleBound σ k N ≤ 2 ^ ((k + N + 16) ^ 10) :=
+  Holes.lengthBound_le_exp2 k N
 
 /-- Every structural reader with `N` states and `k` starts over a finite alphabet that has a
 hole has one of total length at most `smallHoleBound σ k N`. -/
@@ -384,5 +350,26 @@ theorem exists_small_hole {α S : Type} [Fintype α] [DecidableEq α] [Fintype S
     ∃ W, M.IsHole W ∧
       Readers.totalLength W ≤ smallHoleBound (Fintype.card α) k (Fintype.card S) :=
   Holes.exists_small_hole M h
+
+/-- The witness bound searched by the disjunctive-entailment deciders. -/
+def compiledHoleBound (v k : ℕ) : ℕ := Full.Reduction.compiledHoleBound v k
+
+/-- The compiled witness bound is singly exponential in the variable and query counts. -/
+theorem compiledHoleBound_le (v k : ℕ) :
+    compiledHoleBound v k ≤ 2 ^ ((4 * v + k + 16) ^ 10) :=
+  Full.Reduction.compiledHoleBound_le v k
+
+/-- The compiled bound with separate polynomial factors for variables and queries. -/
+theorem compiledHoleBound_le_product (v k : ℕ) :
+    compiledHoleBound v k ≤ 2 ^ (16 ^ 10 * (v + 1) ^ 10 * (k + 1) ^ 10) :=
+  Full.Reduction.compiledHoleBound_le_product v k
+
+/-- Every compiled reader with a hole has a short witness, independently of the arity. -/
+theorem exists_short_hole_of_compiled {V : Type} [Fintype V] [DecidableEq V] {n k : ℕ}
+    (c : Fin n → Bool) (Γ : List (Constraints.LitT n V)) (q : Fin k → V × V) (m : Fin k → Bool)
+    (h : ∃ W, (Full.Reduction.compile c Γ q m).IsHole W) :
+    ∃ W, (Full.Reduction.compile c Γ q m).IsHole W ∧
+      Readers.totalLength W ≤ compiledHoleBound (Fintype.card V) k :=
+  Full.Reduction.exists_short_hole_of_compiled c Γ q m h
 
 end DeciSigma1
