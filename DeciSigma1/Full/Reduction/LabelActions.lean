@@ -56,7 +56,7 @@ private theorem step_join (p q : State V) (a : Fin n) :
       Automata.lowerStep (signed c Γ) Q a ∪ Automata.lowerStep (signed c Γ) T a := by
     ext v; simp; aesop
   have guard (p q r t : Finset (V × Bool)) : Good c Γ (p ∪ r) (q ∪ t) ↔
-      Good c Γ p q ∧ Good c Γ r t := by simp [Good, Finset.map_union, disjoint_union_left]; tauto
+      Good c Γ p q ∧ Good c Γ r t := by simp [Good, Finset.map_union]; tauto
   simp only [joinStates, Compile.step, Automata.guardedStep, Automata.guardedPair, upper, lower,
     guard]
   split_ifs <;> simp_all

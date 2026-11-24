@@ -438,7 +438,7 @@ lake exe cache get
 lake build
 ```
 
-The package pins Lean and Mathlib to **v4.35.0**. The first command downloads compiled
+The package pins Lean and Mathlib to **v4.36.0**. The first command downloads compiled
 Mathlib dependencies; the second checks the whole development, including
 [Audit.lean](DeciSigma1/Audit.lean), which fails unless every public declaration of
 `Main.lean` depends only on the axioms `propext`, `Classical.choice` and `Quot.sound` and
